@@ -1,0 +1,64 @@
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# ENV (toàn repo)
+.env
+.env.*
+!.env.example
+
+# 🌐 Node.js (frontend + ProductService)
+**/node_modules/
+**/.npm/
+**/.yarn/
+**/.pnpm-store/
+
+# Build outputs
+**/dist/
+**/.vite/
+**/.cache/
+
+# ⚡ Vite Frontend
+frontend/dist/
+frontend/.vite/
+
+# 🧩 ProductService (Node backend)
+ProductService/dist/
+ProductService/build/
+
+# ☕ Spring Boot (UserService)
+UserService/target/
+UserService/build/
+
+# Maven
+UserService/.mvn/wrapper/maven-wrapper.jar
+
+# 🐳 Docker
+**/.docker/
+**/docker-data/
+
+# 🧪 Test / Coverage
+**/coverage/
+**/.nyc_output/
+
+# Secrets / Keys
+**/*.pem
+**/*.key
+**/*.crt
+
+# Misc
+*.swp
+*.swo
+
+# Agents & Skills
+.agents
+skills-lock.json
