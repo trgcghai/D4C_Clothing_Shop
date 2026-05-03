@@ -8,6 +8,10 @@ import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.LoginRequest;
 import iuh.fit.UserService.domain.dto.SignupRequest;
 import iuh.fit.UserService.domain.entity.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -31,6 +35,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "auth", description = "Authentication APIs")
 public class AuthController {
 
     @Autowired
@@ -50,6 +55,11 @@ public class AuthController {
 
     // API Đăng nhập
     @PostMapping("/signin")
+    @Operation(summary = "Sign in user", description = "Authenticate user and return access token. Also sets refresh token cookie.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Signed in successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
         // 1. Xác thực username và password
@@ -78,6 +88,11 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
+    @Operation(summary = "Refresh access token", description = "Read refresh token from cookie and issue a new access token + refresh token cookie.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully"),
+            @ApiResponse(responseCode = "401", description = "Refresh token invalid or expired")
+    })
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
         String refreshToken = extractRefreshTokenFromCookie(request);
 
@@ -115,6 +130,11 @@ public class AuthController {
 
     // API Đăng ký
     @PostMapping("/signup")
+    @Operation(summary = "Sign up user", description = "Register a new account.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Username or email already exists")
+    })
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         // Kiểm tra username đã tồn tại chưa
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
@@ -141,6 +161,10 @@ public class AuthController {
 
     // API Đăng xuất
     @PostMapping("/signout")
+    @Operation(summary = "Sign out user", description = "Clear refresh token in database and browser cookie.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Signed out successfully")
+    })
     public ResponseEntity<?> signOut() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
