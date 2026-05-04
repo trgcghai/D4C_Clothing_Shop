@@ -1,0 +1,141 @@
+services:
+  discovery-server:
+    build:
+      context: ./DiscoveryServer
+      dockerfile: Dockerfile
+    container_name: discovery-server
+    env_file:
+      - ./DiscoveryServer/.env
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - d4c-net
+
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    env_file:
+      - ./.env.mariadb
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - d4c-net
+
+  userservice:
+    build:
+      context: ./UserService
+      dockerfile: Dockerfile
+    container_name: userservice
+    hostname: userservice
+    env_file:
+      - ./UserService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/v3/api-docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
+  productservice:
+    build:
+      context: ./ProductService
+      dockerfile: Dockerfile
+    container_name: productservice
+    hostname: productservice
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    env_file:
+      - ./ProductService/.env
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - d4c-net
+
+  api-gateway:
+    build:
+      context: ./Api-Gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    hostname: api-gateway
+    env_file:
+      - ./Api-Gateway/.env
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      userservice:
+        condition: service_healthy
+      productservice:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - d4c-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - ./frontend/.env
+    container_name: frontend
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - d4c-net
+
+volumes:
+  mariadb_data:
+
+networks:
+  d4c-net:
+    driver: bridge
