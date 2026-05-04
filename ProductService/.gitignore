@@ -1,14 +1,10 @@
-# ==========================================
 # 1. DEPENDENCIES (Thư viện)
-# ==========================================
 # Chặn thư mục node_modules ở bất kỳ đâu trong project (cả frontend lẫn backend)
 node_modules/
 .pnp
 .pnp.js
 
-# ==========================================
 # 2. MÔI TRƯỜNG & BẢO MẬT (Environment)
-# ==========================================
 # Chặn TẤT CẢ các file liên quan đến biến môi trường
 .env
 .env.local
@@ -20,17 +16,13 @@ node_modules/
 # (Tuỳ chọn) Nếu bạn muốn cho phép push file .env.example để làm mẫu cho team thì bỏ comment dòng dưới
 # !.env.example
 
-# ==========================================
 # 3. KẾT QUẢ BUILD (Build Outputs)
-# ==========================================
 # Chặn các file build ra từ Vite (Frontend)
 dist/
 dist-ssr/
 build/
 
-# ==========================================
 # 4. LOGS (File ghi chú lỗi)
-# ==========================================
 logs
 *.log
 npm-debug.log*
@@ -38,9 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# ==========================================
 # 5. CÁC FILE HỆ ĐIỀU HÀNH & EDITOR
-# ==========================================
 # macOS
 .DS_Store
 
