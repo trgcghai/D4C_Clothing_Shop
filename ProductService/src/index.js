@@ -10,7 +10,7 @@ import { openApiSpec } from "./config/openapi.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8082;
 
 app.use(morgan("dev"));
 app.use(cors());
