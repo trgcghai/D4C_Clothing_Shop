@@ -4,8 +4,8 @@ services:
       context: ./DiscoveryServer
       dockerfile: Dockerfile
     container_name: discovery-server
-    environment:
-      SERVER_PORT: 8761
+    env_file:
+      - ./DiscoveryServer/.env
     ports:
       - "8761:8761"
     healthcheck:
@@ -21,17 +21,18 @@ services:
     image: mariadb:11
     container_name: mariadb
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-jwt_db}
-      MYSQL_USER: ${MYSQL_USER:-user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
+    env_file:
+      - ./.env.mariadb
     ports:
       - "3307:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,22 +45,14 @@ services:
       context: ./UserService
       dockerfile: Dockerfile
     container_name: userservice
+    hostname: userservice
+    env_file:
+      - ./UserService/.env
     depends_on:
       mariadb:
         condition: service_healthy
       discovery-server:
         condition: service_healthy
-    environment:
-      SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/${MYSQL_DATABASE:-jwt_db}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-user}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-password}
-      JWT_SECRET: ${JWT_SECRET}
-      EUREKA_CLIENT_ENABLED: "true"
-      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
-      EUREKA_REGISTER_WITH_EUREKA: "true"
-      EUREKA_FETCH_REGISTRY: "true"
-      EUREKA_PREFER_IP_ADDRESS: "true"
     ports:
       - "8081:8081"
     healthcheck:
@@ -76,22 +69,12 @@ services:
       context: ./ProductService
       dockerfile: Dockerfile
     container_name: productservice
+    hostname: productservice
     depends_on:
       discovery-server:
         condition: service_healthy
-    environment:
-      PORT: 8082
-      SERVICE_NAME: ProductService
-      SERVICE_HOST: productservice
-      SERVICE_IP: 127.0.0.1
-      EUREKA_HOST: discovery-server
-      EUREKA_PORT: 8761
-      EUREKA_SERVICE_PATH: /eureka/apps/
-      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      TABLE_NAME: ${TABLE_NAME:-d4c_products}
-      BUCKET_NAME: ${BUCKET_NAME}
+    env_file:
+      - ./ProductService/.env
     ports:
       - "8082:8082"
     healthcheck:
@@ -108,6 +91,9 @@ services:
       context: ./Api-Gateway
       dockerfile: Dockerfile
     container_name: api-gateway
+    hostname: api-gateway
+    env_file:
+      - ./Api-Gateway/.env
     depends_on:
       discovery-server:
         condition: service_healthy
@@ -115,9 +101,6 @@ services:
         condition: service_healthy
       productservice:
         condition: service_healthy
-    environment:
-      SERVER_PORT: 8080
-      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
     ports:
       - "8080:8080"
     healthcheck:
@@ -133,8 +116,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+    env_file:
+      - ./frontend/.env
     container_name: frontend
     depends_on:
       api-gateway:
