@@ -11,7 +11,6 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
-.env.*
 
 # (Tuỳ chọn) Nếu bạn muốn cho phép push file .env.example để làm mẫu cho team thì bỏ comment dòng dưới
 # !.env.example
