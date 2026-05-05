@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AdminSidebar from "../components/AdminSidebar";
 import DashboardOverview from "../components/DashboardOverview";
 import AddProduct from "../components/addProducts";
@@ -14,13 +14,6 @@ export default function Admin() {
         price: item.price || 0,
         stock: item.stock || 0,
     }));
-
-    useEffect(() => {
-        const isLoggedIn = localStorage.getItem("adminLoggedIn") === "true";
-        if (!isLoggedIn) {
-            localStorage.setItem("adminLoggedIn", "true");
-        }
-    }, []);
 
     if (isLoading) {
         return <div className="text-center py-10">Đang tải...</div>;
