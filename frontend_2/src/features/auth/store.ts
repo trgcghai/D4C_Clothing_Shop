@@ -1,4 +1,5 @@
-import { setAccessToken as setHttpAccessToken } from '@/lib/api/http'
+import { http, setAccessToken as setHttpAccessToken, setRefreshTokenHandler } from '@/lib/api/http'
+import { isApiError } from '@/lib/api/errors'
 
 const ACCESS_TOKEN_STORAGE_KEY = 'd4c.auth.accessToken'
 
@@ -19,6 +20,39 @@ function readStoredAccessToken(): string | null {
 
 let accessTokenCache: string | null = readStoredAccessToken()
 setHttpAccessToken(accessTokenCache)
+
+function extractAccessToken(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const token = Reflect.get(payload, 'token')
+  return typeof token === 'string' && token.length > 0 ? token : null
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const response = await http<unknown>('/api/auth/refresh-token', {
+      method: 'POST',
+    })
+    const token = extractAccessToken(response)
+
+    if (!token) {
+      return null
+    }
+
+    setAccessToken(token)
+    return token
+  } catch (error) {
+    if (isApiError(error) && error.status === 401) {
+      return null
+    }
+
+    throw error
+  }
+}
+
+setRefreshTokenHandler(refreshAccessToken)
 
 export function normalizeRole(role: MaybeRole): string | null {
   if (typeof role !== 'string' || role.length === 0) {

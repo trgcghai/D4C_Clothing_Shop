@@ -55,6 +55,26 @@ describe('http client', () => {
     expect(init.body).toBe(payload)
   })
 
+  it('sends credentials include by default', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await http('/credentialed')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.credentials).toBe('include')
+  })
+
+  it('allows credentials override when provided explicitly', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await http('/credentialed', { credentials: 'same-origin' })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.credentials).toBe('same-origin')
+  })
+
   it('shares one in-flight refresh request across concurrent 401s', async () => {
     let releaseRefresh: (value: string | null) => void = () => {}
     const refreshPromise = new Promise<string | null>((resolve) => {
@@ -86,5 +106,16 @@ describe('http client', () => {
     releaseRefresh('fresh-token')
 
     await expect(Promise.all([first, second])).resolves.toEqual([{ ok: true }, { ok: true }])
+  })
+
+  it('does not recurse when the refresh endpoint itself returns 401', async () => {
+    const refreshMock = vi.fn().mockResolvedValue('fresh-token')
+    setRefreshTokenHandler(refreshMock)
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(http('/api/auth/refresh-token')).rejects.toMatchObject({ status: 401 })
+    expect(refreshMock).not.toHaveBeenCalled()
   })
 })

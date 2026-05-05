@@ -20,6 +20,7 @@ import { clearAccessToken, getAccessToken, setAccessToken } from './store'
 vi.mock('@/lib/api/http', () => ({
   http: vi.fn(),
   setAccessToken: vi.fn(),
+  setRefreshTokenHandler: vi.fn(),
 }))
 
 const { http } = await import('@/lib/api/http')
@@ -36,18 +37,18 @@ describe('auth flow contract', () => {
     expect(extractSignInToken({ accessToken: 'wrong-field' })).toBeNull()
   })
 
-  it('sends exact sign-in payload to /auth/signin', async () => {
+  it('sends exact sign-in payload to /api/auth/signin', async () => {
     vi.mocked(http).mockResolvedValueOnce({ token: 'signed-token' })
 
     await signIn({ username: 'demo', password: 'secret123' })
 
-    expect(http).toHaveBeenCalledWith('/auth/signin', {
+    expect(http).toHaveBeenCalledWith('/api/auth/signin', {
       body: { username: 'demo', password: 'secret123' },
       method: 'POST',
     })
   })
 
-  it('sends exact sign-up payload to /auth/signup', async () => {
+  it('sends exact sign-up payload to /api/auth/signup', async () => {
     vi.mocked(http).mockResolvedValueOnce({ message: 'User registered successfully!' })
 
     await signUp({
@@ -58,7 +59,7 @@ describe('auth flow contract', () => {
       username: 'demo',
     })
 
-    expect(http).toHaveBeenCalledWith('/auth/signup', {
+    expect(http).toHaveBeenCalledWith('/api/auth/signup', {
       body: {
         email: 'demo@mail.com',
         fullName: 'Demo User',
@@ -70,7 +71,7 @@ describe('auth flow contract', () => {
     })
   })
 
-  it('uses /users/me and /users/me/password endpoints', async () => {
+  it('uses /api/users/me and /api/users/me/password endpoints', async () => {
     vi.mocked(http).mockResolvedValue({})
 
     await updateProfile({
@@ -80,7 +81,7 @@ describe('auth flow contract', () => {
     })
     await changePassword({ newPassword: 'secret456', oldPassword: 'secret123' })
 
-    expect(http).toHaveBeenNthCalledWith(1, '/users/me', {
+    expect(http).toHaveBeenNthCalledWith(1, '/api/users/me', {
       body: {
         avatar: 'https://example.com/avatar.png',
         fullName: 'Demo User',
@@ -88,7 +89,7 @@ describe('auth flow contract', () => {
       },
       method: 'PUT',
     })
-    expect(http).toHaveBeenNthCalledWith(2, '/users/me/password', {
+    expect(http).toHaveBeenNthCalledWith(2, '/api/users/me/password', {
       body: { newPassword: 'secret456', oldPassword: 'secret123' },
       method: 'PUT',
     })

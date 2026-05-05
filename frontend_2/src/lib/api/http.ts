@@ -8,7 +8,8 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
 
 type RefreshTokenHandler = () => Promise<string | null>
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? ''
+const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
 const DEFAULT_HEADERS = {
   Accept: 'application/json',
   'Content-Type': 'application/json',
@@ -22,7 +23,19 @@ function buildUrl(path: string) {
   if (/^https?:\/\//.test(path)) {
     return path
   }
-  return `${API_BASE_URL}${path}`
+
+  const baseUrl = API_BASE_URL.replace(/\/+$/, '')
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  if (baseUrl.endsWith('/api') && normalizedPath.startsWith('/api/')) {
+    return `${baseUrl}${normalizedPath.slice('/api'.length)}`
+  }
+
+  return `${baseUrl}${normalizedPath}`
+}
+
+function isRefreshTokenRequest(path: string) {
+  return path === REFRESH_TOKEN_PATH
 }
 
 function isBodyInit(body: unknown): body is BodyInit {
@@ -123,11 +136,12 @@ async function requestInternal<T>(
 
   const response = await fetch(buildUrl(path), {
     ...options,
+    credentials: options.credentials ?? 'include',
     headers,
     body,
   })
 
-  if (response.status === 401 && allowRefresh && refreshTokenHandler) {
+  if (response.status === 401 && allowRefresh && refreshTokenHandler && !isRefreshTokenRequest(path)) {
     const refreshedToken = await refreshAccessToken()
     if (refreshedToken) {
       accessToken = refreshedToken

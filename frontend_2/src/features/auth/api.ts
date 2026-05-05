@@ -57,7 +57,7 @@ export function extractSignInToken(payload: unknown): string | null {
 }
 
 export async function signIn(payload: SignInPayload): Promise<SignInResponse> {
-  const response = await http<SignInResponse>('/auth/signin', {
+  const response = await http<SignInResponse>('/api/auth/signin', {
     body: payload,
     method: 'POST',
   })
@@ -69,14 +69,14 @@ export async function signIn(payload: SignInPayload): Promise<SignInResponse> {
 }
 
 export async function signUp(payload: SignUpPayload): Promise<MessageResponse> {
-  return await http<MessageResponse>('/auth/signup', {
+  return await http<MessageResponse>('/api/auth/signup', {
     body: payload,
     method: 'POST',
   })
 }
 
 export async function getMe(): Promise<UserProfile> {
-  const response = await http<UserProfile>('/users/me', { method: 'GET' })
+  const response = await http<UserProfile>('/api/users/me', { method: 'GET' })
   return {
     ...response,
     role: normalizeRole(response.role),
@@ -84,7 +84,7 @@ export async function getMe(): Promise<UserProfile> {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<UserProfile> {
-  const response = await http<UserProfile>('/users/me', {
+  const response = await http<UserProfile>('/api/users/me', {
     body: payload,
     method: 'PUT',
   })
@@ -96,14 +96,14 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
 }
 
 export async function changePassword(payload: ChangePasswordPayload): Promise<MessageResponse> {
-  return await http<MessageResponse>('/users/me/password', {
+  return await http<MessageResponse>('/api/users/me/password', {
     body: payload,
     method: 'PUT',
   })
 }
 
 export async function signOut(): Promise<MessageResponse> {
-  return await http<MessageResponse>('/auth/signout', {
+  return await http<MessageResponse>('/api/auth/signout', {
     body: {},
     method: 'POST',
   })
