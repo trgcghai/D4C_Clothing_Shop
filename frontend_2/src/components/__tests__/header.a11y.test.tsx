@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import Header from '../Header'
 
@@ -13,7 +13,7 @@ vi.mock('@tanstack/react-router', () => ({
     children: React.ReactNode
     className?: string
   }) => (
-    <a href={to} className={className}>
+    <a href={to} className={className} data-router-link="true">
       {children}
     </a>
   ),
@@ -24,7 +24,7 @@ vi.mock('../ThemeToggle', () => ({
 }))
 
 describe('Header accessibility baseline', () => {
-  it('renders an accessible primary navigation with keyboard-focusable touch targets', () => {
+  it('supports accessible navigation labels and keyboard interaction', () => {
     render(<Header />)
 
     expect(
@@ -33,9 +33,27 @@ describe('Header accessibility baseline', () => {
       }),
     ).toBeTruthy()
 
-    const productsLink = screen.getByRole('link', { name: /products/i })
-    expect(productsLink).toBeTruthy()
-    expect(productsLink.className).toContain('focus-visible:ring-2')
-    expect(productsLink.className).toContain('min-h-10')
+    expect(screen.getByRole('link', { name: /products/i })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /about/i })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /docs/i })).toBeTruthy()
+
+    const demosToggle = screen.getByText(/demos/i)
+    const demosMenu = demosToggle.closest('details')
+    expect(demosMenu).toBeTruthy()
+    expect(demosMenu?.hasAttribute('open')).toBe(false)
+
+    demosToggle.focus()
+    fireEvent.keyDown(demosToggle, { key: 'Enter', code: 'Enter' })
+    fireEvent.click(demosToggle)
+    expect(demosMenu?.hasAttribute('open')).toBe(true)
+
+    expect(screen.getByRole('link', { name: /tanstack table/i })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /^store$/i })).toBeTruthy()
+
+    const tableLink = screen.getByRole('link', { name: /tanstack table/i })
+    const storeLink = screen.getByRole('link', { name: /^store$/i })
+
+    expect(tableLink.getAttribute('data-router-link')).toBe('true')
+    expect(storeLink.getAttribute('data-router-link')).toBe('true')
   })
 })

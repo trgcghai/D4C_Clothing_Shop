@@ -98,18 +98,18 @@ export default function Header() {
               Demos
             </summary>
             <div className="mt-2 min-w-56 rounded-xl border border-[var(--line)] bg-[var(--header-bg)] p-2 shadow-lg sm:absolute sm:right-0">
-              <a
-                href="/demo/table"
+              <Link
+                to="/demo/table"
                 className={DROPDOWN_LINK_CLASS}
               >
                 TanStack Table
-              </a>
-              <a
-                href="/demo/store"
+              </Link>
+              <Link
+                to="/demo/store"
                 className={DROPDOWN_LINK_CLASS}
               >
                 Store
-              </a>
+              </Link>
             </div>
           </details>
         </nav>
