@@ -31,11 +31,6 @@ function extractAccessToken(payload: unknown): string | null {
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    if (!refreshTokenHandler) {
-      clearAccessToken()
-      return null
-    }
-
     const response = await http<unknown>('/api/auth/refresh-token', {
       method: 'POST',
     })
