@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
-import { signIn } from "../api/auth";
-import { getMe } from "../api/users";
 import { extractAccessToken, extractErrorMessage } from "../lib/auth-contract";
-import { isAdminRole, normalizeRole } from "../lib/auth-role";
+import { isAdminRole } from "../lib/auth-role";
 import { setAuthStatus, setToken, setUser } from "../store/authSlice";
+import { authQueryKeys, getMeQueryOptions, useSignInMutation } from "../hooks/useAuth";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Label from "../components/ui/Label";
@@ -23,9 +23,10 @@ export default function SignIn() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+  const signInMutation = useSignInMutation();
   const navigate = useNavigate();
   const location = useLocation();
   const from = useMemo(() => location.state?.from, [location.state]);
@@ -33,45 +34,34 @@ export default function SignIn() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrorMessage("");
-    setSubmitting(true);
     dispatch(setAuthStatus("loading"));
 
     try {
-      const authPayload = await signIn({ username: username.trim(), password });
+      const authPayload = await signInMutation.mutateAsync({
+        username: username.trim(),
+        password,
+      });
       const token = extractAccessToken(authPayload);
       if (!token) {
         throw new Error("Access token is missing in sign-in response");
       }
 
       dispatch(setToken(token));
-
-      let profile = null;
-      try {
-        profile = await getMe();
-      } catch {
-        profile = {
-          username: authPayload?.username || username.trim(),
-          role: normalizeRole(authPayload?.role),
-        };
-      }
-
-      const normalizedRole = normalizeRole(profile?.role || authPayload?.role);
-      const safeProfile = { ...profile, role: normalizedRole };
-      dispatch(setUser(safeProfile));
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.me() });
+      const profile = await queryClient.fetchQuery(getMeQueryOptions());
+      dispatch(setUser(profile));
 
       if (from) {
         navigate(from, { replace: true });
         return;
       }
 
-      navigate(isAdminRole(normalizedRole) ? "/admin" : "/", { replace: true });
+      navigate(isAdminRole(profile?.role) ? "/admin" : "/", { replace: true });
     } catch (error) {
       dispatch(setAuthStatus("unauthenticated"));
       dispatch(setToken(null));
       dispatch(setUser(null));
       setErrorMessage(extractErrorMessage(error, "Sign-in failed"));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -145,8 +135,12 @@ export default function SignIn() {
               </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Signing in..." : "Sign in"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={signInMutation.isPending}
+            >
+              {signInMutation.isPending ? "Signing in..." : "Sign in"}
             </Button>
           </form>
 

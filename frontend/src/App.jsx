@@ -3,6 +3,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 
 import Navbar from "./components/navbar";
 import Footer from "./components/footer";
@@ -18,15 +19,15 @@ import Profile from "./pages/profile";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireRole from "./components/auth/RequireRole";
 import { configureHttpAuth } from "./lib/http";
-import { extractAccessToken } from "./lib/auth-contract";
-import { normalizeRole } from "./lib/auth-role";
 import { refreshToken } from "./api/auth";
-import { getMe } from "./api/users";
 import { logout, setAuthStatus, setToken, setUser } from "./store/authSlice";
+import { authQueryKeys, useAuthBootstrapQuery } from "./hooks/useAuth";
 
 function App() {
   const dispatch = useDispatch();
   const accessToken = useSelector((state) => state.auth.accessToken);
+  const queryClient = useQueryClient();
+  const meQuery = useAuthBootstrapQuery(accessToken);
 
   useEffect(() => {
     configureHttpAuth({
@@ -34,42 +35,39 @@ function App() {
       refreshAccessToken: refreshToken,
       onTokenUpdated: (nextToken) => {
         dispatch(setToken(nextToken));
+        queryClient.invalidateQueries({ queryKey: authQueryKeys.me() });
       },
       onAuthFailed: () => {
         dispatch(logout());
+        queryClient.removeQueries({ queryKey: authQueryKeys.all });
         window.location.assign("/signin");
       },
     });
-  }, [accessToken, dispatch]);
+  }, [accessToken, dispatch, queryClient]);
 
   useEffect(() => {
-    async function bootstrapAuth() {
-      if (!accessToken) {
-        dispatch(setAuthStatus("unauthenticated"));
-        dispatch(setUser(null));
-        return;
-      }
-
-      dispatch(setAuthStatus("loading"));
-      try {
-        const me = await getMe();
-        dispatch(setUser({ ...me, role: normalizeRole(me?.role) }));
-      } catch {
-        try {
-          const refreshed = await refreshToken();
-          const nextToken = extractAccessToken(refreshed);
-          if (!nextToken) throw new Error("Missing refreshed access token");
-          dispatch(setToken(nextToken));
-          const me = await getMe();
-          dispatch(setUser({ ...me, role: normalizeRole(me?.role) }));
-        } catch {
-          dispatch(logout());
-        }
-      }
+    if (!accessToken) {
+      dispatch(setAuthStatus("unauthenticated"));
+      dispatch(setUser(null));
+      queryClient.removeQueries({ queryKey: authQueryKeys.all });
+      return;
     }
 
-    bootstrapAuth();
-  }, [accessToken, dispatch]);
+    if (meQuery.isPending) {
+      dispatch(setAuthStatus("loading"));
+      return;
+    }
+
+    if (meQuery.isSuccess) {
+      dispatch(setUser(meQuery.data));
+      return;
+    }
+
+    if (meQuery.isError) {
+      dispatch(logout());
+      queryClient.removeQueries({ queryKey: authQueryKeys.all });
+    }
+  }, [accessToken, dispatch, meQuery.data, meQuery.isError, meQuery.isPending, meQuery.isSuccess, queryClient]);
 
   return (
     <>

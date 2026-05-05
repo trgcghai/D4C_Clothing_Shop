@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { changePassword, getMe, updateMe } from "../api/users";
+import { useSelector } from "react-redux";
 import { extractErrorMessage } from "../lib/auth-contract";
-import { normalizeRole } from "../lib/auth-role";
-import { setUser } from "../store/authSlice";
+import {
+  useAuthBootstrapQuery,
+  useChangePasswordMutation,
+  useUpdateProfileMutation,
+} from "../hooks/useAuth";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Label from "../components/ui/Label";
@@ -11,9 +13,14 @@ import Alert from "../components/ui/Alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card";
 
 export default function Profile() {
-  const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.user);
-  const [loading, setLoading] = useState(true);
+  const accessToken = useSelector((state) => state.auth.accessToken);
+  const meQuery = useAuthBootstrapQuery(accessToken);
+  const user = meQuery.data;
+  const isLoadingUser = meQuery.isPending;
+  const meError = meQuery.error;
+  const updateProfileMutation = useUpdateProfileMutation();
+  const changePasswordMutation = useChangePasswordMutation();
+
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -29,38 +36,25 @@ export default function Profile() {
   const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
-    async function loadProfile() {
-      try {
-        const profile = await getMe();
-        const normalized = { ...profile, role: normalizeRole(profile?.role) };
-        dispatch(setUser(normalized));
-        setProfileForm({
-          fullName: profile?.fullName || "",
-          phoneNumber: profile?.phoneNumber || "",
-          avatar: profile?.avatar || "",
-        });
-      } catch (error) {
-        setProfileError(extractErrorMessage(error, "Failed to load profile"));
-      } finally {
-        setLoading(false);
-      }
+    if (user) {
+      setProfileForm({
+        fullName: user?.fullName || "",
+        phoneNumber: user?.phoneNumber || "",
+        avatar: user?.avatar || "",
+      });
     }
-
-    loadProfile();
-  }, [dispatch]);
+  }, [user]);
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
     setProfileError("");
     setProfileMessage("");
     try {
-      const updated = await updateMe({
+      await updateProfileMutation.mutateAsync({
         fullName: profileForm.fullName.trim(),
         phoneNumber: profileForm.phoneNumber.trim(),
         avatar: profileForm.avatar.trim(),
       });
-      const normalized = { ...updated, role: normalizeRole(updated?.role) };
-      dispatch(setUser(normalized));
       setProfileMessage("Profile updated successfully");
     } catch (error) {
       setProfileError(extractErrorMessage(error, "Failed to update profile"));
@@ -72,7 +66,7 @@ export default function Profile() {
     setPasswordError("");
     setPasswordMessage("");
     try {
-      const response = await changePassword(passwordForm);
+      const response = await changePasswordMutation.mutateAsync(passwordForm);
       setPasswordMessage(response?.message || "Password changed successfully");
       setPasswordForm({ oldPassword: "", newPassword: "" });
     } catch (error) {
@@ -80,7 +74,7 @@ export default function Profile() {
     }
   };
 
-  if (loading) {
+  if (isLoadingUser) {
     return <div className="py-10 text-center">Loading profile...</div>;
   }
 
@@ -95,6 +89,11 @@ export default function Profile() {
           {profileError ? (
             <Alert variant="error" className="mb-4" role="alert" aria-live="polite">
               {profileError}
+            </Alert>
+          ) : null}
+          {!profileError && meError ? (
+            <Alert variant="error" className="mb-4" role="alert" aria-live="polite">
+              {extractErrorMessage(meError, "Failed to load profile")}
             </Alert>
           ) : null}
           {profileMessage ? (
@@ -141,8 +140,12 @@ export default function Profile() {
                 onChange={(event) => setProfileForm((prev) => ({ ...prev, avatar: event.target.value }))}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Save profile
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={updateProfileMutation.isPending}
+            >
+              {updateProfileMutation.isPending ? "Saving..." : "Save profile"}
             </Button>
           </form>
         </CardContent>
@@ -188,8 +191,12 @@ export default function Profile() {
                 onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Update password
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={changePasswordMutation.isPending}
+            >
+              {changePasswordMutation.isPending ? "Updating..." : "Update password"}
             </Button>
           </form>
         </CardContent>

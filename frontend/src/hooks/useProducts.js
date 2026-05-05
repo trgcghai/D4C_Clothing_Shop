@@ -54,9 +54,15 @@ export default function useProducts() {
     maxPrice: initFromUrl("maxPrice", ""),
   });
 
-  const [sortBy, setSortBy] = useState(initFromUrl("sort_by", DEFAULT_OPTIONS.sort_by));
-  const [sortOrder, setSortOrder] = useState(initFromUrl("sort_order", DEFAULT_OPTIONS.sort_order));
-  const [page, setPage] = useState(Number(initFromUrl("page", DEFAULT_OPTIONS.page)));
+  const [sortBy, setSortBy] = useState(
+    initFromUrl("sort_by", DEFAULT_OPTIONS.sort_by),
+  );
+  const [sortOrder, setSortOrder] = useState(
+    initFromUrl("sort_order", DEFAULT_OPTIONS.sort_order),
+  );
+  const [page, setPage] = useState(
+    Number(initFromUrl("page", DEFAULT_OPTIONS.page)),
+  );
   const [limit] = useState(DEFAULT_OPTIONS.limit);
 
   const [searchQuery, setSearchQuery] = useState(initFromUrl("q", ""));
@@ -77,7 +83,9 @@ export default function useProducts() {
   const buildParams = useCallback(() => {
     const params = {};
     if (debouncedSearch) params.q = debouncedSearch;
-    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v) params[k] = v;
+    });
     params.sort_by = sortBy;
     params.sort_order = sortOrder;
     params.page = page;
@@ -181,8 +189,12 @@ export function useUpdateProductMutation() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
       if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: productQueryKeys.product(variables.id) });
-        queryClient.invalidateQueries({ queryKey: productQueryKeys.relatedProducts(variables.id) });
+        queryClient.invalidateQueries({
+          queryKey: productQueryKeys.product(variables.id),
+        });
+        queryClient.invalidateQueries({
+          queryKey: productQueryKeys.relatedProducts(variables.id),
+        });
       }
     },
   });

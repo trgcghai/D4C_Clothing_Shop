@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signUp } from "../api/auth";
 import { extractErrorMessage } from "../lib/auth-contract";
+import { useSignUpMutation } from "../hooks/useAuth";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Label from "../components/ui/Label";
@@ -27,8 +27,8 @@ export default function SignUp() {
   const [form, setForm] = useState(defaultForm);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const signUpMutation = useSignUpMutation();
 
   const onChange = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -44,9 +44,8 @@ export default function SignUp() {
       return;
     }
 
-    setSubmitting(true);
     try {
-      await signUp({
+      await signUpMutation.mutateAsync({
         username: form.username.trim(),
         email: form.email.trim(),
         fullName: form.fullName.trim(),
@@ -62,8 +61,6 @@ export default function SignUp() {
       }, 800);
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, "Sign-up failed"));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -165,8 +162,12 @@ export default function SignUp() {
                 Must match password exactly.
               </p>
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Creating account..." : "Create account"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={signUpMutation.isPending}
+            >
+              {signUpMutation.isPending ? "Creating account..." : "Create account"}
             </Button>
           </form>
 
