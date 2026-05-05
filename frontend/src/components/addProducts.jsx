@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { useCreateProductMutation } from "../hooks/useProducts";
 
 const CATEGORY_OPTIONS = ["Áo", "Quần", "Giày", "Phụ kiện"];
 const GENDER_OPTIONS = ["Nam", "Nữ", "Unisex"];
@@ -8,7 +7,7 @@ const BRAND_OPTIONS = ["D4C", "Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Local 
 const COLOR_OPTIONS = ["Đen", "Trắng", "Xám", "Đỏ", "Xanh Navy", "Xanh Dương", "Xanh Lá", "Vàng", "Hồng", "Nâu"];
 const SIZE_LIST = ["XS", "S", "M", "L", "XL", "XXL"];
 
-export default function AddProduct() {
+export default function AddProduct({ onSubmitSuccess }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -23,7 +22,7 @@ export default function AddProduct() {
   );
   const [file, setFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { mutateAsync: createProduct, isPending: loading } = useCreateProductMutation();
 
   const handleImageUpload = (event) => {
     const selectedFile = event.target.files[0];
@@ -56,7 +55,6 @@ export default function AddProduct() {
       return;
     }
 
-    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("name", name);
@@ -71,12 +69,7 @@ export default function AddProduct() {
       formData.append("isFeatured", String(isFeatured));
       formData.append("productImage", file);
 
-      const response = await fetch(`${API_URL}/products`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Lỗi khi thêm sản phẩm");
+      await createProduct(formData);
 
       alert("✅ Sản phẩm đã được thêm thành công!");
       // Reset form
@@ -84,11 +77,10 @@ export default function AddProduct() {
       setGender("Unisex"); setBrand("D4C"); setSelectedColors([]); setTags("");
       setIsFeatured(false); setFile(null); setImagePreview("");
       setStock(SIZE_LIST.map((size) => ({ size, quantity: 0 })));
+      onSubmitSuccess?.();
     } catch (error) {
       console.error("Error adding product:", error);
       alert("Có lỗi xảy ra khi thêm sản phẩm!");
-    } finally {
-      setLoading(false);
     }
   };
 

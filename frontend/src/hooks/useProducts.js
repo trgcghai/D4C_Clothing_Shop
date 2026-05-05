@@ -1,7 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createProduct,
+  deleteProduct,
+  getProductById,
+  getProducts,
+  getRelatedProducts,
+  updateProduct,
+} from "../api/products";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+export const productQueryKeys = {
+  all: ["products"],
+  products: (params) => ["products", params],
+  product: (id) => ["product", id],
+  relatedProducts: (id) => ["relatedProducts", id],
+};
 
 const DEFAULT_FILTERS = {
   category: "",
@@ -48,13 +62,6 @@ export default function useProducts() {
   const [searchQuery, setSearchQuery] = useState(initFromUrl("q", ""));
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
 
-  // ── Results ──────────────────────────────────────────────────────────────────
-  const [products, setProducts] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
   // ── Debounce search ──────────────────────────────────────────────────────────
   const debounceTimer = useRef(null);
   useEffect(() => {
@@ -78,47 +85,20 @@ export default function useProducts() {
     return params;
   }, [debouncedSearch, filters, sortBy, sortOrder, page, limit]);
 
-  // ── Fetch products ────────────────────────────────────────────────────────────
+  const params = buildParams();
+
   useEffect(() => {
-    const params = buildParams();
-
-    // Sync URL
     const urlParams = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => { if (v) urlParams.set(k, v); });
+    Object.entries(params).forEach(([k, v]) => {
+      if (v) urlParams.set(k, v);
+    });
     setSearchParams(urlParams, { replace: true });
+  }, [params, setSearchParams]);
 
-    const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        let url;
-        if (params.q) {
-          // Use search endpoint
-          const qp = new URLSearchParams(params);
-          url = `${API_URL}/products/search?${qp.toString()}`;
-        } else {
-          // Use filter endpoint
-          const qp = new URLSearchParams(params);
-          url = `${API_URL}/products?${qp.toString()}`;
-        }
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Lỗi khi tải sản phẩm");
-        const json = await res.json();
-
-        setProducts(json.data || []);
-        setTotal(json.total || 0);
-        setTotalPages(json.totalPages || 0);
-      } catch (err) {
-        setError(err.message);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [buildParams, setSearchParams]);
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: productQueryKeys.products(params),
+    queryFn: () => getProducts(params),
+  });
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   const updateFilter = (key, value) => {
@@ -139,13 +119,13 @@ export default function useProducts() {
 
   return {
     // State
-    products,
-    total,
-    totalPages,
+    products: data?.data || [],
+    total: data?.total || 0,
+    totalPages: data?.totalPages || 0,
     page,
     limit,
-    loading,
-    error,
+    loading: isLoading || isFetching,
+    error: error ? error.message : null,
     filters,
     sortBy,
     sortOrder,
@@ -159,4 +139,61 @@ export default function useProducts() {
     updateFilter,
     clearFilters,
   };
+}
+
+export function useProductQuery(productId) {
+  return useQuery({
+    queryKey: productQueryKeys.product(productId),
+    queryFn: () => getProductById(productId),
+    enabled: Boolean(productId),
+  });
+}
+
+export function useRelatedProductsQuery(productId) {
+  return useQuery({
+    queryKey: productQueryKeys.relatedProducts(productId),
+    queryFn: () => getRelatedProducts(productId),
+    enabled: Boolean(productId),
+  });
+}
+
+export function useProductsListQuery(params) {
+  return useQuery({
+    queryKey: productQueryKeys.products(params),
+    queryFn: () => getProducts(params),
+  });
+}
+
+export function useCreateProductMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
+    },
+  });
+}
+
+export function useUpdateProductMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, formData }) => updateProduct(id, formData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
+      if (variables?.id) {
+        queryClient.invalidateQueries({ queryKey: productQueryKeys.product(variables.id) });
+        queryClient.invalidateQueries({ queryKey: productQueryKeys.relatedProducts(variables.id) });
+      }
+    },
+  });
+}
+
+export function useDeleteProductMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productQueryKeys.all });
+    },
+  });
 }

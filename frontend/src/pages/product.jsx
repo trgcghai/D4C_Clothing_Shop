@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ShoppingBag, ChevronRight, Tag, Package, Star } from "lucide-react";
 import ProductCard from "../components/product-card";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { useProductQuery, useRelatedProductsQuery } from "../hooks/useProducts";
 
 const COLOR_MAP = {
   "Đen": "#1a1a1a",
@@ -20,47 +19,26 @@ const COLOR_MAP = {
 
 export default function Product() {
   const { productId } = useParams();
-  const [product, setProduct] = useState(null);
-  const [relatedProducts, setRelatedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const {
+    data: product,
+    isLoading: productLoading,
+    isFetching: productFetching,
+    error: productError,
+  } = useProductQuery(productId);
+  const { data: relatedProducts = [] } = useRelatedProductsQuery(productId);
+  const loading = productLoading || productFetching;
+  const error = productError ? `Lỗi khi tải sản phẩm: ${productError.message}` : null;
 
-  // Fetch product detail
   useEffect(() => {
-    const fetchProduct = async () => {
-      setLoading(true);
-      setError(null);
-      setSelectedSize("");
-      setSelectedColor("");
-      try {
-        const res = await fetch(`${API_URL}/products/${productId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setProduct(data);
-          // Auto-select first color
-          if (data.colors && data.colors.length === 1) setSelectedColor(data.colors[0]);
-        } else {
-          setError("Sản phẩm không tồn tại!");
-        }
-      } catch (err) {
-        setError("Lỗi khi tải sản phẩm: " + err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProduct();
+    setSelectedSize("");
+    setSelectedColor("");
   }, [productId]);
 
-  // Fetch related products
   useEffect(() => {
-    if (!productId) return;
-    fetch(`${API_URL}/products/${productId}/related`)
-      .then((r) => r.json())
-      .then((data) => setRelatedProducts(Array.isArray(data) ? data : []))
-      .catch(() => setRelatedProducts([]));
-  }, [productId]);
+    if (product?.colors?.length === 1) setSelectedColor(product.colors[0]);
+  }, [product]);
 
   const handleSizeChange = (size) => {
     const stockItem = product.stock.find((item) => item.size === size);
@@ -107,11 +85,11 @@ export default function Product() {
     );
   }
 
-  if (error) {
+  if (error || !product) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-gray-400">
         <Package className="w-16 h-16 mb-4 opacity-40" />
-        <p className="text-lg font-semibold text-gray-600">{error}</p>
+        <p className="text-lg font-semibold text-gray-600">{error || "Sản phẩm không tồn tại!"}</p>
         <Link to="/" className="mt-4 text-purple-600 hover:underline text-sm">← Quay lại danh sách sản phẩm</Link>
       </div>
     );

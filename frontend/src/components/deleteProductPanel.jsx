@@ -1,55 +1,34 @@
-import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { useState } from "react";
+import { useDeleteProductMutation, useProductsListQuery } from "../hooks/useProducts";
 
 export default function DeleteProductPanel({ onEditClick }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { data, isLoading } = useProductsListQuery({ limit: 1000, page: 1 });
+  const products = data?.data || [];
+  const { mutateAsync: deleteProduct, isPending: deleting } = useDeleteProductMutation();
   const [searchQuery, setSearchQuery] = useState(""); // 1. search state
-
-  const fetchProducts = async () => {
-    try {
-      const resp = await fetch(`${API_URL}/products?limit=1000`);
-      if (resp.ok) {
-        const json = await resp.json();
-        const items = json.data || json; // support both paginated and plain array
-        setProducts(Array.isArray(items) ? items : []);
-      }
-    } catch(e) {
-      console.error(e);
-    }
-  };
 
   const handleDelete = async (id) => {
     if (confirm("Bạn có chắc muốn xoá sản phẩm này?")) {
-      setLoading(true);
       try {
-        await fetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
-        await fetchProducts();
+        await deleteProduct(id);
       } catch (error) {
         console.error("Lỗi khi xoá sản phẩm:", error);
-      } finally {
-        setLoading(false);
       }
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
   // 2. Lọc danh sách theo searchQuery (case-insensitive)
   const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="space-y-4">
       {/* Modal "Đang xoá" */}
-      {loading && (
+      {(isLoading || deleting) && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-md shadow-md">
-            <p className="text-xl font-semibold">Đang xoá...</p>
+            <p className="text-xl font-semibold">{isLoading ? "Đang tải..." : "Đang xoá..."}</p>
             <div className="mt-4">
               <div className="w-6 h-6 border-t-4 border-blue-600 border-solid rounded-full animate-spin"></div>
             </div>

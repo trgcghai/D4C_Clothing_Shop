@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { useUpdateProductMutation } from "../hooks/useProducts";
 
 const CATEGORY_OPTIONS = ["Áo", "Quần", "Giày", "Phụ kiện"];
 const GENDER_OPTIONS = ["Nam", "Nữ", "Unisex"];
@@ -9,11 +8,10 @@ const COLOR_OPTIONS = ["Đen", "Trắng", "Xám", "Đỏ", "Xanh Navy", "Xanh D�
 const SIZE_LIST = ["XS", "S", "M", "L", "XL", "XXL"];
 
 export default function EditProductForm({ formData, setFormData, editingProductId, onSubmitSuccess }) {
-  const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
+  const { mutateAsync: updateProduct, isPending: loading } = useUpdateProductMutation();
 
   useEffect(() => {
-    setLoading(false);
     setFile(null);
   }, [editingProductId]);
 
@@ -82,7 +80,6 @@ export default function EditProductForm({ formData, setFormData, editingProductI
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     try {
       const dataToSend = new FormData();
       dataToSend.append("name", safeFormData.name);
@@ -97,20 +94,13 @@ export default function EditProductForm({ formData, setFormData, editingProductI
       dataToSend.append("isFeatured", String(safeFormData.isFeatured || false));
       if (file) dataToSend.append("productImage", file);
 
-      const response = await fetch(`${API_URL}/products/${editingProductId}`, {
-        method: "PUT",
-        body: dataToSend,
-      });
-
-      if (!response.ok) throw new Error("Lỗi khi cập nhật sản phẩm");
+      await updateProduct({ id: editingProductId, formData: dataToSend });
 
       alert("✅ Cập nhật thành công!");
       onSubmitSuccess();
     } catch (err) {
       console.error(err);
       alert("Có lỗi khi cập nhật.");
-    } finally {
-      setLoading(false);
     }
   };
 
