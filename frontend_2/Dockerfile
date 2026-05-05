@@ -1,13 +1,13 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 ARG VITE_API_PROXY_URL=http://api-gateway:8080
 ENV VITE_API_PROXY_URL=${VITE_API_PROXY_URL}
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup -S nodejs && adduser -S nodeuser -G nodejs
