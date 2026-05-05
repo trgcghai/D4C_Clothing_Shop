@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import {
   getMeQueryOptions,
-  readAuthenticatedProfile,
+  isUnauthorizedMeError,
   useChangePasswordMutation,
   useMeQuery,
   useUpdateProfileMutation,
@@ -24,10 +24,12 @@ export const Route = createFileRoute('/profile')({
 
     try {
       await queryClient.fetchQuery(getMeQueryOptions())
-    } catch {
-      clearAccessToken()
-      queryClient.removeQueries({ queryKey: qk.auth.me() })
-      throw redirect({ to: '/signin' })
+    } catch (error) {
+      if (isUnauthorizedMeError(error)) {
+        clearAccessToken()
+        queryClient.removeQueries({ queryKey: qk.auth.me() })
+        throw redirect({ to: '/signin' })
+      }
     }
   },
   component: ProfileRoute,
@@ -65,10 +67,6 @@ function ProfileRoute() {
     })
   }, [meQuery.data])
 
-  async function refreshProfileFromServer() {
-    await readAuthenticatedProfile(queryClient)
-  }
-
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setProfileError(null)
@@ -81,7 +79,6 @@ function ProfileRoute() {
         phoneNumber: profileForm.phoneNumber.trim(),
       })
       setProfileMessage('Profile updated successfully')
-      await refreshProfileFromServer()
     } catch (error) {
       setProfileError(error instanceof Error ? error.message : 'Failed to update profile')
     }
@@ -113,6 +110,11 @@ function ProfileRoute() {
           <CardDescription>View and update account information.</CardDescription>
         </CardHeader>
         <CardContent>
+          {meQuery.isError ? (
+            <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert" aria-live="polite">
+              {meQuery.error instanceof Error ? meQuery.error.message : 'Unable to load profile right now.'}
+            </p>
+          ) : null}
           {profileError ? (
             <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert" aria-live="polite">
               {profileError}

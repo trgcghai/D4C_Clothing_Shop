@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
-import { getPostSignInRedirectPath, getMeQueryOptions, readSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
+import { getPostSignInRedirectPath, getMeQueryOptions, isUnauthorizedMeError, readSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
 import { clearAccessToken } from '@/features/auth/store'
 
 export const Route = createFileRoute('/signin')({
@@ -50,8 +50,10 @@ function SignInRoute() {
         to: getPostSignInRedirectPath(response.role),
       })
     } catch (error) {
-      clearAccessToken()
-      queryClient.removeQueries({ queryKey: qk.auth.me() })
+      if (isUnauthorizedMeError(error)) {
+        clearAccessToken()
+        queryClient.removeQueries({ queryKey: qk.auth.me() })
+      }
       setErrorMessage(error instanceof Error ? error.message : 'Sign-in failed')
     }
   }

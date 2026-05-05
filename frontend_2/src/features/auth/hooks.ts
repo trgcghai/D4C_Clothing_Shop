@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 
+import { isApiError } from '@/lib/api/errors'
 import { qk } from '@/lib/query/keys'
 
 import {
@@ -41,11 +42,17 @@ export async function readSignInRedirectPath(queryClient: QueryClient): Promise<
   try {
     const profile = await readAuthenticatedProfile(queryClient)
     return getSignInRedirectByRole(profile.role)
-  } catch {
-    clearAccessToken()
-    queryClient.removeQueries({ queryKey: qk.auth.me() })
+  } catch (error) {
+    if (isUnauthorizedMeError(error)) {
+      clearAccessToken()
+      queryClient.removeQueries({ queryKey: qk.auth.me() })
+    }
     return null
   }
+}
+
+export function isUnauthorizedMeError(error: unknown): boolean {
+  return isApiError(error) && (error.status === 401 || error.status === 403)
 }
 
 export function useMeQuery() {

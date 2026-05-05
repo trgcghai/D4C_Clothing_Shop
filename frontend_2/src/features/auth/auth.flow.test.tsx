@@ -8,6 +8,7 @@ import {
   signUp,
   updateProfile,
 } from './api'
+import { ApiError } from '@/lib/api/errors'
 import {
   getAdminGuardRedirect,
   getAuthGuardRedirect,
@@ -20,6 +21,7 @@ vi.mock('@/lib/api/http', () => ({
 }))
 
 const { http } = await import('@/lib/api/http')
+const { isUnauthorizedMeError } = await import('./hooks')
 
 describe('auth flow contract', () => {
   beforeEach(() => {
@@ -94,6 +96,13 @@ describe('auth flow contract', () => {
     expect(getAuthGuardRedirect('token')).toBeNull()
     expect(getAdminGuardRedirect('ROLE_USER')).toBe('/')
     expect(getAdminGuardRedirect('ADMIN')).toBeNull()
+  })
+
+  it('treats only 401 and 403 as unauthorized me errors', () => {
+    expect(isUnauthorizedMeError(new ApiError('Unauthorized', 401))).toBe(true)
+    expect(isUnauthorizedMeError(new ApiError('Forbidden', 403))).toBe(true)
+    expect(isUnauthorizedMeError(new ApiError('Server error', 500))).toBe(false)
+    expect(isUnauthorizedMeError(new Error('Network failed'))).toBe(false)
   })
 
   it('routes sign-in success by role', () => {
