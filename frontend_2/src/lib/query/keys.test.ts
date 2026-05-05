@@ -7,10 +7,15 @@ describe('query keys', () => {
   })
 
   it('includes dependencies in catalog list key', () => {
-    expect(qk.catalog.list({ page: 1, q: 'shirt' })).toEqual([
+    expect(qk.catalog.list({ page: 1, limit: 12, q: 'shirt' })).toEqual([
       'catalog',
       'list',
-      { page: 1, q: 'shirt' },
+      { page: 1, limit: 12, q: 'shirt' },
     ])
+  })
+
+  it('builds detail and related keys', () => {
+    expect(qk.catalog.detail('abc')).toEqual(['catalog', 'detail', 'abc'])
+    expect(qk.catalog.related('abc')).toEqual(['catalog', 'related', 'abc'])
   })
 })
