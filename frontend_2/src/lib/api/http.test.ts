@@ -108,6 +108,24 @@ describe('http client', () => {
     await expect(Promise.all([first, second])).resolves.toEqual([{ ok: true }, { ok: true }])
   })
 
+  it('clears the in-memory token when refresh fails', async () => {
+    const refreshMock = vi.fn().mockResolvedValue(null)
+    setRefreshTokenHandler(refreshMock)
+    setAccessToken('expired-token')
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(http('/resource')).rejects.toMatchObject({ status: 401 })
+    await http('/follow-up')
+
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+    const [, secondInit] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect((secondInit.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
   it('does not recurse when the refresh endpoint itself returns 401', async () => {
     const refreshMock = vi.fn().mockResolvedValue('fresh-token')
     setRefreshTokenHandler(refreshMock)

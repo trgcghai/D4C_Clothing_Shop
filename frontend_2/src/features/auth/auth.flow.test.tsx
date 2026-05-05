@@ -23,8 +23,12 @@ vi.mock('@/lib/api/http', () => ({
   setRefreshTokenHandler: vi.fn(),
 }))
 
-const { http } = await import('@/lib/api/http')
+const { http, setRefreshTokenHandler: mockSetRefreshTokenHandler } = await import('@/lib/api/http')
 const { isUnauthorizedMeError, resolvePostSignInRedirectPath } = await import('./hooks')
+
+function getRefreshTokenHandler() {
+  return vi.mocked(mockSetRefreshTokenHandler).mock.calls[0]?.[0]
+}
 
 describe('auth flow contract', () => {
   beforeEach(() => {
@@ -130,6 +134,28 @@ describe('auth flow contract', () => {
     vi.mocked(http).mockRejectedValueOnce(new ApiError('Unauthorized', 401))
 
     await expect(resolvePostSignInRedirectPath(queryClient, 'ROLE_ADMIN')).rejects.toBeInstanceOf(ApiError)
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('clears the token when refresh returns no token', async () => {
+    const refreshTokenHandler = getRefreshTokenHandler()
+    expect(refreshTokenHandler).toBeTypeOf('function')
+
+    setAccessToken('signed-token')
+    vi.mocked(http).mockResolvedValueOnce({})
+
+    await expect(refreshTokenHandler?.()).resolves.toBeNull()
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('clears the token when refresh request fails', async () => {
+    const refreshTokenHandler = getRefreshTokenHandler()
+    expect(refreshTokenHandler).toBeTypeOf('function')
+
+    setAccessToken('signed-token')
+    vi.mocked(http).mockRejectedValueOnce(new ApiError('Server error', 500))
+
+    await expect(refreshTokenHandler?.()).resolves.toBeNull()
     expect(getAccessToken()).toBeNull()
   })
 })

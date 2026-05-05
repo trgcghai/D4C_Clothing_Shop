@@ -1,5 +1,4 @@
 import { http, setAccessToken as setHttpAccessToken, setRefreshTokenHandler } from '@/lib/api/http'
-import { isApiError } from '@/lib/api/errors'
 
 const ACCESS_TOKEN_STORAGE_KEY = 'd4c.auth.accessToken'
 
@@ -32,23 +31,26 @@ function extractAccessToken(payload: unknown): string | null {
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
+    if (!refreshTokenHandler) {
+      clearAccessToken()
+      return null
+    }
+
     const response = await http<unknown>('/api/auth/refresh-token', {
       method: 'POST',
     })
     const token = extractAccessToken(response)
 
     if (!token) {
+      clearAccessToken()
       return null
     }
 
     setAccessToken(token)
     return token
-  } catch (error) {
-    if (isApiError(error) && error.status === 401) {
-      return null
-    }
-
-    throw error
+  } catch {
+    clearAccessToken()
+    return null
   }
 }
 

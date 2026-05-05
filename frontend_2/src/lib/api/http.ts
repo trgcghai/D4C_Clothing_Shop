@@ -141,12 +141,20 @@ async function requestInternal<T>(
     body,
   })
 
-  if (response.status === 401 && allowRefresh && refreshTokenHandler && !isRefreshTokenRequest(path)) {
-    const refreshedToken = await refreshAccessToken()
-    if (refreshedToken) {
-      accessToken = refreshedToken
-      return requestInternal<T>(path, options, false)
+  if (response.status === 401 && allowRefresh && !isRefreshTokenRequest(path)) {
+    if (refreshTokenHandler) {
+      try {
+        const refreshedToken = await refreshAccessToken()
+        if (refreshedToken) {
+          accessToken = refreshedToken
+          return requestInternal<T>(path, options, false)
+        }
+      } catch {
+        // fall through to clear the stale token and surface the original error
+      }
     }
+
+    accessToken = null
   }
 
   if (!response.ok) {
