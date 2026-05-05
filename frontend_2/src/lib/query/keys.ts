@@ -46,5 +46,6 @@ export const qk = {
   },
   admin: {
     all: () => ['admin'] as const,
+    products: (params: CatalogListKeyParams) => ['admin', 'products', normalizeCatalogListParams(params)] as const,
   },
 } as const

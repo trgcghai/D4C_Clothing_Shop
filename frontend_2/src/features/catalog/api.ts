@@ -46,6 +46,69 @@ export interface PaginatedProducts<TProduct = Product> {
   readonly keyword?: string
 }
 
+const FILTER_FETCH_PAGE_SIZE = 100
+
+function hasAdvancedFilters(params: ProductListParams) {
+  return Boolean(
+    params.category ||
+      params.gender ||
+      params.size ||
+      params.color ||
+      params.brand ||
+      params.minPrice ||
+      params.maxPrice,
+  )
+}
+
+function matchesKeyword(product: Product, keyword: string) {
+  const kw = keyword.toLowerCase()
+  const haystacks = [
+    product.name,
+    product.description,
+    product.category,
+    product.brand,
+    ...(product.tags ?? []),
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+
+  return haystacks.some((value) => value.includes(kw))
+}
+
+async function fetchAllFilteredProducts(params: ProductListParams): Promise<readonly Product[]> {
+  const firstQuery = buildQueryParams({
+    ...params,
+    page: 1,
+    limit: FILTER_FETCH_PAGE_SIZE,
+  })
+  const firstPath = firstQuery.toString() ? `/api/products?${firstQuery.toString()}` : '/api/products'
+  const firstPayload = await http<unknown>(firstPath, { method: 'GET' })
+  const firstPage = normalizePaginatedProducts<Product>(firstPayload)
+
+  const inferredPages =
+    firstPage.totalPages > 1
+      ? firstPage.totalPages
+      : Math.max(1, Math.ceil(firstPage.total / Math.max(1, firstPage.limit)))
+
+  if (inferredPages <= 1) {
+    return firstPage.data
+  }
+
+  const pagePromises: Promise<PaginatedProducts<Product>>[] = []
+  for (let page = 2; page <= inferredPages; page += 1) {
+    const pageQuery = buildQueryParams({
+      ...params,
+      page,
+      limit: FILTER_FETCH_PAGE_SIZE,
+    })
+    const pagePath = `/api/products?${pageQuery.toString()}`
+    pagePromises.push(http<unknown>(pagePath, { method: 'GET' }).then((payload) => normalizePaginatedProducts<Product>(payload)))
+  }
+
+  const pages = await Promise.all(pagePromises)
+  return [...firstPage.data, ...pages.flatMap((page) => page.data)]
+}
+
 function buildQueryParams(params: ProductListParams) {
   const query = new URLSearchParams()
 
@@ -97,10 +160,34 @@ function normalizePaginatedProducts<TProduct>(payload: unknown): PaginatedProduc
 }
 
 export async function getProducts(params: ProductListParams = {}): Promise<PaginatedProducts> {
-  const query = buildQueryParams(params)
-  const endpoint = params.q?.trim() ? '/api/products/search' : '/api/products'
-  const path = query.toString() ? `${endpoint}?${query.toString()}` : endpoint
+  const keyword = params.q?.trim()
 
+  if (keyword && hasAdvancedFilters(params)) {
+    const source = await fetchAllFilteredProducts({
+      ...params,
+      q: undefined,
+    })
+    const matched = source.filter((product) => matchesKeyword(product, keyword))
+    const page = params.page ?? 1
+    const limit = params.limit ?? 12
+    const start = (page - 1) * limit
+    const data = matched.slice(start, start + limit)
+    const total = matched.length
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+      keyword,
+    }
+  }
+
+  const query = buildQueryParams(params)
+  const endpoint = keyword ? '/api/products/search' : '/api/products'
+  const path = query.toString() ? `${endpoint}?${query.toString()}` : endpoint
   const payload = await http<unknown>(path, { method: 'GET' })
   return normalizePaginatedProducts<Product>(payload)
 }

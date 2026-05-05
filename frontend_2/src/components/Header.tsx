@@ -1,119 +1,207 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { useCallback, useState } from 'react'
+import { Search, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ThemeToggle from './ThemeToggle'
-
-const ICON_LINK_CLASS = cn(
-  'hidden min-h-10 min-w-10 items-center justify-center rounded-xl p-2 text-[var(--sea-ink-soft)] transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:inline-flex',
-)
+import { useMeQuery, useSignOutMutation } from '@/features/auth/hooks'
+import { isAdminRole, getAccessToken } from '@/features/auth/store'
 
 const NAV_LINK_CLASS = cn(
-  'nav-link inline-flex min-h-10 items-center rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  'inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-semibold text-gray-700 transition hover:text-purple-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
 )
 
-const ACTIVE_NAV_LINK_CLASS = `${NAV_LINK_CLASS} is-active`
-const DROPDOWN_LINK_CLASS = cn(
-  'block min-h-10 rounded-lg px-3 py-2 text-sm text-[var(--sea-ink-soft)] no-underline transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+const ICON_BUTTON_CLASS = cn(
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
 )
+
+const MOBILE_LINK_CLASS = 'block min-h-11 py-3 text-base text-gray-700 hover:text-purple-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md'
+
+function useSearchNavigation() {
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const handleSearch = useCallback(() => {
+    const trimmed = searchQuery.trim()
+    if (trimmed) {
+      navigate({ to: '/all-products', search: { q: trimmed } })
+      setSearchQuery('')
+    }
+  }, [searchQuery, navigate])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch()
+  }, [handleSearch])
+
+  return { searchQuery, setSearchQuery, handleSearch, handleKeyDown }
+}
+
+function SearchField({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' }) {
+  const { searchQuery, setSearchQuery, handleSearch, handleKeyDown } = useSearchNavigation()
+
+  if (variant === 'mobile') {
+    return (
+      <div className="px-4 pt-3 pb-2 sm:hidden">
+        <div className="relative">
+          <label htmlFor="mobile-search" className="sr-only">Search products</label>
+          <input
+            id="mobile-search"
+            type="search"
+            placeholder="Search products..."
+            autoComplete="off"
+            className="w-full rounded-full border border-gray-300 pl-10 pr-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            type="button"
+            aria-label="Search"
+            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-purple-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md"
+            onClick={handleSearch}
+          >
+            <Search size={18} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative hidden sm:block">
+      <label htmlFor="desktop-search" className="sr-only">Search products</label>
+      <input
+        id="desktop-search"
+        type="search"
+        placeholder="Search products..."
+        autoComplete="off"
+        className="w-48 lg:w-56 rounded-full border border-gray-300 pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <button
+        type="button"
+        aria-label="Search"
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-purple-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md"
+        onClick={handleSearch}
+      >
+        <Search size={18} />
+      </button>
+    </div>
+  )
+}
+
+function AuthNavLinks({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
+  const { data: me, isLoading: meLoading } = useMeQuery()
+  const signOutMutation = useSignOutMutation()
+  const navigate = useNavigate()
+
+  const hasToken = getAccessToken() != null
+  const isAuthed = !meLoading && hasToken && !!me
+  const adminRole = isAdminRole(me?.role)
+
+  const handleSignOut = useCallback(() => {
+    signOutMutation.mutate(undefined, {
+      onSuccess: () => {
+        onClose?.()
+        navigate({ to: '/signin' })
+      },
+    })
+  }, [signOutMutation, navigate, onClose])
+
+  const linkClass = mobile ? MOBILE_LINK_CLASS : NAV_LINK_CLASS
+  const activeClass = mobile ? cn(MOBILE_LINK_CLASS, 'text-purple-600 font-bold') : cn(NAV_LINK_CLASS, 'text-purple-600')
+
+  const handleLinkClick = useCallback(() => {
+    onClose?.()
+  }, [onClose])
+
+  return (
+    <>
+      <Link to="/" className={linkClass} activeProps={{ className: activeClass }} onClick={handleLinkClick}>
+        Products
+      </Link>
+      {adminRole && (
+        <Link to="/admin" className={linkClass} activeProps={{ className: activeClass }} onClick={handleLinkClick}>
+          Admin
+        </Link>
+      )}
+      {isAuthed ? (
+        <>
+          <Link to="/profile" className={linkClass} activeProps={{ className: activeClass }} onClick={handleLinkClick}>
+            Profile
+          </Link>
+          <button
+            type="button"
+            className={cn(linkClass, 'disabled:opacity-50 disabled:cursor-not-allowed')}
+            onClick={handleSignOut}
+            disabled={signOutMutation.isPending}
+          >
+            {signOutMutation.isPending ? 'Signing out...' : 'Sign out'}
+          </button>
+        </>
+      ) : (
+        <>
+          <Link to="/signin" className={linkClass} activeProps={{ className: activeClass }} onClick={handleLinkClick}>
+            Sign in
+          </Link>
+          <Link to="/signup" className={linkClass} activeProps={{ className: activeClass }} onClick={handleLinkClick}>
+            Sign up
+          </Link>
+        </>
+      )}
+    </>
+  )
+}
 
 export default function Header() {
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 backdrop-blur-lg">
-      <div className="page-wrap flex flex-wrap items-center gap-x-3 gap-y-2 py-3 sm:py-4">
-        <h2 className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
-          <Link
-            to="/"
-            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-sm text-[var(--sea-ink)] no-underline shadow-[0_8px_24px_rgba(30,90,72,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4 sm:py-2"
-          >
-            <span className="h-2 w-2 rounded-full bg-[linear-gradient(90deg,#56c6be,#7ed3bf)]" />
-            TanStack Start
-          </Link>
-        </h2>
-
-        <nav aria-label="Utility links" className="ml-auto flex items-center gap-1.5 sm:ml-0 sm:gap-2">
-          <a
-            href="https://x.com/tan_stack"
-            target="_blank"
-            rel="noreferrer"
-            className={ICON_LINK_CLASS}
-          >
-            <span className="sr-only">Follow TanStack on X</span>
-            <svg viewBox="0 0 16 16" aria-hidden="true" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M12.6 1h2.2L10 6.48 15.64 15h-4.41L7.78 9.82 3.23 15H1l5.14-5.84L.72 1h4.52l3.12 4.73L12.6 1zm-.77 12.67h1.22L4.57 2.26H3.26l8.57 11.41z"
-              />
-            </svg>
-          </a>
-          <a
-            href="https://github.com/TanStack"
-            target="_blank"
-            rel="noreferrer"
-            className={ICON_LINK_CLASS}
-          >
-            <span className="sr-only">Go to TanStack GitHub</span>
-            <svg viewBox="0 0 16 16" aria-hidden="true" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-              />
-            </svg>
-          </a>
-
-          <ThemeToggle />
-        </nav>
-
-        <nav
-          aria-label="Primary navigation"
-          className="order-3 flex w-full flex-wrap items-center gap-x-2 gap-y-1 pb-1 sm:order-2 sm:w-auto sm:flex-nowrap sm:pb-0"
+    <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-lg shadow-md">
+      <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-x-3 gap-y-2">
+        {/* Logo */}
+        <Link
+          to="/"
+          aria-label="D4C Clothing Shop home"
+          className="flex-shrink-0 text-xl sm:text-2xl font-semibold text-purple-600 tracking-wide hover:text-purple-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-md"
         >
-          <Link
-            to="/"
-            className={NAV_LINK_CLASS}
-            activeProps={{ className: ACTIVE_NAV_LINK_CLASS }}
-          >
-            Products
-          </Link>
-          <Link
-            to="/about"
-            className={NAV_LINK_CLASS}
-            activeProps={{ className: ACTIVE_NAV_LINK_CLASS }}
-          >
-            About
-          </Link>
-          <a
-            href="https://tanstack.com/start/latest/docs/framework/react/overview"
-            className={NAV_LINK_CLASS}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Docs
-          </a>
-          <details className="relative w-full sm:w-auto">
-            <summary
-              className={cn(
-                NAV_LINK_CLASS,
-                'list-none cursor-pointer marker:hidden [&::-webkit-details-marker]:hidden',
-              )}
-            >
-              Demos
-            </summary>
-            <div className="mt-2 min-w-56 rounded-xl border border-[var(--line)] bg-[var(--header-bg)] p-2 shadow-lg sm:absolute sm:right-0">
-              <Link
-                to="/demo/table"
-                className={DROPDOWN_LINK_CLASS}
-              >
-                TanStack Table
-              </Link>
-              <Link
-                to="/demo/store"
-                className={DROPDOWN_LINK_CLASS}
-              >
-                Store
-              </Link>
-            </div>
-          </details>
+          D4CClothingShop
+        </Link>
+
+        {/* Desktop Nav */}
+        <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-1 ml-auto">
+          <AuthNavLinks />
         </nav>
+
+        {/* Search + Theme + Mobile Toggle */}
+        <div className="flex items-center gap-2 ml-auto md:ml-2">
+          <SearchField variant="desktop" />
+          <ThemeToggle />
+
+          {/* Mobile menu button */}
+          <button
+            type="button"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
+            className={ICON_BUTTON_CLASS}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileOpen && (
+        <div id="mobile-menu" className="md:hidden border-t bg-white shadow-md">
+          <SearchField variant="mobile" />
+          <nav aria-label="Mobile navigation" className="flex flex-col px-4 py-2">
+            <AuthNavLinks mobile onClose={() => setMobileOpen(false)} />
+          </nav>
+        </div>
+      )}
     </header>
   )
 }
