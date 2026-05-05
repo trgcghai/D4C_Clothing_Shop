@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient } from '@tanstack/react-query'
 
 import {
   changePassword,
@@ -14,6 +15,7 @@ import {
   getAuthGuardRedirect,
   getSignInRedirectByRole,
 } from './store'
+import { clearAccessToken, getAccessToken, setAccessToken } from './store'
 
 vi.mock('@/lib/api/http', () => ({
   http: vi.fn(),
@@ -21,11 +23,12 @@ vi.mock('@/lib/api/http', () => ({
 }))
 
 const { http } = await import('@/lib/api/http')
-const { isUnauthorizedMeError } = await import('./hooks')
+const { isUnauthorizedMeError, resolvePostSignInRedirectPath } = await import('./hooks')
 
 describe('auth flow contract', () => {
   beforeEach(() => {
     vi.mocked(http).mockReset()
+    clearAccessToken()
   })
 
   it('extracts token from sign-in response payload', () => {
@@ -109,5 +112,23 @@ describe('auth flow contract', () => {
     expect(getSignInRedirectByRole('ROLE_ADMIN')).toBe('/admin')
     expect(getSignInRedirectByRole('ROLE_USER')).toBe('/')
     expect(getSignInRedirectByRole(null)).toBe('/')
+  })
+
+  it('falls back to sign-in role when profile hydration fails transiently', async () => {
+    const queryClient = new QueryClient()
+    setAccessToken('signed-token')
+    vi.mocked(http).mockRejectedValueOnce(new ApiError('Server error', 500))
+
+    await expect(resolvePostSignInRedirectPath(queryClient, 'ROLE_ADMIN')).resolves.toBe('/admin')
+    expect(getAccessToken()).toBe('signed-token')
+  })
+
+  it('clears the token when profile hydration is unauthorized after sign-in', async () => {
+    const queryClient = new QueryClient()
+    setAccessToken('signed-token')
+    vi.mocked(http).mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+
+    await expect(resolvePostSignInRedirectPath(queryClient, 'ROLE_ADMIN')).rejects.toBeInstanceOf(ApiError)
+    expect(getAccessToken()).toBeNull()
   })
 })

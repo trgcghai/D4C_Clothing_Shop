@@ -17,6 +17,7 @@ import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/profile')({
+  ssr: false,
   beforeLoad: async () => {
     if (typeof window === 'undefined') {
       return

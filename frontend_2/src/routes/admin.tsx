@@ -12,6 +12,7 @@ import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/admin')({
+  ssr: false,
   beforeLoad: async () => {
     if (typeof window === 'undefined') {
       return

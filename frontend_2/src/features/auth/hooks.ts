@@ -52,6 +52,22 @@ export async function readSignInRedirectPath(queryClient: QueryClient): Promise<
   }
 }
 
+export async function resolvePostSignInRedirectPath(queryClient: QueryClient, fallbackRole: MaybeRole): Promise<'/' | '/admin'> {
+  try {
+    const profile = await readAuthenticatedProfile(queryClient)
+    return getPostSignInRedirectPath(profile.role ?? fallbackRole)
+  } catch (error) {
+    queryClient.removeQueries({ queryKey: qk.auth.me() })
+
+    if (isUnauthorizedMeError(error)) {
+      clearAccessToken()
+      throw error
+    }
+
+    return getPostSignInRedirectPath(fallbackRole)
+  }
+}
+
 export function isUnauthorizedMeError(error: unknown): boolean {
   return isApiError(error) && (error.status === 401 || error.status === 403)
 }

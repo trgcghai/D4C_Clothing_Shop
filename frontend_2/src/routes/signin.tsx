@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
-import { getPostSignInRedirectPath, isUnauthorizedMeError, readAuthenticatedProfile, readSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
+import { isUnauthorizedMeError, readSignInRedirectPath, resolvePostSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
 import { clearAccessToken } from '@/features/auth/store'
 
 export const Route = createFileRoute('/signin')({
@@ -42,12 +42,11 @@ function SignInRoute() {
         username: username.trim(),
       })
 
-      const profile = await readAuthenticatedProfile(queryClient)
-      queryClient.setQueryData(qk.auth.me(), profile)
+      const redirectPath = await resolvePostSignInRedirectPath(queryClient, response.role)
 
       await navigate({
         replace: true,
-        to: getPostSignInRedirectPath(response.role),
+        to: redirectPath,
       })
     } catch (error) {
       if (isUnauthorizedMeError(error)) {
