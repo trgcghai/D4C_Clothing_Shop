@@ -30,11 +30,7 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-base">Company</h3>
             <ul className="space-y-2 text-sm text-gray-300">
-              <li>
-                <Link to="/about" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 rounded">
-                  About Us
-                </Link>
-              </li>
+              <li className="text-sm text-gray-300">D4C Clothing Shop</li>
             </ul>
           </div>
 
