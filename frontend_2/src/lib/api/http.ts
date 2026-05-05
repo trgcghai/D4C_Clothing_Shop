@@ -16,6 +16,7 @@ const DEFAULT_HEADERS = {
 
 let accessToken: string | null = null
 let refreshTokenHandler: RefreshTokenHandler | null = null
+let refreshTokenPromise: Promise<string | null> | null = null
 
 function buildUrl(path: string) {
   if (/^https?:\/\//.test(path)) {
@@ -24,14 +25,30 @@ function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
 
+function isBodyInit(body: unknown): body is BodyInit {
+  if (typeof body === 'string' || body instanceof Blob || body instanceof FormData) {
+    return true
+  }
+
+  if (body instanceof URLSearchParams || body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
+    return true
+  }
+
+  return typeof ReadableStream !== 'undefined' && body instanceof ReadableStream
+}
+
 function toBody(body: unknown): BodyInit | undefined {
   if (body == null) {
     return undefined
   }
-  if (body instanceof FormData || body instanceof URLSearchParams || typeof body === 'string') {
+  if (isBodyInit(body)) {
     return body
   }
   return JSON.stringify(body)
+}
+
+function shouldSetJsonContentType(body: unknown): boolean {
+  return body == null || typeof body === 'string' || (!isBodyInit(body) && !(body instanceof URLSearchParams))
 }
 
 async function parseErrorDetails(response: Response): Promise<ApiErrorDetails | undefined> {
@@ -55,6 +72,38 @@ async function parseErrorDetails(response: Response): Promise<ApiErrorDetails | 
   }
 }
 
+async function parseSuccess<T>(response: Response): Promise<T> {
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T
+  }
+
+  const payload = await response.text()
+  if (!payload) {
+    return undefined as T
+  }
+
+  const contentType = response.headers.get('content-type')
+  if (contentType?.includes('application/json')) {
+    return JSON.parse(payload) as T
+  }
+
+  return payload as T
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshTokenHandler) {
+    return null
+  }
+
+  if (!refreshTokenPromise) {
+    refreshTokenPromise = refreshTokenHandler().finally(() => {
+      refreshTokenPromise = null
+    })
+  }
+
+  return refreshTokenPromise
+}
+
 async function requestInternal<T>(
   path: string,
   options: RequestOptions = {},
@@ -64,7 +113,7 @@ async function requestInternal<T>(
   const rawBody = options.body
   const body = toBody(rawBody)
 
-  if (rawBody instanceof FormData) {
+  if (!shouldSetJsonContentType(rawBody)) {
     delete headers['Content-Type']
   }
 
@@ -79,7 +128,7 @@ async function requestInternal<T>(
   })
 
   if (response.status === 401 && allowRefresh && refreshTokenHandler) {
-    const refreshedToken = await refreshTokenHandler()
+    const refreshedToken = await refreshAccessToken()
     if (refreshedToken) {
       accessToken = refreshedToken
       return requestInternal<T>(path, options, false)
@@ -93,11 +142,7 @@ async function requestInternal<T>(
     throw new ApiError(message, response.status, details)
   }
 
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return (await response.json()) as T
+  return await parseSuccess<T>(response)
 }
 
 export async function http<T>(path: string, options?: RequestOptions): Promise<T> {
