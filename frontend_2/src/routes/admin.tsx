@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UserProfile } from '@/features/auth/api'
-import { getMeQueryOptions, isUnauthorizedMeError, useMeQuery } from '@/features/auth/hooks'
+import { isUnauthorizedMeError, readAuthenticatedProfile, useMeQuery } from '@/features/auth/hooks'
 import {
   clearAccessToken,
   getAccessToken,
@@ -13,13 +13,17 @@ import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
     if (!getAccessToken()) {
       throw redirect({ to: '/signin' })
     }
 
     let profile: UserProfile | undefined
     try {
-      profile = await queryClient.fetchQuery(getMeQueryOptions())
+      profile = await readAuthenticatedProfile(queryClient)
     } catch (error) {
       if (isUnauthorizedMeError(error)) {
         clearAccessToken()

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
-import { getPostSignInRedirectPath, getMeQueryOptions, isUnauthorizedMeError, readSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
+import { getPostSignInRedirectPath, isUnauthorizedMeError, readAuthenticatedProfile, readSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
 import { clearAccessToken } from '@/features/auth/store'
 
 export const Route = createFileRoute('/signin')({
@@ -42,7 +42,7 @@ function SignInRoute() {
         username: username.trim(),
       })
 
-      const profile = await queryClient.fetchQuery(getMeQueryOptions())
+      const profile = await readAuthenticatedProfile(queryClient)
       queryClient.setQueryData(qk.auth.me(), profile)
 
       await navigate({

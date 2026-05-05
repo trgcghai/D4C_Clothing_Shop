@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
-  getMeQueryOptions,
   isUnauthorizedMeError,
+  readAuthenticatedProfile,
   useChangePasswordMutation,
   useMeQuery,
   useUpdateProfileMutation,
@@ -18,12 +18,16 @@ import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
     if (!getAccessToken()) {
       throw redirect({ to: '/signin' })
     }
 
     try {
-      await queryClient.fetchQuery(getMeQueryOptions())
+      await readAuthenticatedProfile(queryClient)
     } catch (error) {
       if (isUnauthorizedMeError(error)) {
         clearAccessToken()

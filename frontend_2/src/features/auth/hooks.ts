@@ -27,6 +27,7 @@ export function getMeQueryOptions() {
     queryFn: getMe,
     queryKey: qk.auth.me(),
     retry: false,
+    staleTime: 0,
   })
 }
 
@@ -58,6 +59,7 @@ export function isUnauthorizedMeError(error: unknown): boolean {
 export function useMeQuery() {
   return useQuery({
     ...getMeQueryOptions(),
+    staleTime: 30_000,
     enabled: Boolean(getAccessToken()),
   })
 }
