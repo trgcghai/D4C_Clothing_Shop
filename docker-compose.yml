@@ -112,20 +112,20 @@ services:
     networks:
       - d4c-net
 
-  frontend:
+  frontend_2:
     build:
-      context: ./frontend
+      context: ./frontend_2
       dockerfile: Dockerfile
     env_file:
-      - ./frontend/.env
-    container_name: frontend
+      - ./frontend_2/.env
+    container_name: frontend_2
     depends_on:
       api-gateway:
         condition: service_healthy
     ports:
-      - "5173:5173"
+      - "3000:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 30s
       timeout: 5s
       retries: 5
