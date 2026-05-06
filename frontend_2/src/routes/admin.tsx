@@ -24,12 +24,7 @@ import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/admin')({
-  ssr: false,
   beforeLoad: async () => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
     if (!getAccessToken()) {
       throw redirect({ to: '/signin' })
     }
@@ -41,9 +36,7 @@ export const Route = createFileRoute('/admin')({
       if (isUnauthorizedMeError(error)) {
         clearAccessToken()
         queryClient.removeQueries({ queryKey: qk.auth.me() })
-        throw redirect({ to: '/signin' })
       }
-
       throw redirect({ to: '/signin' })
     }
 

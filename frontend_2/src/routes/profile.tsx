@@ -13,7 +13,6 @@ import {
 import { clearAccessToken, getAccessToken } from '@/features/auth/store'
 
 export const Route = createFileRoute('/profile')({
-  ssr: false,
   beforeLoad: () => {
     if (!getAccessToken()) {
       throw redirect({ to: '/signin' })

@@ -1,10 +1,10 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
+import axios from 'axios'
+import type { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { ApiError, toApiError } from './errors'
 import type { ApiErrorDetails } from './errors'
 
-// Use relative URLs — Vite dev/preview proxy routes /api to the gateway.
-// VITE_API_PROXY_URL is only consumed by vite.config.ts proxy config, not the browser.
-const API_BASE_URL = ''
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -22,9 +22,6 @@ let refreshTokenHandler: (() => Promise<string | null>) | null = null
 const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
 
 api.interceptors.request.use((config) => {
-  if (typeof window === 'undefined') {
-    throw new Error('API calls must be client-side only')
-  }
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
@@ -48,9 +45,15 @@ async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean
+    }
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshTokenRequest(originalRequest.url)) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshTokenRequest(originalRequest.url)
+    ) {
       originalRequest._retry = true
 
       if (refreshTokenHandler) {
@@ -76,7 +79,14 @@ api.interceptors.response.use(
   },
 )
 
-export async function http<T>(path: string, options?: { body?: unknown; method?: string; headers?: Record<string, string> }): Promise<T> {
+export async function http<T>(
+  path: string,
+  options?: {
+    body?: unknown
+    method?: string
+    headers?: Record<string, string>
+  },
+): Promise<T> {
   try {
     const { body, method = 'GET', headers } = options || {}
     const config: AxiosRequestConfig = {
@@ -95,7 +105,10 @@ export async function http<T>(path: string, options?: { body?: unknown; method?:
     if (axios.isAxiosError(error)) {
       const status = error.response?.status ?? 0
       const details = error.response?.data as ApiErrorDetails | undefined
-      const message = typeof details?.message === 'string' ? details.message : error.message || 'Request failed'
+      const message =
+        typeof details?.message === 'string'
+          ? details.message
+          : error.message || 'Request failed'
       throw new ApiError(message, status, details)
     }
     throw toApiError(error)
@@ -106,6 +119,8 @@ export function setAccessToken(token: string | null) {
   accessToken = token
 }
 
-export function setRefreshTokenHandler(handler: (() => Promise<string | null>) | null) {
+export function setRefreshTokenHandler(
+  handler: (() => Promise<string | null>) | null,
+) {
   refreshTokenHandler = handler
 }

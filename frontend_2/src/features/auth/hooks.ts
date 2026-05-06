@@ -22,15 +22,13 @@ import {
 } from './store'
 import type { MaybeRole } from './store'
 
-const isClient = typeof window !== 'undefined'
-
 export function getMeQueryOptions() {
   return queryOptions({
     queryFn: getMe,
     queryKey: qk.auth.me(),
     retry: false,
     staleTime: 0,
-    enabled: isClient && Boolean(getAccessToken()),
+    enabled: Boolean(getAccessToken()),
   })
 }
 
@@ -39,7 +37,7 @@ export async function readAuthenticatedProfile(queryClient: QueryClient) {
 }
 
 export async function readSignInRedirectPath(queryClient: QueryClient): Promise<string | null> {
-  if (!isClient || !getAccessToken()) {
+  if (!getAccessToken()) {
     return null
   }
 
@@ -79,7 +77,7 @@ export function useMeQuery() {
   return useQuery({
     ...getMeQueryOptions(),
     staleTime: 30_000,
-    enabled: isClient && Boolean(getAccessToken()),
+    enabled: Boolean(getAccessToken()),
   })
 }
 
