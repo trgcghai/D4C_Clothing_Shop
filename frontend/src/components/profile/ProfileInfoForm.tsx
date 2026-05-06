@@ -64,7 +64,7 @@ const ProfileInfoForm = ({ user }: ProfileInfoFormProps) => {
     return (
       <div className="space-y-4">
         {success && (
-          <Alert variant="default" className="border-emerald-300 bg-emerald-50">
+          <Alert variant="default" className="border-emerald-300 bg-emerald-50" role="status" aria-live="polite">
             <Check className="size-4 text-emerald-700" />
             <AlertDescription className="text-sm text-emerald-700">
               Cập nhật thông tin thành công
