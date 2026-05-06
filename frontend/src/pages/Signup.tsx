@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { isAxiosError } from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,10 @@ const defaultForm = {
 const SignUp = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState(defaultForm);
+  const [fieldErrors, setFieldErrors] = useState<{
+    phoneNumber?: string;
+    confirmPassword?: string;
+  }>({});
 
   const { mutate, isPending, error } = useSignUp();
 
@@ -36,14 +41,30 @@ const SignUp = () => {
         ...current,
         [field]: event.target.value,
       }));
+      if (field === "phoneNumber" || field === "confirmPassword") {
+        setFieldErrors((current) => ({ ...current, [field]: undefined }));
+      }
     };
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSuccessMessage(null);
+    setFieldErrors({});
 
     if (form.password !== form.confirmPassword) {
+      setFieldErrors((current) => ({
+        ...current,
+        confirmPassword: "Confirm password must match password.",
+      }));
+      return;
+    }
+
+    if (!/^\+?[0-9]{9,15}$/.test(form.phoneNumber)) {
+      setFieldErrors((current) => ({
+        ...current,
+        phoneNumber: "Phone number must be 9-15 digits and may start with +.",
+      }));
       return;
     }
 
@@ -66,6 +87,13 @@ const SignUp = () => {
       },
     );
   }
+
+  const apiFieldErrors =
+    isAxiosError(error) && error.response?.data?.errors
+      ? (error.response.data.errors as Record<string, string>)
+      : undefined;
+  const phoneNumberError = fieldErrors.phoneNumber ?? apiFieldErrors?.phoneNumber;
+  const confirmPasswordError = fieldErrors.confirmPassword;
 
   return (
     <section className="mx-auto flex w-full max-w-lg px-4 py-12">
@@ -128,7 +156,20 @@ const SignUp = () => {
                 required
                 value={form.phoneNumber}
                 onChange={onChange("phoneNumber")}
+                aria-invalid={Boolean(phoneNumberError)}
+                aria-describedby={
+                  phoneNumberError ? "signup-phoneNumber-error" : undefined
+                }
               />
+              {phoneNumberError ? (
+                <p
+                  id="signup-phoneNumber-error"
+                  className="text-xs text-red-600"
+                  role="alert"
+                >
+                  {phoneNumberError}
+                </p>
+              ) : null}
             </Field>
             <Field id="signup-password" label="Password">
               <Input
@@ -154,8 +195,22 @@ const SignUp = () => {
                 minLength={6}
                 value={form.confirmPassword}
                 onChange={onChange("confirmPassword")}
-                aria-describedby="signup-confirmPassword-hint"
+                aria-invalid={Boolean(confirmPasswordError)}
+                aria-describedby={
+                  confirmPasswordError
+                    ? "signup-confirmPassword-error"
+                    : "signup-confirmPassword-hint"
+                }
               />
+              {confirmPasswordError ? (
+                <p
+                  id="signup-confirmPassword-error"
+                  className="text-xs text-red-600"
+                  role="alert"
+                >
+                  {confirmPasswordError}
+                </p>
+              ) : null}
               <p
                 id="signup-confirmPassword-hint"
                 className="text-xs text-(--sea-ink-soft)"
