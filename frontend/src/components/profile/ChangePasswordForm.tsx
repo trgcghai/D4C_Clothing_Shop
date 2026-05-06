@@ -85,6 +85,7 @@ const ChangePasswordForm = () => {
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
             required
+            name="current-password"
             autoComplete="current-password"
             aria-required="true"
           />
