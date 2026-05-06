@@ -1,78 +1,33 @@
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ApiError, toApiError } from './errors'
 import type { ApiErrorDetails } from './errors'
 
-export interface RequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
-  readonly body?: unknown
-  readonly headers?: Record<string, string>
-}
-
-type RefreshTokenHandler = () => Promise<string | null>
-
 const API_BASE_URL = import.meta.env.VITE_API_PROXY_URL || ''
-const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
-const DEFAULT_HEADERS = {
-  Accept: 'application/json',
-  'Content-Type': 'application/json',
-} as const
+
+const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30_000,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+})
 
 let accessToken: string | null = null
-let refreshTokenHandler: RefreshTokenHandler | null = null
 let refreshTokenPromise: Promise<string | null> | null = null
+let refreshTokenHandler: (() => Promise<string | null>) | null = null
 
-function buildUrl(path: string): string {
-  if (/^https?:\/\//.test(path)) return path
-  if (!API_BASE_URL) return path
-  const base = API_BASE_URL.replace(/\/+$/, '')
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${base}${normalized}`
-}
+const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
 
-function isRefreshTokenRequest(path: string) {
-  return path === REFRESH_TOKEN_PATH
-}
-
-function isBodyInit(body: unknown): body is BodyInit {
-  if (typeof body === 'string' || body instanceof Blob || body instanceof FormData) {
-    return true
+api.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
-  if (body instanceof URLSearchParams || body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
-    return true
-  }
-  return typeof ReadableStream !== 'undefined' && body instanceof ReadableStream
-}
+  return config
+})
 
-function toBody(body: unknown): BodyInit | undefined {
-  if (body == null) return undefined
-  if (isBodyInit(body)) return body
-  return JSON.stringify(body)
-}
-
-function shouldSetJsonContentType(body: unknown): boolean {
-  return body == null || typeof body === 'string' || (!isBodyInit(body) && !(body instanceof URLSearchParams))
-}
-
-async function parseErrorDetails(response: Response): Promise<ApiErrorDetails | undefined> {
-  const contentType = response.headers.get('content-type')
-  if (!contentType) return undefined
-  try {
-    if (contentType.includes('application/json')) {
-      return (await response.json()) as ApiErrorDetails
-    }
-    const text = await response.text()
-    if (!text) return undefined
-    return { message: text }
-  } catch {
-    return undefined
-  }
-}
-
-async function parseSuccess<T>(response: Response): Promise<T> {
-  if (response.status === 204 || response.status === 205) return undefined as T
-  const payload = await response.text()
-  if (!payload) return undefined as T
-  const contentType = response.headers.get('content-type')
-  if (contentType?.includes('application/json')) return JSON.parse(payload) as T
-  return payload as T
+function isRefreshTokenRequest(url: string | undefined): boolean {
+  return url === REFRESH_TOKEN_PATH
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -85,49 +40,59 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshTokenPromise
 }
 
-async function requestInternal<T>(path: string, options: RequestOptions = {}, allowRefresh = true): Promise<T> {
-  const headers: Record<string, string> = { ...DEFAULT_HEADERS, ...options.headers }
-  const rawBody = options.body
-  const body = toBody(rawBody)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-  if (!shouldSetJsonContentType(rawBody)) delete headers['Content-Type']
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshTokenRequest(originalRequest.url)) {
+      originalRequest._retry = true
 
-  const response = await fetch(buildUrl(path), {
-    ...options,
-    credentials: options.credentials ?? 'include',
-    headers,
-    body,
-  })
-
-  if (response.status === 401 && allowRefresh && !isRefreshTokenRequest(path)) {
-    if (refreshTokenHandler) {
-      try {
-        const refreshedToken = await refreshAccessToken()
-        if (refreshedToken) {
-          accessToken = refreshedToken
-          return requestInternal<T>(path, options, false)
+      if (refreshTokenHandler) {
+        try {
+          const newToken = await refreshAccessToken()
+          if (newToken) {
+            accessToken = newToken
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              Authorization: `Bearer ${newToken}`,
+            }
+            return api(originalRequest)
+          }
+        } catch {
+          // fall through
         }
-      } catch {
-        // fall through
       }
+
+      accessToken = null
     }
-    accessToken = null
-  }
 
-  if (!response.ok) {
-    const details = await parseErrorDetails(response)
-    const message = typeof details?.message === 'string' ? details.message : response.statusText || 'Request failed'
-    throw new ApiError(message, response.status, details)
-  }
+    return Promise.reject(error)
+  },
+)
 
-  return await parseSuccess<T>(response)
-}
-
-export async function http<T>(path: string, options?: RequestOptions): Promise<T> {
+export async function http<T>(path: string, options?: { body?: unknown; method?: string; headers?: Record<string, string> }): Promise<T> {
   try {
-    return await requestInternal<T>(path, options)
+    const { body, method = 'GET', headers } = options || {}
+    const config: AxiosRequestConfig = {
+      url: path,
+      method,
+      headers,
+    }
+
+    if (body && method !== 'GET') {
+      config.data = body
+    }
+
+    const response = await api(config)
+    return response.data as T
   } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const details = error.response?.data as ApiErrorDetails | undefined
+      const message = typeof details?.message === 'string' ? details.message : error.message || 'Request failed'
+      throw new ApiError(message, status, details)
+    }
     throw toApiError(error)
   }
 }
@@ -136,6 +101,6 @@ export function setAccessToken(token: string | null) {
   accessToken = token
 }
 
-export function setRefreshTokenHandler(handler: RefreshTokenHandler | null) {
+export function setRefreshTokenHandler(handler: (() => Promise<string | null>) | null) {
   refreshTokenHandler = handler
 }
