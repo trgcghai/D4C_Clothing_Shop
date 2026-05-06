@@ -84,7 +84,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new JwtResponse(jwt, userDetails.getUsername(), role));
+                .body(new JwtResponse(jwt, user.getId(), userDetails.getUsername(), user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role));
     }
 
     @PostMapping("/refresh-token")
@@ -125,7 +125,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new JwtResponse(newAccessToken, userDetails.getUsername(), role));
+                .body(new JwtResponse(newAccessToken, user.getId(), userDetails.getUsername(), user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role));
     }
 
     // API Đăng ký
