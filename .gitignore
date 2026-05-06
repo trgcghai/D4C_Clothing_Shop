@@ -63,3 +63,4 @@ UserService/.mvn/wrapper/maven-wrapper.jar
 .agents
 skills-lock.json
 **.txt
+.opencode
