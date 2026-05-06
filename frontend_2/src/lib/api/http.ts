@@ -2,7 +2,9 @@ import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ApiError, toApiError } from './errors'
 import type { ApiErrorDetails } from './errors'
 
-const API_BASE_URL = import.meta.env.VITE_API_PROXY_URL || ''
+// Use relative URLs — Vite dev/preview proxy routes /api to the gateway.
+// VITE_API_PROXY_URL is only consumed by vite.config.ts proxy config, not the browser.
+const API_BASE_URL = ''
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

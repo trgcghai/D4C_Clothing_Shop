@@ -16,5 +16,5 @@ COPY --from=build --chown=nodeuser:nodejs /app ./
 USER nodeuser
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
-  CMD wget -qO- http://localhost:3000 >/dev/null || exit 1
+  CMD wget -qO- http://127.0.0.1:3000 >/dev/null || exit 1
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
