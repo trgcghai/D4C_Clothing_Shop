@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,14 +29,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import {
   useProducts,
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
 } from "@/src/hooks/useProducts";
-import { useSignOut } from "@/src/hooks/useAuth";
 import type {
   Product,
   ProductCreatePayload,
@@ -59,7 +57,6 @@ const defaultForm: ProductCreatePayload = {
 };
 
 const ProductManagement = () => {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -67,6 +64,10 @@ const ProductManagement = () => {
   const [form, setForm] = useState<ProductCreatePayload>(defaultForm);
   const [colorInput, setColorInput] = useState("");
   const [stockInput, setStockInput] = useState({ size: "", quantity: "" });
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [imageError, setImageError] = useState<string | undefined>();
 
   const { data, isLoading } = useProducts({
     page,
@@ -78,7 +79,6 @@ const ProductManagement = () => {
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
-  const signOutMutation = useSignOut();
 
   const isPending =
     createMutation.isPending ||
@@ -94,6 +94,9 @@ const ProductManagement = () => {
     setEditingProduct(null);
     setColorInput("");
     setStockInput({ size: "", quantity: "" });
+    setImage(null);
+    setImagePreview("");
+    setImageError(undefined);
   };
 
   const openCreate = () => {
@@ -114,19 +117,89 @@ const ProductManagement = () => {
       stock: product.stock || [],
       isFeatured: product.isFeatured || false,
     });
+    setImage(null);
+    setImagePreview(product.imageUrl || "");
+    setImageError(undefined);
     setOpen(true);
+  };
+
+  const validateAndSetImage = (file: File) => {
+    setImageError(undefined);
+
+    if (!file.type.startsWith("image/")) {
+      setImageError("Chỉ hỗ trợ file ảnh (JPG, PNG, WebP)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Kích thước file vượt quá 5MB");
+      return;
+    }
+
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageRemove = () => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImage(null);
+    setImagePreview(editingProduct ? editingProduct.imageUrl || "" : "");
+    setImageError(undefined);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      validateAndSetImage(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      validateAndSetImage(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
   };
 
   const handleSave = () => {
     if (editingProduct) {
       updateMutation.mutate(
-        { id: editingProduct.id, payload: form },
-        { onSuccess: () => setOpen(false) },
+        { id: editingProduct.id, payload: form, image: image || undefined },
+        {
+          onSuccess: () => {
+            if (imagePreview.startsWith("blob:")) {
+              URL.revokeObjectURL(imagePreview);
+            }
+            setOpen(false);
+          },
+        },
       );
     } else {
       createMutation.mutate(
-        { payload: form },
-        { onSuccess: () => setOpen(false) },
+        { payload: form, image: image || undefined },
+        {
+          onSuccess: () => {
+            if (imagePreview.startsWith("blob:")) {
+              URL.revokeObjectURL(imagePreview);
+            }
+            setOpen(false);
+          },
+        },
       );
     }
   };
@@ -172,12 +245,6 @@ const ProductManagement = () => {
 
   const totalStock = form.stock.reduce((sum, s) => sum + s.quantity, 0);
 
-  const handleSignOut = () => {
-    signOutMutation.mutate(undefined, {
-      onSuccess: () => navigate("/signin"),
-    });
-  };
-
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -187,214 +254,286 @@ const ProductManagement = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSignOut}
-            disabled={signOutMutation.isPending}
+          <Dialog
+            open={open}
+            onOpenChange={(v) => {
+              if (!v) resetForm();
+              setOpen(v);
+            }}
           >
-            {signOutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
-          </Button>
-
-        <Dialog
-          open={open}
-          onOpenChange={(v) => {
-            if (!v) resetForm();
-            setOpen(v);
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 size-4" />
-              Thêm sản phẩm
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
-              </DialogTitle>
-              <DialogDescription>
-                Điền thông tin sản phẩm vào form bên dưới.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Tên sản phẩm *</Label>
-                <Input
-                  id="name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Nhập tên sản phẩm"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Mô tả</Label>
-                <Input
-                  id="description"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  placeholder="Mô tả sản phẩm"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="price">Giá (₫) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={form.price || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, price: Number(e.target.value) })
-                    }
-                    placeholder="0"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Danh mục *</Label>
-                  <Input
-                    id="category"
-                    value={form.category}
-                    onChange={(e) =>
-                      setForm({ ...form, category: e.target.value })
-                    }
-                    placeholder="Áo, Quần, ..."
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="brand">Thương hiệu *</Label>
-                  <Input
-                    id="brand"
-                    value={form.brand}
-                    onChange={(e) =>
-                      setForm({ ...form, brand: e.target.value })
-                    }
-                    placeholder="D4C"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="gender">Giới tính</Label>
-                  <select
-                    id="gender"
-                    value={form.gender}
-                    onChange={(e) =>
-                      setForm({ ...form, gender: e.target.value })
-                    }
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            <DialogTrigger asChild>
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 size-4" />
+                Thêm sản phẩm
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
+                </DialogTitle>
+                <DialogDescription>
+                  Điền thông tin sản phẩm vào form bên dưới.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                {/* Image Upload Zone */}
+                <div className="flex justify-center">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Chọn ảnh sản phẩm"
+                    className={`relative flex h-40 w-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                      isDragOver
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-primary/50"
+                    }`}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => document.getElementById("product-image-input")?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        document.getElementById("product-image-input")?.click();
+                      }
+                    }}
                   >
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                    <option value="Unisex">Unisex</option>
-                  </select>
-                </div>
-              </div>
+                    <input
+                      id="product-image-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileInput}
+                      aria-label="Chọn ảnh sản phẩm"
+                    />
 
-              <div className="grid gap-2">
-                <Label>Màu sắc</Label>
-                <div className="flex gap-2">
+                    {imagePreview ? (
+                      <>
+                        <img
+                          src={imagePreview}
+                          alt="Xem trước ảnh sản phẩm"
+                          className="h-full w-full rounded-lg object-cover"
+                        />
+                        <button
+                          type="button"
+                          className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleImageRemove();
+                          }}
+                          aria-label="Xóa ảnh"
+                        >
+                          <X className="size-3" />
+                        </button>
+                        {!image && editingProduct && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 text-xs text-white opacity-0 transition-opacity hover:opacity-100">
+                            Nhấn để thay đổi ảnh
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 px-3 text-center">
+                        <ImageIcon className="size-8 text-muted-foreground" />
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Kéo thả ảnh hoặc nhấn để chọn
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70">
+                          Hỗ trợ JPG, PNG, WebP. Tối đa 5MB.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {imageError && (
+                  <p className="text-center text-xs text-destructive" role="alert">
+                    {imageError}
+                  </p>
+                )}
+
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Tên sản phẩm *</Label>
                   <Input
-                    value={colorInput}
-                    onChange={(e) => setColorInput(e.target.value)}
-                    placeholder="Thêm màu"
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && (e.preventDefault(), addColor())
-                    }
+                    id="name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Nhập tên sản phẩm"
                   />
-                  <Button type="button" variant="outline" onClick={addColor}>
-                    Thêm
-                  </Button>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {form.colors.map((c) => (
-                    <Badge key={c} variant="secondary" className="gap-1">
-                      {c}
-                      <button
-                        type="button"
-                        onClick={() => removeColor(c)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Kho hàng</Label>
-                <div className="flex gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Mô tả</Label>
                   <Input
-                    placeholder="Size (S, M, L)"
-                    value={stockInput.size}
+                    id="description"
+                    value={form.description}
                     onChange={(e) =>
-                      setStockInput({ ...stockInput, size: e.target.value })
+                      setForm({ ...form, description: e.target.value })
                     }
+                    placeholder="Mô tả sản phẩm"
                   />
-                  <Input
-                    type="number"
-                    placeholder="SL"
-                    value={stockInput.quantity}
-                    onChange={(e) =>
-                      setStockInput({ ...stockInput, quantity: e.target.value })
-                    }
-                  />
-                  <Button type="button" variant="outline" onClick={addStock}>
-                    Thêm
-                  </Button>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {form.stock.map((s) => (
-                    <Badge key={s.size} variant="outline" className="gap-1">
-                      {s.size}: {s.quantity}
-                      <button
-                        type="button"
-                        onClick={() => removeStock(s.size)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">Giá (₫) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={form.price || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, price: Number(e.target.value) })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Danh mục *</Label>
+                    <Input
+                      id="category"
+                      value={form.category}
+                      onChange={(e) =>
+                        setForm({ ...form, category: e.target.value })
+                      }
+                      placeholder="Áo, Quần, ..."
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Tổng tồn: {totalStock}
-                </p>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="brand">Thương hiệu *</Label>
+                    <Input
+                      id="brand"
+                      value={form.brand}
+                      onChange={(e) =>
+                        setForm({ ...form, brand: e.target.value })
+                      }
+                      placeholder="D4C"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gender">Giới tính</Label>
+                    <select
+                      id="gender"
+                      value={form.gender}
+                      onChange={(e) =>
+                        setForm({ ...form, gender: e.target.value })
+                      }
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Unisex">Unisex</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isFeatured"
-                  checked={form.isFeatured}
-                  onChange={(e) =>
-                    setForm({ ...form, isFeatured: e.target.checked })
+                <div className="grid gap-2">
+                  <Label>Màu sắc</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={colorInput}
+                      onChange={(e) => setColorInput(e.target.value)}
+                      placeholder="Thêm màu"
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && (e.preventDefault(), addColor())
+                      }
+                    />
+                    <Button type="button" variant="outline" onClick={addColor}>
+                      Thêm
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {form.colors.map((c) => (
+                      <Badge key={c} variant="secondary" className="gap-1">
+                        {c}
+                        <button
+                          type="button"
+                          onClick={() => removeColor(c)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Kho hàng</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Size (S, M, L)"
+                      value={stockInput.size}
+                      onChange={(e) =>
+                        setStockInput({ ...stockInput, size: e.target.value })
+                      }
+                    />
+                    <Input
+                      type="number"
+                      placeholder="SL"
+                      value={stockInput.quantity}
+                      onChange={(e) =>
+                        setStockInput({
+                          ...stockInput,
+                          quantity: e.target.value,
+                        })
+                      }
+                    />
+                    <Button type="button" variant="outline" onClick={addStock}>
+                      Thêm
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {form.stock.map((s) => (
+                      <Badge key={s.size} variant="outline" className="gap-1">
+                        {s.size}: {s.quantity}
+                        <button
+                          type="button"
+                          onClick={() => removeStock(s.size)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tổng tồn: {totalStock}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isFeatured"
+                    checked={form.isFeatured}
+                    onChange={(e) =>
+                      setForm({ ...form, isFeatured: e.target.checked })
+                    }
+                    className="size-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="isFeatured" className="text-sm">
+                    Sản phẩm nổi bật
+                  </Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    isPending || !form.name || !form.price || !form.category
                   }
-                  className="size-4 rounded border-gray-300"
-                />
-                <Label htmlFor="isFeatured" className="text-sm">
-                  Sản phẩm nổi bật
-                </Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Hủy
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={
-                  isPending || !form.name || !form.price || !form.category
-                }
-              >
-                {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                {editingProduct ? "Cập nhật" : "Lưu sản phẩm"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                >
+                  {isPending && (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  )}
+                  {editingProduct ? "Cập nhật" : "Lưu sản phẩm"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
