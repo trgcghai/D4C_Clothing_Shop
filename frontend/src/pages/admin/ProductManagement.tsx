@@ -90,6 +90,9 @@ const ProductManagement = () => {
   const total = data?.total ?? 0;
 
   const resetForm = () => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
     setForm(defaultForm);
     setEditingProduct(null);
     setColorInput("");
@@ -177,6 +180,10 @@ const ProductManagement = () => {
   };
 
   const handleSave = () => {
+    const onError = () => {
+      // Keep preview so user can retry; don't revoke blob URL
+    };
+
     if (editingProduct) {
       updateMutation.mutate(
         { id: editingProduct.id, payload: form, image: image || undefined },
@@ -187,6 +194,7 @@ const ProductManagement = () => {
             }
             setOpen(false);
           },
+          onError,
         },
       );
     } else {
@@ -199,6 +207,7 @@ const ProductManagement = () => {
             }
             setOpen(false);
           },
+          onError,
         },
       );
     }
