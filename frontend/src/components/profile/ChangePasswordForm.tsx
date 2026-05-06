@@ -66,7 +66,7 @@ const ChangePasswordForm = () => {
       )}
 
       {success && (
-        <Alert variant="default" className="border-emerald-300 bg-emerald-50">
+        <Alert variant="default" className="border-emerald-300 bg-emerald-50" role="status" aria-live="polite">
           <Check className="size-4 text-emerald-700" />
           <AlertDescription className="text-sm text-emerald-700">
             Đổi mật khẩu thành công
@@ -85,7 +85,6 @@ const ChangePasswordForm = () => {
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
             required
-            minLength={6}
             autoComplete="current-password"
             aria-required="true"
           />
@@ -115,6 +114,7 @@ const ChangePasswordForm = () => {
             }}
             required
             minLength={6}
+            name="new-password"
             autoComplete="new-password"
             aria-required="true"
             aria-invalid={Boolean(fieldErrors.newPassword)}
@@ -160,6 +160,7 @@ const ChangePasswordForm = () => {
             }}
             required
             minLength={6}
+            name="confirm-password"
             autoComplete="new-password"
             aria-required="true"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
