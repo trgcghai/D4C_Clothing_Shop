@@ -48,7 +48,7 @@ cp .env.example .env.local.reference
 ```
 
 Lưu ý:
-- `JWT_SECRET` phải set trong `UserService/.env`.
+- `JWT_SECRET` phải set trong `UserService/.env` và có độ dài tối thiểu 32 bytes.
 - AWS credentials / bucket / table set trong `ProductService/.env`.
 
 ## Chạy full stack (prod-like)

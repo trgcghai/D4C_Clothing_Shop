@@ -2,6 +2,7 @@ package iuh.fit.UserService.Config;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -20,10 +21,25 @@ public class JwtUtils {
     @Value("${jwt.refreshExpirationMs}")
     private long jwtRefreshExpirationMs;
 
+    private SecretKey signingKey;
+
+    @PostConstruct
+    private void initSigningKey() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET is required and must be at least 32 bytes.");
+        }
+
+        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes (256 bits). Current: " + keyBytes.length + " bytes.");
+        }
+
+        signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
     // Tạo key từ chuỗi secret
     private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return signingKey;
     }
 
     // Tạo JWT Token từ thông tin User
