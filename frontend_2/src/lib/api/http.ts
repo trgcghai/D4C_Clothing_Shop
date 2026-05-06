@@ -8,6 +8,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
 
 type RefreshTokenHandler = () => Promise<string | null>
 
+const API_BASE_URL = import.meta.env.VITE_API_PROXY_URL || ''
 const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
 const DEFAULT_HEADERS = {
   Accept: 'application/json',
@@ -17,6 +18,14 @@ const DEFAULT_HEADERS = {
 let accessToken: string | null = null
 let refreshTokenHandler: RefreshTokenHandler | null = null
 let refreshTokenPromise: Promise<string | null> | null = null
+
+function buildUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path
+  if (!API_BASE_URL) return path
+  const base = API_BASE_URL.replace(/\/+$/, '')
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  return `${base}${normalized}`
+}
 
 function isRefreshTokenRequest(path: string) {
   return path === REFRESH_TOKEN_PATH
@@ -84,7 +93,7 @@ async function requestInternal<T>(path: string, options: RequestOptions = {}, al
   if (!shouldSetJsonContentType(rawBody)) delete headers['Content-Type']
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
-  const response = await fetch(path, {
+  const response = await fetch(buildUrl(path), {
     ...options,
     credentials: options.credentials ?? 'include',
     headers,
