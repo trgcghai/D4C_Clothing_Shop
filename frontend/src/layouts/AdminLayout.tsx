@@ -1,7 +1,15 @@
-import { Navigate, Outlet, useLocation, Link } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  useLocation,
+  Link,
+  useNavigate,
+} from "react-router-dom";
 import { useStore } from "../store";
 import { cn } from "../lib/utils";
 import { Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSignOut } from "@/src/hooks/useAuth";
 
 const navItems = [
   { to: "/admin/products", label: "Quản lý sản phẩm", icon: Package },
@@ -11,6 +19,16 @@ const AdminLayout = () => {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const role = useStore((state) => state.role);
   const location = useLocation();
+  const { mutate: signOut } = useSignOut();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate("/", { replace: true });
+      },
+    });
+  };
 
   if (!isAuthenticated) {
     return <Navigate to="/signin" replace />;
@@ -45,6 +63,15 @@ const AdminLayout = () => {
             </Link>
           ))}
         </nav>
+        <div className="absolute bottom-4 w-full px-4">
+          <Button
+            variant="destructive"
+            onClick={handleSignOut}
+            className="w-full"
+          >
+            Đăng xuất
+          </Button>
+        </div>
       </aside>
 
       <main className="ml-64 flex-1">

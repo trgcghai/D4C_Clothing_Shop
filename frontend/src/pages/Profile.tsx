@@ -1,9 +1,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/src/store";
 import { useNavigate } from "react-router-dom";
 import { useSignOut } from "@/src/hooks/useAuth";
+import ProfileInfoForm from "@/src/components/profile/ProfileInfoForm";
+import ChangePasswordForm from "@/src/components/profile/ChangePasswordForm";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -59,17 +62,22 @@ const Profile = () => {
           </div>
         </div>
 
-        <Separator className="mb-8" />
+        <Separator className="mb-6" />
 
-        <div className="space-y-6">
-          <InfoRow label="Email" value={user.email} />
-          <InfoRow label="Họ tên" value={user.fullName} />
-          <InfoRow label="Tên đăng nhập" value={user.username} />
-          <InfoRow
-            label="Số điện thoại"
-            value={user.phoneNumber || "Chưa cập nhật"}
-          />
-        </div>
+        <Tabs defaultValue="info" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="info">Thông tin</TabsTrigger>
+            <TabsTrigger value="password">Đổi mật khẩu</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info">
+            <ProfileInfoForm user={user} />
+          </TabsContent>
+
+          <TabsContent value="password">
+            <ChangePasswordForm />
+          </TabsContent>
+        </Tabs>
 
         <Separator className="my-8" />
 
@@ -85,16 +93,5 @@ const Profile = () => {
     </main>
   );
 };
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-      <span className="text-sm font-medium text-muted-foreground min-w-35">
-        {label}
-      </span>
-      <span className="text-sm">{value}</span>
-    </div>
-  );
-}
 
 export default Profile;
