@@ -1,13 +1,14 @@
-import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { queryClient } from '@/lib/query/client'
 
 import { readSignInRedirectPath, useSignUpMutation } from '@/features/auth/hooks'
+import { getAccessToken } from '@/features/auth/store'
+import { queryClient } from '@/lib/query/client'
 
 const defaultForm = {
   confirmPassword: '',
@@ -19,13 +20,6 @@ const defaultForm = {
 }
 
 export const Route = createFileRoute('/signup')({
-  beforeLoad: async () => {
-    const redirectPath = await readSignInRedirectPath(queryClient)
-
-    if (redirectPath) {
-      throw redirect({ to: redirectPath })
-    }
-  },
   component: SignUpRoute,
 })
 
@@ -36,6 +30,16 @@ function SignUpRoute() {
   const [form, setForm] = useState(defaultForm)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      readSignInRedirectPath(queryClient).then((redirectPath) => {
+        if (redirectPath) {
+          navigate({ replace: true, to: redirectPath })
+        }
+      })
+    }
+  }, [navigate])
 
   function onChange(field: keyof typeof defaultForm) {
     return (event: ChangeEvent<HTMLInputElement>) => {

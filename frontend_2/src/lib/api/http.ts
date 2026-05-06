@@ -20,6 +20,9 @@ let refreshTokenHandler: (() => Promise<string | null>) | null = null
 const REFRESH_TOKEN_PATH = '/api/auth/refresh-token'
 
 api.interceptors.request.use((config) => {
+  if (typeof window === 'undefined') {
+    throw new Error('API calls must be client-side only')
+  }
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }

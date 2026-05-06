@@ -6,35 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
-  isUnauthorizedMeError,
-  readAuthenticatedProfile,
   useChangePasswordMutation,
   useMeQuery,
   useUpdateProfileMutation,
 } from '@/features/auth/hooks'
 import { clearAccessToken, getAccessToken } from '@/features/auth/store'
-import { queryClient } from '@/lib/query/client'
-import { qk } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/profile')({
   ssr: false,
-  beforeLoad: async () => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
+  beforeLoad: () => {
     if (!getAccessToken()) {
       throw redirect({ to: '/signin' })
-    }
-
-    try {
-      await readAuthenticatedProfile(queryClient)
-    } catch (error) {
-      if (isUnauthorizedMeError(error)) {
-        clearAccessToken()
-        queryClient.removeQueries({ queryKey: qk.auth.me() })
-        throw redirect({ to: '/signin' })
-      }
     }
   },
   component: ProfileRoute,
@@ -61,16 +43,19 @@ function ProfileRoute() {
   })
 
   useEffect(() => {
-    if (!meQuery.data) {
-      return
-    }
-
+    if (!meQuery.data) return
     setProfileForm({
       avatar: meQuery.data.avatar ?? '',
       fullName: meQuery.data.fullName,
       phoneNumber: meQuery.data.phoneNumber,
     })
   }, [meQuery.data])
+
+  useEffect(() => {
+    if (meQuery.isError) {
+      clearAccessToken()
+    }
+  }, [meQuery.isError])
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

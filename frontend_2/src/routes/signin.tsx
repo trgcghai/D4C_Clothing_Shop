@@ -1,5 +1,5 @@
-import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -9,16 +9,9 @@ import { queryClient } from '@/lib/query/client'
 import { qk } from '@/lib/query/keys'
 
 import { isUnauthorizedMeError, readSignInRedirectPath, resolvePostSignInRedirectPath, useSignInMutation } from '@/features/auth/hooks'
-import { clearAccessToken } from '@/features/auth/store'
+import { clearAccessToken, getAccessToken } from '@/features/auth/store'
 
 export const Route = createFileRoute('/signin')({
-  beforeLoad: async () => {
-    const redirectPath = await readSignInRedirectPath(queryClient)
-
-    if (redirectPath) {
-      throw redirect({ to: redirectPath })
-    }
-  },
   component: SignInRoute,
 })
 
@@ -31,6 +24,16 @@ function SignInRoute() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const isSubmitting = signInMutation.isPending
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      readSignInRedirectPath(queryClient).then((redirectPath) => {
+        if (redirectPath) {
+          navigate({ replace: true, to: redirectPath })
+        }
+      })
+    }
+  }, [navigate])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
