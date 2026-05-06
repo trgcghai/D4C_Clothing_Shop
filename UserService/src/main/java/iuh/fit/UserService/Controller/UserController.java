@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -57,9 +58,10 @@ public class UserController {
     @Operation(summary = "Update current user profile")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         String username = getCurrentUsername();
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
@@ -80,10 +82,10 @@ public class UserController {
     @Operation(summary = "Change current user password")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Password changed successfully"),
-            @ApiResponse(responseCode = "400", description = "Old password is incorrect"),
+            @ApiResponse(responseCode = "400", description = "Validation failed or old password is incorrect"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         String username = getCurrentUsername();
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));

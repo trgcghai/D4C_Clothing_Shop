@@ -58,6 +58,7 @@ public class AuthController {
     @Operation(summary = "Sign in user", description = "Authenticate user and return access token. Also sets refresh token cookie.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Signed in successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -133,7 +134,7 @@ public class AuthController {
     @Operation(summary = "Sign up user", description = "Register a new account.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User registered successfully"),
-            @ApiResponse(responseCode = "400", description = "Username or email already exists")
+            @ApiResponse(responseCode = "400", description = "Validation failed or username/email already exists")
     })
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         // Kiểm tra username đã tồn tại chưa

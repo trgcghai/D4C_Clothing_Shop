@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ import {
   useUpdateProduct,
   useDeleteProduct,
 } from "@/src/hooks/useProducts";
+import { useSignOut } from "@/src/hooks/useAuth";
 import type {
   Product,
   ProductCreatePayload,
@@ -57,6 +59,7 @@ const defaultForm: ProductCreatePayload = {
 };
 
 const ProductManagement = () => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -75,6 +78,7 @@ const ProductManagement = () => {
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
+  const signOutMutation = useSignOut();
 
   const isPending =
     createMutation.isPending ||
@@ -168,6 +172,12 @@ const ProductManagement = () => {
 
   const totalStock = form.stock.reduce((sum, s) => sum + s.quantity, 0);
 
+  const handleSignOut = () => {
+    signOutMutation.mutate(undefined, {
+      onSuccess: () => navigate("/signin"),
+    });
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -175,6 +185,15 @@ const ProductManagement = () => {
           <h1 className="text-2xl font-bold">Quản lý sản phẩm</h1>
           <p className="text-sm text-muted-foreground mt-1">{total} sản phẩm</p>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSignOut}
+            disabled={signOutMutation.isPending}
+          >
+            {signOutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
+          </Button>
 
         <Dialog
           open={open}
@@ -376,6 +395,7 @@ const ProductManagement = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-2">

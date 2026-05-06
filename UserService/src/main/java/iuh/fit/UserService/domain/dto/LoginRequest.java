@@ -6,10 +6,10 @@ import lombok.Data;
 
 @Data
 public class LoginRequest {
-    @NotBlank
+    @NotBlank(message = "Username must not be blank")
     private String username;
 
-    @NotBlank
-    @Size(min = 6)
+    @NotBlank(message = "Password must not be blank")
+    @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 }
