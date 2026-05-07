@@ -40,4 +40,7 @@ public class User {
     private String refreshToken;
 
     private Instant refreshTokenExpiryDate;
+
+    @Column(nullable = false)
+    private Boolean emailVerification = false;
 }
