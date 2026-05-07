@@ -27,6 +27,7 @@ services:
       - "3307:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
+      - ./docker/init:/docker-entrypoint-initdb.d
     healthcheck:
       test:
         [
@@ -37,6 +38,23 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    networks:
+      - d4c-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - d4c-net
 
@@ -86,6 +104,30 @@ services:
     networks:
       - d4c-net
 
+  notificationservice:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    container_name: notificationservice
+    hostname: notificationservice
+    env_file:
+      - ./NotificationService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/v3/api-docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
   api-gateway:
     build:
       context: ./Api-Gateway
@@ -100,6 +142,8 @@ services:
       userservice:
         condition: service_healthy
       productservice:
+        condition: service_healthy
+      notificationservice:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -143,6 +187,7 @@ services:
 
 volumes:
   mariadb_data:
+  redis_data:
 
 networks:
   d4c-net:
