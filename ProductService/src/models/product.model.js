@@ -42,12 +42,12 @@ class ProductModel {
     const expressionAttributeValues = {};
     let idx = 0;
 
-    const { category, gender, size, color, brand, minPrice, maxPrice } = filters;
+    const { categoryId, gender, brand, minPrice, maxPrice } = filters;
 
-    if (category) {
-      filterExpressions.push(`contains(#attr${idx}, :val${idx})`);
-      expressionAttributeNames[`#attr${idx}`] = "category";
-      expressionAttributeValues[`:val${idx}`] = category;
+    if (categoryId) {
+      filterExpressions.push(`#attr${idx} = :val${idx}`);
+      expressionAttributeNames[`#attr${idx}`] = "categoryId";
+      expressionAttributeValues[`:val${idx}`] = categoryId;
       idx++;
     }
 
@@ -91,27 +91,7 @@ class ProductModel {
 
     const command = new ScanCommand(params);
     const response = await dynamoClient.send(command);
-    let items = response.Items || [];
-
-    // Size filter — filter in JS because size is nested inside stock array
-    if (size) {
-      const sizes = size.split(",").map((s) => s.trim());
-      items = items.filter((item) =>
-        item.stock && item.stock.some((s) => sizes.includes(s.size) && Number(s.quantity) > 0)
-      );
-    }
-
-    // Color filter — filter in JS because colors is an array
-    if (color) {
-      const colors = color.split(",").map((c) => c.trim().toLowerCase());
-      items = items.filter(
-        (item) =>
-          item.colors &&
-          item.colors.some((c) => colors.includes(c.toLowerCase()))
-      );
-    }
-
-    return items;
+    return response.Items || [];
   }
 
   /**
@@ -136,10 +116,9 @@ class ProductModel {
     return items.filter((item) => {
       const nameMatch = item.name && item.name.toLowerCase().includes(kw);
       const descMatch = item.description && item.description.toLowerCase().includes(kw);
-      const catMatch = item.category && item.category.toLowerCase().includes(kw);
       const brandMatch = item.brand && item.brand.toLowerCase().includes(kw);
       const tagMatch = item.tags && item.tags.some((t) => t.toLowerCase().includes(kw));
-      return nameMatch || descMatch || catMatch || brandMatch || tagMatch;
+      return nameMatch || descMatch || brandMatch || tagMatch;
     });
   }
 
@@ -180,12 +159,12 @@ class ProductModel {
    * @param {string} excludeId
    * @param {number} limit
    */
-  async findRelated(category, excludeId, limit = 6) {
+  async findRelated(categoryId, excludeId, limit = 6) {
     const params = {
       TableName: TABLE_NAME,
-      FilterExpression: "contains(#cat, :cat) AND #id <> :excludeId",
-      ExpressionAttributeNames: { "#cat": "category", "#id": "id" },
-      ExpressionAttributeValues: { ":cat": category, ":excludeId": excludeId },
+      FilterExpression: "#cat = :cat AND #id <> :excludeId",
+      ExpressionAttributeNames: { "#cat": "categoryId", "#id": "id" },
+      ExpressionAttributeValues: { ":cat": categoryId, ":excludeId": excludeId },
     };
     const command = new ScanCommand(params);
     const response = await dynamoClient.send(command);

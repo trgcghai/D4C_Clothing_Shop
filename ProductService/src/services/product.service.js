@@ -1,4 +1,6 @@
 import { productModel } from "../models/product.model.js";
+import { variantModel } from "../models/variant.model.js";
+import { categoryModel } from "../models/category.model.js";
 import { s3Client } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
@@ -10,21 +12,25 @@ const BUCKET_NAME = process.env.BUCKET_NAME || "d4c-clothingshop-products-bucket
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
 
 class ProductService {
-  /**
-   * Get all products (no filter) — legacy, kept for admin use
-   */
-  async getAllProducts() {
-    return await productModel.findAll();
+  async _populateRelations(product) {
+    if (!product) return product;
+    product.variants = await variantModel.findByProductId(product.id);
+    if (product.categoryId) {
+      const cat = await categoryModel.findById(product.categoryId);
+      product.category = cat ? cat.name : null;
+    }
+    return product;
   }
 
-  /**
-   * Get products with filters + sorting + pagination
-   * @param {Object} query - request query params
-   * @returns {{ data: Array, total: number, page: number, limit: number, totalPages: number }}
-   */
+  async getAllProducts() {
+    const products = await productModel.findAll();
+    return Promise.all(products.map(p => this._populateRelations(p)));
+  }
+
   async getProductsWithFilters(query = {}) {
     const {
       category,
+      categoryId,
       gender,
       size,
       color,
@@ -37,31 +43,73 @@ class ProductService {
       limit = 12,
     } = query;
 
-    // Build filters object
+    // ── Performance: bulk-fetch ALL variants & categories in 2 parallel calls ──
+    const [allVariants, allCategories] = await Promise.all([
+      variantModel.findAll(),
+      categoryModel.findAll(),
+    ]);
+
+    // Build lookup maps for O(1) access
+    const variantsByProductId = {};
+    for (const v of allVariants) {
+      if (!variantsByProductId[v.productId]) variantsByProductId[v.productId] = [];
+      variantsByProductId[v.productId].push(v);
+    }
+    const categoryById = {};
+    const categoryByName = {};
+    for (const c of allCategories) {
+      categoryById[c.id] = c;
+      categoryByName[c.name.toLowerCase()] = c;
+    }
+    // ───────────────────────────────────────────────────────────────────────────
+
     const filters = {};
-    if (category) filters.category = category;
+    let catId = categoryId;
+    if (!catId && category) {
+      const matchedCat = categoryByName[category.toLowerCase()];
+      catId = matchedCat ? matchedCat.id : "not-found";
+    }
+    if (catId) filters.categoryId = catId;
     if (gender) filters.gender = gender;
-    if (size) filters.size = size;
-    if (color) filters.color = color;
     if (brand) filters.brand = brand;
     if (minPrice !== undefined && minPrice !== "") filters.minPrice = minPrice;
     if (maxPrice !== undefined && maxPrice !== "") filters.maxPrice = maxPrice;
 
     let items = await productModel.findWithFilters(filters);
 
-    // Sort — featured products always float to the top first,
-    // then apply the chosen sort key as a secondary tiebreaker.
+    const sizes = size ? size.split(",").map((s) => s.trim()) : [];
+    const colors = color ? color.split(",").map((c) => c.trim().toLowerCase()) : [];
+
+    const populatedItems = [];
+    for (const item of items) {
+      const variants = variantsByProductId[item.id] || [];
+
+      let match = true;
+      if (sizes.length > 0) {
+        match = match && variants.some(v => sizes.includes(v.size) && Number(v.quantity) > 0);
+      }
+      if (colors.length > 0) {
+        match = match && variants.some(v => colors.includes(v.color.toLowerCase()));
+      }
+
+      if (match) {
+        item.variants = variants;
+        item.category = categoryById[item.categoryId]?.name || null;
+        populatedItems.push(item);
+      }
+    }
+
+    items = populatedItems;
+
     const allowedSorts = ["name", "price", "createdAt"];
     const sortKey = allowedSorts.includes(sort_by) ? sort_by : "createdAt";
     const orderMultiplier = sort_order === "asc" ? 1 : -1;
 
     items.sort((a, b) => {
-      // Primary: isFeatured = true comes before isFeatured = false
       const aFeatured = a.isFeatured === true ? 1 : 0;
       const bFeatured = b.isFeatured === true ? 1 : 0;
       if (bFeatured !== aFeatured) return bFeatured - aFeatured;
 
-      // Secondary: user-chosen sort key
       if (sortKey === "name") {
         return orderMultiplier * (a.name || "").localeCompare(b.name || "", "vi");
       }
@@ -74,7 +122,6 @@ class ProductService {
       return 0;
     });
 
-    // Pagination
     const pageNum = Math.max(1, Number(page));
     const limitNum = Math.min(100, Math.max(1, Number(limit)));
     const total = items.length;
@@ -82,31 +129,19 @@ class ProductService {
     const startIdx = (pageNum - 1) * limitNum;
     const data = items.slice(startIdx, startIdx + limitNum);
 
-    return {
-      data,
-      total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages,
-    };
+    return { data, total, page: pageNum, limit: limitNum, totalPages };
   }
 
-  /**
-   * Search products by keyword (name, description, category, brand, tags)
-   * @param {string} keyword
-   * @param {Object} options - { sort_by, sort_order, page, limit }
-   */
   async searchProducts(keyword, options = {}) {
-    const {
-      sort_by = "createdAt",
-      sort_order = "desc",
-      page = 1,
-      limit = 12,
-    } = options;
-
+    const { sort_by = "createdAt", sort_order = "desc", page = 1, limit = 12 } = options;
     let items = await productModel.findByKeyword(keyword);
 
-    // Sort
+    const populatedItems = [];
+    for (const item of items) {
+      populatedItems.push(await this._populateRelations(item));
+    }
+    items = populatedItems;
+
     const allowedSorts = ["name", "price", "createdAt"];
     const sortKey = allowedSorts.includes(sort_by) ? sort_by : "createdAt";
     const orderMultiplier = sort_order === "asc" ? 1 : -1;
@@ -118,7 +153,6 @@ class ProductService {
       return 0;
     });
 
-    // Pagination
     const pageNum = Math.max(1, Number(page));
     const limitNum = Math.min(100, Math.max(1, Number(limit)));
     const total = items.length;
@@ -129,36 +163,34 @@ class ProductService {
     return { data, total, page: pageNum, limit: limitNum, totalPages, keyword };
   }
 
-  /**
-   * Get featured products
-   */
   async getFeaturedProducts() {
-    return await productModel.findFeatured();
+    const items = await productModel.findFeatured();
+    return Promise.all(items.map(p => this._populateRelations(p)));
   }
 
-  /**
-   * Get new arrivals (latest products)
-   * @param {number} limit
-   */
   async getNewArrivals(limit = 8) {
-    return await productModel.findLatest(limit);
+    const items = await productModel.findLatest(limit);
+    return Promise.all(items.map(p => this._populateRelations(p)));
   }
 
-  /**
-   * Get related products (same category, exclude self)
-   * @param {string} productId
-   */
   async getRelatedProducts(productId) {
     const product = await productModel.findById(productId);
     if (!product) throw new Error("Không tìm thấy sản phẩm");
-    return await productModel.findRelated(product.category, productId, 6);
+    const items = await productModel.findRelated(product.categoryId, productId, 6);
+    return Promise.all(items.map(p => this._populateRelations(p)));
   }
 
   async getProductById(id) {
-    return await productModel.findById(id);
+    const product = await productModel.findById(id);
+    return await this._populateRelations(product);
   }
 
   async createProduct(data, file) {
+    if (data.categoryId) {
+      const category = await categoryModel.findById(data.categoryId);
+      if (!category) throw new Error("Danh mục không tồn tại");
+    }
+
     let imageUrl = data.imageUrl || "";
 
     if (file) {
@@ -173,15 +205,14 @@ class ProductService {
       imageUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${fileKey}`;
     }
 
-    // Parse colors and tags if they come as JSON strings from FormData
-    let colors = data.colors || [];
-    if (typeof colors === "string") {
-      try { colors = JSON.parse(colors); } catch { colors = colors.split(",").map((c) => c.trim()); }
-    }
-
     let tags = data.tags || [];
     if (typeof tags === "string") {
       try { tags = JSON.parse(tags); } catch { tags = tags.split(",").map((t) => t.trim()); }
+    }
+    
+    let variants = data.variants || [];
+    if (typeof variants === "string") {
+      try { variants = JSON.parse(variants); } catch (e) { variants = []; }
     }
 
     const newProduct = {
@@ -189,11 +220,9 @@ class ProductService {
       name: data.name,
       description: data.description,
       price: Number(data.price),
-      stock: typeof data.stock === "string" ? JSON.parse(data.stock) : data.stock,
-      category: data.category,
+      categoryId: data.categoryId,
       gender: data.gender || "Unisex",
       brand: data.brand || "D4C",
-      colors,
       tags,
       isFeatured: data.isFeatured === "true" || data.isFeatured === true || false,
       imageUrl,
@@ -201,17 +230,35 @@ class ProductService {
       updatedAt: new Date().toISOString(),
     };
 
-    return await productModel.create(newProduct);
+    await productModel.create(newProduct);
+
+    // Create variants
+    for (const v of variants) {
+      await variantModel.create({
+        id: uuidv4(),
+        productId: newProduct.id,
+        color: v.color || "",
+        size: v.size || "",
+        quantity: Number(v.quantity) || 0,
+        sku: v.sku || `${newProduct.id}-${v.color}-${v.size}`.replace(/\s/g, "-")
+      });
+    }
+
+    return await this._populateRelations(newProduct);
   }
 
   async updateProduct(id, data, file) {
     const existingProduct = await productModel.findById(id);
     if (!existingProduct) throw new Error("Không tìm thấy sản phẩm");
 
+    if (data.categoryId && data.categoryId !== existingProduct.categoryId) {
+      const category = await categoryModel.findById(data.categoryId);
+      if (!category) throw new Error("Danh mục không tồn tại");
+    }
+
     let imageUrl = existingProduct.imageUrl;
 
     if (file) {
-      // Delete old image from S3
       if (existingProduct.imageUrl && existingProduct.imageUrl.includes(BUCKET_NAME)) {
         try {
           const oldKey = existingProduct.imageUrl.split(".amazonaws.com/")[1];
@@ -222,16 +269,10 @@ class ProductService {
           console.error("Lỗi khi xóa ảnh S3 cũ:", e);
         }
       }
-
       const fileKey = `products/${Date.now()}-${uuidv4()}-${file.originalname.replace(/\s/g, "-")}`;
       const uploadParams = { Bucket: BUCKET_NAME, Key: fileKey, Body: file.buffer, ContentType: file.mimetype };
       await s3Client.send(new PutObjectCommand(uploadParams));
       imageUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${fileKey}`;
-    }
-
-    let colors = data.colors !== undefined ? data.colors : existingProduct.colors;
-    if (typeof colors === "string") {
-      try { colors = JSON.parse(colors); } catch { colors = colors.split(",").map((c) => c.trim()); }
     }
 
     let tags = data.tags !== undefined ? data.tags : existingProduct.tags;
@@ -243,11 +284,9 @@ class ProductService {
       name: data.name || existingProduct.name,
       description: data.description || existingProduct.description,
       price: data.price ? Number(data.price) : existingProduct.price,
-      stock: data.stock ? (typeof data.stock === "string" ? JSON.parse(data.stock) : data.stock) : existingProduct.stock,
-      category: data.category || existingProduct.category,
+      categoryId: data.categoryId || existingProduct.categoryId,
       gender: data.gender || existingProduct.gender || "Unisex",
       brand: data.brand || existingProduct.brand || "D4C",
-      colors,
       tags,
       isFeatured: data.isFeatured !== undefined
         ? (data.isFeatured === "true" || data.isFeatured === true)
@@ -256,7 +295,30 @@ class ProductService {
       updatedAt: new Date().toISOString(),
     };
 
-    return await productModel.update(id, updateData);
+    await productModel.update(id, updateData);
+
+    // Update variants
+    if (data.variants) {
+      let variants = data.variants;
+      if (typeof variants === "string") {
+        try { variants = JSON.parse(variants); } catch (e) { variants = []; }
+      }
+      // Remove old variants
+      await variantModel.removeByProductId(id);
+      // Create new variants
+      for (const v of variants) {
+        await variantModel.create({
+          id: uuidv4(),
+          productId: id,
+          color: v.color || "",
+          size: v.size || "",
+          quantity: Number(v.quantity) || 0,
+          sku: v.sku || `${id}-${v.color}-${v.size}`.replace(/\s/g, "-")
+        });
+      }
+    }
+
+    return await this.getProductById(id);
   }
 
   async deleteProduct(id) {
@@ -274,6 +336,7 @@ class ProductService {
       }
     }
 
+    await variantModel.removeByProductId(id);
     await productModel.remove(id);
     return { success: true, message: "Đã xóa sản phẩm thành công" };
   }
