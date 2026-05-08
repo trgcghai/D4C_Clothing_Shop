@@ -7,6 +7,7 @@ import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.LoginRequest;
 import iuh.fit.UserService.domain.dto.LoginResult;
 import iuh.fit.UserService.domain.dto.SignupRequest;
+import iuh.fit.UserService.domain.dto.VerifyEmailRequest;
 import iuh.fit.UserService.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -118,6 +119,17 @@ public class AuthController {
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         authService.register(signUpRequest);
         return ResponseEntity.ok(Map.of("message", "User registered successfully!"));
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email", description = "Verify user email with 6-digit code sent via email.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Email verified successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired verification code")
+    })
+    public ResponseEntity<?> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.getUserId(), request.getVerificationCode());
+        return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
     }
 
     @PostMapping("/signout")
