@@ -79,10 +79,10 @@ const SignUp = () => {
       {
         onSuccess: () => {
           setSuccessMessage(
-            "Account created successfully. Redirecting to sign in...",
+            "Account created! Please check your email for the verification code.",
           );
           setForm(defaultForm);
-          setTimeout(() => navigate("/signin"), 1500);
+          setTimeout(() => navigate(`/verify-email?email=${encodeURIComponent(form.email)}`), 2000);
         },
       },
     );

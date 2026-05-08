@@ -9,6 +9,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import Home from "./pages/Home";
 import Signup from "./pages/Signup";
 import Signin from "./pages/Signin";
+import VerifyEmail from "./pages/VerifyEmail";
 import Profile from "./pages/Profile";
 import ProductsPage from "./pages/ProductsPage";
 import Admin from "./pages/Admin";
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/signin", element: <Signin /> },
       { path: "/signup", element: <Signup /> },
+      { path: "/verify-email", element: <VerifyEmail /> },
     ],
   },
   {

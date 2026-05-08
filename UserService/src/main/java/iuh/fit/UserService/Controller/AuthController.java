@@ -132,6 +132,18 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
     }
 
+    @GetMapping("/user-id")
+    @Operation(summary = "Get user ID by email", description = "Look up user ID by email address for email verification flow.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User ID returned"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    public ResponseEntity<?> getUserIdByEmail(@RequestParam String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with this email"));
+        return ResponseEntity.ok(Map.of("userId", user.getId()));
+    }
+
     @PostMapping("/signout")
     @Operation(summary = "Sign out user", description = "Clear refresh token in database and browser cookie.")
     @ApiResponses(value = {

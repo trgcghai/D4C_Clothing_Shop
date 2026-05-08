@@ -11,11 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useVerifyEmail } from "../hooks/useAuth";
+import { getUserIdByEmail } from "../services/authApi";
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const userId = searchParams.get("userId");
+  const urlUserId = searchParams.get("userId");
+  const email = searchParams.get("email");
 
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
@@ -25,15 +27,36 @@ const VerifyEmail = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(urlUserId);
+  const [userIdLoading, setUserIdLoading] = useState(!urlUserId && !!email);
+  const [userIdError, setUserIdError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!userId) {
+    if (urlUserId) {
+      setResolvedUserId(urlUserId);
+      return;
+    }
+    if (email) {
+      setUserIdLoading(true);
+      getUserIdByEmail(email)
+        .then((data) => {
+          setResolvedUserId(String(data.userId));
+          setUserIdLoading(false);
+        })
+        .catch(() => {
+          setUserIdError("Could not find account with this email. Please sign up first.");
+          setUserIdLoading(false);
+        });
+    } else {
       navigate("/signup", { replace: true });
     }
-  }, [userId, navigate]);
+  }, [urlUserId, email, navigate]);
 
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
+
+  const effectiveUserId = resolvedUserId ?? urlUserId;
 
   function handleChange(index: number, value: string) {
     if (!/^\d*$/.test(value)) return;
@@ -71,10 +94,10 @@ const VerifyEmail = () => {
     setResendMessage(null);
 
     const code = digits.join("");
-    if (code.length !== 6) return;
+    if (code.length !== 6 || !effectiveUserId) return;
 
     mutate(
-      { userId: Number(userId), verificationCode: code },
+      { userId: Number(effectiveUserId), verificationCode: code },
       {
         onSuccess: () => {
           setSuccessMessage("Email verified successfully! Redirecting to sign in...");
@@ -90,7 +113,20 @@ const VerifyEmail = () => {
     setTimeout(() => setResendMessage(null), 3000);
   }
 
-  if (!userId) return null;
+  if (!effectiveUserId && !userIdLoading) return null;
+
+  if (userIdLoading) {
+    return (
+      <section className="mx-auto flex w-full max-w-md px-4 py-12">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Verify your email</CardTitle>
+            <CardDescription>Looking up your account...</CardDescription>
+          </CardHeader>
+        </Card>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto flex w-full max-w-md px-4 py-12">
@@ -98,10 +134,22 @@ const VerifyEmail = () => {
         <CardHeader>
           <CardTitle>Verify your email</CardTitle>
           <CardDescription>
-            Enter the 6-digit code sent to your email address.
+            {email
+              ? `Enter the 6-digit code sent to ${email}.`
+              : "Enter the 6-digit code sent to your email address."}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {userIdError ? (
+            <p
+              className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+              aria-live="polite"
+            >
+              {userIdError}
+            </p>
+          ) : null}
+
           {error ? (
             <p
               className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"

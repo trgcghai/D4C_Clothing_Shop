@@ -134,6 +134,18 @@ export const verifyEmail = async (
 };
 
 /**
+ * GET /api/auth/user-id
+ * Look up user ID by email address.
+ */
+export const getUserIdByEmail = async (
+  email: string,
+): Promise<{ userId: number }> => {
+  return axiosInstance
+    .get("/api/auth/user-id", { params: { email } })
+    .then((res) => res.data);
+};
+
+/**
  * PUT /api/users/me/password
  * Change current user's password.
  */
