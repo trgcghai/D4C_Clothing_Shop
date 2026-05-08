@@ -12,6 +12,9 @@ public class RabbitMQConfig {
 
     private static final Logger log = LoggerFactory.getLogger(RabbitMQConfig.class);
 
+    public static final String EMAIL_EXCHANGE = "email.exchange";
+    public static final String EMAIL_ROUTING_KEY = "email.verification";
+
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);

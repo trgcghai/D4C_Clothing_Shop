@@ -7,10 +7,8 @@ import iuh.fit.UserService.domain.dto.LoginRequest;
 import iuh.fit.UserService.domain.dto.LoginResult;
 import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.SignupRequest;
+import iuh.fit.UserService.Config.RabbitMQConfig;
 import iuh.fit.UserService.domain.dto.VerificationEmailEvent;
-import iuh.fit.UserService.domain.entity.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -113,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
 
     private void sendVerificationEmail(User user) {
         try {
-            String code = String.valueOf(secureRandom.nextInt(100000, 999999));
+            String code = String.valueOf(secureRandom.nextInt(100000, 1000000));
 
             redisTemplate.opsForValue().set(
                     "verification:" + user.getId(),
@@ -128,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
                     code
             );
 
-            rabbitTemplate.convertAndSend("email.exchange", "email.verification", event);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EMAIL_EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
             log.info("Verification email event published for user {} ({})", user.getId(), user.getEmail());
         } catch (AmqpException e) {
             log.error("Failed to publish verification event for user {}: {}", user.getId(), e.getMessage());
