@@ -1,6 +1,7 @@
 package iuh.fit.notificationservice.Service;
 
 import com.rabbitmq.client.Channel;
+import iuh.fit.notificationservice.Config.RabbitMQConfig;
 import iuh.fit.notificationservice.Domain.DTO.VerificationEmailEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ public class EmailVerificationConsumer {
         this.notificationService = notificationService;
     }
 
-    @RabbitListener(queues = "email.notifications")
+    @RabbitListener(queues = RabbitMQConfig.EMAIL_QUEUE)
     public void handleVerificationEmail(
             VerificationEmailEvent event,
             Channel channel,
