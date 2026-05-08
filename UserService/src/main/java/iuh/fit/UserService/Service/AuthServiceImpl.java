@@ -6,18 +6,14 @@ import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.dto.LoginRequest;
 import iuh.fit.UserService.domain.dto.LoginResult;
 import iuh.fit.UserService.domain.dto.JwtResponse;
-import iuh.fit.UserService.domain.dto.SendVerificationEmailRequest;
 import iuh.fit.UserService.domain.dto.SignupRequest;
+import iuh.fit.UserService.domain.dto.VerificationEmailEvent;
 import iuh.fit.UserService.domain.entity.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,12 +22,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -39,28 +33,30 @@ public class AuthServiceImpl implements AuthService {
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final SecureRandom secureRandom = new SecureRandom();
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+    private final UserRepository userRepository;
+    private final PasswordEncoder encoder;
+    private final JwtUtils jwtUtils;
+    private final UserDetailsService userDetailsService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder encoder;
-
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserDetailsService userDetailsService;
-
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
-
-    @Value("${notification.service.url:http://notificationservice:8083}")
-    private String notificationServiceUrl;
-
-    private final RestTemplate restTemplate = new RestTemplate();
+    public AuthServiceImpl(
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            PasswordEncoder encoder,
+            JwtUtils jwtUtils,
+            UserDetailsService userDetailsService,
+            RedisTemplate<String, String> redisTemplate,
+            RabbitTemplate rabbitTemplate) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.encoder = encoder;
+        this.jwtUtils = jwtUtils;
+        this.userDetailsService = userDetailsService;
+        this.redisTemplate = redisTemplate;
+        this.rabbitTemplate = rabbitTemplate;
+    }
 
     @Override
     public LoginResult login(LoginRequest request) {
@@ -125,31 +121,17 @@ public class AuthServiceImpl implements AuthService {
                     Duration.ofMinutes(5)
             );
 
-            SendVerificationEmailRequest emailRequest = new SendVerificationEmailRequest(
+            VerificationEmailEvent event = new VerificationEmailEvent(
                     user.getId(),
-                    user.getFullName(),
                     user.getEmail(),
+                    user.getFullName(),
                     code
             );
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<SendVerificationEmailRequest> entity = new HttpEntity<>(emailRequest, headers);
-
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    notificationServiceUrl + "/api/notifications/send-verification",
-                    entity,
-                    Map.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Verification email sent to user {} ({})", user.getId(), user.getEmail());
-            } else {
-                log.warn("NotificationService returned non-2xx status for user {}", user.getId());
-            }
-        } catch (Exception e) {
-            log.error("Failed to send verification email to user {}: {}", user.getId(), e.getMessage());
+            rabbitTemplate.convertAndSend("email.exchange", "email.verification", event);
+            log.info("Verification email event published for user {} ({})", user.getId(), user.getEmail());
+        } catch (AmqpException e) {
+            log.error("Failed to publish verification event for user {}: {}", user.getId(), e.getMessage());
         }
     }
 
