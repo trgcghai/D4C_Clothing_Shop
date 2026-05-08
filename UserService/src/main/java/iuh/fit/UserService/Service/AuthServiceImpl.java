@@ -153,4 +153,27 @@ public class AuthServiceImpl implements AuthService {
         user.setRefreshTokenExpiryDate(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpirationMs()));
         userRepository.save(user);
     }
+
+    @Override
+    public void verifyEmail(Long userId, String verificationCode) {
+        String storedCode = redisTemplate.opsForValue().get("verification:" + userId);
+
+        if (storedCode == null) {
+            throw new RuntimeException("Verification code has expired or is invalid");
+        }
+
+        if (!storedCode.equals(verificationCode)) {
+            throw new RuntimeException("Verification code is incorrect");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setEmailVerification(true);
+        userRepository.save(user);
+
+        redisTemplate.delete("verification:" + userId);
+
+        log.info("Email verified successfully for user {}", userId);
+    }
 }
