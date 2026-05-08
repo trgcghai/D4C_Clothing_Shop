@@ -20,6 +20,9 @@ public class RabbitMQConfig {
                 log.error("Message not confirmed. Cause: {}", cause);
             }
         });
+        template.setReturnsCallback(returned ->
+                log.warn("Message returned: exchange={}, routingKey={}, replyCode={}",
+                        returned.getExchange(), returned.getRoutingKey(), returned.getReplyCode()));
         return template;
     }
 }
