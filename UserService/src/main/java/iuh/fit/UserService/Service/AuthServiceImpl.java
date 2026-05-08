@@ -67,18 +67,19 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String jwt = jwtUtils.generateToken(userDetails);
-        String refreshToken = jwtUtils.generateRefreshToken(userDetails);
 
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!user.getEmailVerification()) {
-            throw new RuntimeException("Email not verified. Please check your inbox and verify your email before signing in.");
+        if (Boolean.FALSE.equals(user.getEmailVerification())) {
+            throw new EmailNotVerifiedException("Email not verified. Please check your inbox and verify your email before signing in.");
         }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String jwt = jwtUtils.generateToken(userDetails);
+        String refreshToken = jwtUtils.generateRefreshToken(userDetails);
 
         persistRefreshToken(user, refreshToken);
 
