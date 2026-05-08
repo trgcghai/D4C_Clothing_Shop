@@ -58,6 +58,27 @@ services:
     networks:
       - d4c-net
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - d4c-net
+
   userservice:
     build:
       context: ./UserService
@@ -70,6 +91,8 @@ services:
       mariadb:
         condition: service_healthy
       discovery-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "8081:8081"
@@ -116,6 +139,8 @@ services:
       mariadb:
         condition: service_healthy
       discovery-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "8083:8083"
@@ -188,6 +213,7 @@ services:
 volumes:
   mariadb_data:
   redis_data:
+  rabbitmq_data:
 
 networks:
   d4c-net:
