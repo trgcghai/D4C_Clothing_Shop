@@ -107,7 +107,7 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(new JwtResponse(newAccessToken, "Bearer", user.getId(), userDetails.getUsername(),
                         user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(),
-                        user.getRole().name()));
+                        user.getRole().name(), user.getEmailVerification()));
     }
 
     @PostMapping("/signup")

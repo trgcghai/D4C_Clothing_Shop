@@ -81,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
         JwtResponse jwtResponse = new JwtResponse(jwt, "Bearer", user.getId(), userDetails.getUsername(),
-                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role);
+                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role, user.getEmailVerification());
 
         return new LoginResult(jwtResponse, refreshToken);
     }
