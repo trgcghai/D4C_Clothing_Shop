@@ -3,6 +3,7 @@ package iuh.fit.notificationservice.Service;
 import iuh.fit.notificationservice.Domain.DTO.NotificationResponse;
 import iuh.fit.notificationservice.Domain.DTO.SendNotificationRequest;
 import iuh.fit.notificationservice.Domain.DTO.SendVerificationEmailRequest;
+import iuh.fit.notificationservice.Domain.DTO.VerificationEmailEvent;
 import iuh.fit.notificationservice.Domain.Entity.Notification;
 import iuh.fit.notificationservice.Domain.Enum.NotificationStatus;
 import iuh.fit.notificationservice.Domain.Enum.NotificationType;
@@ -157,6 +158,54 @@ public class NotificationServiceImpl implements NotificationService {
                     .status(NotificationStatus.FAILED)
                     .message("Failed to send verification email: " + e.getMessage())
                     .build();
+        }
+    }
+
+    @Override
+    public void sendVerificationEmail(VerificationEmailEvent event) {
+        java.util.Map<String, String> templateVars = new java.util.HashMap<>();
+        templateVars.put("userName", event.getFullName());
+        templateVars.put("verificationCode", event.getVerificationCode());
+
+        Notification notification = Notification.builder()
+                .userId(event.getUserId())
+                .type(NotificationType.WELCOME)
+                .subject("Xác thực email - D4C Clothing Shop")
+                .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
+                .status(NotificationStatus.PENDING)
+                .templateName("email-verification")
+                .templateVars(templateVars)
+                .provider(NotificationProvider.SMTP)
+                .retryCount(0)
+                .build();
+
+        notificationRepository.save(notification);
+
+        try {
+            String htmlContent = emailTemplateService.render("email-verification", templateVars);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(event.getEmail());
+            helper.setSubject(notification.getSubject());
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(LocalDateTime.now());
+            notificationRepository.save(notification);
+
+            log.info("Verification email sent to {} for user {}", event.getEmail(), event.getUserId());
+
+        } catch (MessagingException e) {
+            log.error("Failed to send verification email to {}: {}", event.getEmail(), e.getMessage());
+
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setErrorMessage(e.getMessage());
+            notificationRepository.save(notification);
+
+            throw new RuntimeException("Failed to send verification email", e);
         }
     }
 }
