@@ -14,6 +14,7 @@ import ProductsPage from "./pages/ProductsPage";
 import Admin from "./pages/Admin";
 import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
+import CategoryManagement from "./pages/admin/CategoryManagement";
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/admin", element: <Admin /> },
       { path: "/admin/products", element: <ProductManagement /> },
+      { path: "/admin/categories", element: <CategoryManagement /> },
     ],
   },
   {

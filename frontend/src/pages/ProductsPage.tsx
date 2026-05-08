@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -11,10 +12,15 @@ import {
 } from "@/components/ui/pagination";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
+import { useCategories } from "../hooks/useCategories";
 import type { ProductFilters } from "../services/productApi";
+import { SlidersHorizontal, X } from "lucide-react";
 
-const CATEGORIES = ["Áo", "Quần", "Phụ kiện", "Giày", "Váy"];
 const GENDERS = ["Nam", "Nữ", "Unisex"];
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const COLORS = ["Đen", "Trắng", "Xám", "Đỏ", "Xanh Navy", "Xanh Dương", "Xanh Lá", "Vàng", "Hồng", "Nâu"];
+const BRANDS = ["Nike", "Adidas", "Zara", "D4C", "H&M", "Uniqlo", "Local Brand"];
+
 const SORT_OPTIONS = [
   { value: "createdAt-desc", label: "Mới nhất" },
   { value: "price-asc", label: "Giá thấp → cao" },
@@ -25,11 +31,17 @@ const SORT_OPTIONS = [
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const [brandSearch, setBrandSearch] = useState("");
+
+  const { data: categories = [] } = useCategories();
 
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 12;
-  const category = searchParams.get("category") || undefined;
+  const categoryId = searchParams.get("categoryId") || undefined;
   const gender = searchParams.get("gender") || undefined;
+  const size = searchParams.get("size") || undefined;
+  const color = searchParams.get("color") || undefined;
+  const brand = searchParams.get("brand") || undefined;
   const sort = searchParams.get("sort") || "createdAt-desc";
 
   const [sortBy, sortOrder] = sort.split("-");
@@ -37,8 +49,11 @@ const ProductsPage = () => {
   const filters: ProductFilters = {
     page,
     limit,
-    category,
+    categoryId,
     gender,
+    size,
+    color,
+    brand,
     sort_by: sortBy,
     sort_order: sortOrder as "asc" | "desc",
   };
@@ -62,6 +77,15 @@ const ProductsPage = () => {
     setSearchParams(params);
   };
 
+  const clearAllFilters = () => {
+    const params = new URLSearchParams();
+    params.set("sort", sort);
+    setSearchParams(params);
+    setBrandSearch("");
+  };
+
+  const hasFilters = !!(categoryId || gender || size || color || brand);
+
   const totalPages = data?.totalPages ?? 1;
 
   const pages = [];
@@ -73,170 +97,291 @@ const ProductsPage = () => {
     }
   }
 
+  const filteredBrands = useMemo(
+    () => BRANDS.filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase())),
+    [brandSearch]
+  );
+
   return (
     <main className="page-wrap px-4 pb-10 pt-8">
-      <div className="mb-6">
+      {/* ── Header ────────────────────────────────────────────────────────────── */}
+      <div className="mb-4">
         <h1 className="text-3xl font-bold">Tất cả sản phẩm</h1>
-        <p className="text-muted-foreground mt-1">
-          {data?.total ?? 0} sản phẩm
-        </p>
+        <p className="text-muted-foreground mt-1">{data?.total ?? 0} sản phẩm</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      {/* ── Toolbar ───────────────────────────────────────────────────────────── */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button
-          variant="outline"
+          variant={showFilters ? "default" : "outline"}
           size="sm"
           onClick={() => setShowFilters(!showFilters)}
+          className="gap-1.5"
         >
-          {showFilters ? "Ẩn bộ lọc" : "Bộ lọc"}
+          <SlidersHorizontal className="size-4" />
+          Bộ lọc
         </Button>
+
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1 text-destructive hover:text-destructive">
+            <X className="size-3.5" />
+            Xóa bộ lọc
+          </Button>
+        )}
 
         <select
           value={sort}
           onChange={(e) => updateFilter("sort", e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          className="ml-auto h-8 rounded-md border border-input bg-background px-2 text-sm"
           aria-label="Sắp xếp"
         >
           {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       </div>
 
-      {showFilters && (
-        <div className="flex flex-wrap gap-3 mb-6 p-4 rounded-lg bg-muted/50">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Danh mục
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={!category ? "default" : "outline"}
-                size="sm"
-                onClick={() => updateFilter("category", null)}
-              >
-                Tất cả
-              </Button>
-              {CATEGORIES.map((cat) => (
-                <Button
-                  key={cat}
-                  variant={category === cat ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("category", cat)}
-                >
-                  {cat}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Giới tính
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={!gender ? "default" : "outline"}
-                size="sm"
-                onClick={() => updateFilter("gender", null)}
-              >
-                Tất cả
-              </Button>
-              {GENDERS.map((g) => (
-                <Button
-                  key={g}
-                  variant={gender === g ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("gender", g)}
-                >
-                  {g}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ProductCardSkeleton key={i} />
+      {/* ── Active filter chips ──────────────────────────────────────────────── */}
+      {hasFilters && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {categoryId && (
+            <FilterChip
+              label={`Danh mục: ${categories.find(c => c.id === categoryId)?.name ?? categoryId}`}
+              onRemove={() => updateFilter("categoryId", null)}
+            />
+          )}
+          {gender && <FilterChip label={`Giới tính: ${gender}`} onRemove={() => updateFilter("gender", null)} />}
+          {brand && <FilterChip label={`Thương hiệu: ${brand}`} onRemove={() => updateFilter("brand", null)} />}
+          {size && size.split(",").map(s => (
+            <FilterChip key={s} label={`Size: ${s}`} onRemove={() => {
+              const remaining = size.split(",").filter(x => x !== s).join(",");
+              updateFilter("size", remaining || null);
+            }} />
+          ))}
+          {color && color.split(",").map(c => (
+            <FilterChip key={c} label={`Màu: ${c}`} onRemove={() => {
+              const remaining = color.split(",").filter(x => x !== c).join(",");
+              updateFilter("color", remaining || null);
+            }} />
           ))}
         </div>
-      ) : data?.data && data.data.length > 0 ? (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {data.data.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <Pagination className="mt-8">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage(page - 1)}
-                    className={
-                      page <= 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-
-                {pages.map((p, idx) =>
-                  p === -1 ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <span className="flex h-8 w-8 items-center justify-center text-muted-foreground">
-                        ...
-                      </span>
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={p}>
-                      <PaginationLink
-                        isActive={p === page}
-                        onClick={() => setPage(p)}
-                        className="cursor-pointer"
-                      >
-                        {p}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage(page + 1)}
-                    className={
-                      page >= totalPages
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-lg font-medium text-muted-foreground">
-            Không tìm thấy sản phẩm nào
-          </p>
-          <Button
-            variant="link"
-            className="mt-2"
-            onClick={() => setSearchParams({})}
-          >
-            Xóa bộ lọc
-          </Button>
-        </div>
       )}
+
+      <div className="flex flex-col gap-6 md:flex-row">
+        {/* ── Filter sidebar ──────────────────────────────────────────────────── */}
+        {showFilters && (
+          <aside className="w-full shrink-0 md:w-60 space-y-6">
+
+            {/* Category */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Danh mục</h3>
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => updateFilter("categoryId", null)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${!categoryId ? "bg-accent font-medium" : ""}`}
+                >
+                  Tất cả danh mục
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => updateFilter("categoryId", cat.id)}
+                    className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${categoryId === cat.id ? "bg-accent font-medium" : ""}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gender */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Giới tính</h3>
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => updateFilter("gender", null)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${!gender ? "bg-accent font-medium" : ""}`}
+                >
+                  Tất cả
+                </button>
+                {GENDERS.map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => updateFilter("gender", g)}
+                    className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${gender === g ? "bg-accent font-medium" : ""}`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Brand */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Thương hiệu</h3>
+              <Input
+                placeholder="Tìm thương hiệu..."
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                className="mb-2 h-8 text-sm"
+              />
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => updateFilter("brand", null)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${!brand ? "bg-accent font-medium" : ""}`}
+                >
+                  Tất cả
+                </button>
+                {filteredBrands.map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => updateFilter("brand", b)}
+                    className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors hover:bg-accent ${brand === b ? "bg-accent font-medium" : ""}`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Size */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Kích thước</h3>
+              <div className="flex flex-wrap gap-2">
+                {SIZES.map((s) => {
+                  const currentSizes = size ? size.split(",") : [];
+                  const isActive = currentSizes.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        let next = [...currentSizes];
+                        if (isActive) next = next.filter((x) => x !== s);
+                        else next.push(s);
+                        updateFilter("size", next.length > 0 ? next.join(",") : null);
+                      }}
+                      className={`flex h-8 min-w-8 items-center justify-center rounded-md border text-xs font-medium transition-colors ${
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background hover:bg-accent"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Color */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Màu sắc</h3>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map((c) => {
+                  const currentColors = color ? color.split(",") : [];
+                  const isActive = currentColors.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        let next = [...currentColors];
+                        if (isActive) next = next.filter((x) => x !== c);
+                        else next.push(c);
+                        updateFilter("color", next.length > 0 ? next.join(",") : null);
+                      }}
+                      className={`flex h-7 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors ${
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background hover:bg-accent"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* ── Product grid ────────────────────────────────────────────────────── */}
+        <div className="flex-1">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: limit }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : data?.data && data.data.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {data.data.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-10">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setPage(Math.max(1, page - 1))}
+                          className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      {pages.map((p, i) => (
+                        <PaginationItem key={i}>
+                          {p === -1 ? (
+                            <span className="flex h-9 w-9 items-center justify-center">...</span>
+                          ) : (
+                            <PaginationLink
+                              isActive={page === p}
+                              onClick={() => setPage(p)}
+                              className="cursor-pointer"
+                            >
+                              {p}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setPage(Math.min(totalPages, page + 1))}
+                          className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="py-20 text-center">
+              <h2 className="text-xl font-semibold">Không tìm thấy sản phẩm nào.</h2>
+              <p className="mt-2 text-muted-foreground">Vui lòng thử điều chỉnh bộ lọc của bạn.</p>
+              {hasFilters && (
+                <Button variant="outline" className="mt-4" onClick={clearAllFilters}>
+                  Xóa tất cả bộ lọc
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 };
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5 text-xs font-medium">
+      {label}
+      <button onClick={onRemove} className="ml-0.5 hover:text-destructive" aria-label="Xóa bộ lọc">
+        <X className="size-3" />
+      </button>
+    </span>
+  );
+}
 
 export default ProductsPage;

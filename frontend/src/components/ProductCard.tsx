@@ -36,9 +36,16 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
         <CardContent className="p-3">
-          <p className="text-xs text-muted-foreground truncate">
-            {product.category}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground truncate">
+              {product.category || "---"}
+            </p>
+            {product.variants && product.variants.length > 0 && (
+              <p className="text-[10px] text-muted-foreground shrink-0 bg-secondary px-1.5 py-0.5 rounded-sm">
+                {new Set(product.variants.map(v => v.color)).size} màu • {new Set(product.variants.map(v => v.size)).size} size
+              </p>
+            )}
+          </div>
           <h3 className="text-sm font-medium mt-1 truncate group-hover:text-primary transition-colors">
             {product.name}
           </h3>
