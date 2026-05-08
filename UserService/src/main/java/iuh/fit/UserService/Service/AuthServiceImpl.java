@@ -3,8 +3,9 @@ package iuh.fit.UserService.Service;
 import iuh.fit.UserService.Config.JwtUtils;
 import iuh.fit.UserService.Repository.UserRepository;
 import iuh.fit.UserService.domain.common.Role;
-import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.LoginRequest;
+import iuh.fit.UserService.domain.dto.LoginResult;
+import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.SendVerificationEmailRequest;
 import iuh.fit.UserService.domain.dto.SignupRequest;
 import iuh.fit.UserService.domain.entity.User;
@@ -62,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
-    public JwtResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
@@ -79,8 +80,10 @@ public class AuthServiceImpl implements AuthService {
 
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
-        return new JwtResponse(jwt, "Bearer", user.getId(), userDetails.getUsername(),
-                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role, refreshToken);
+        JwtResponse jwtResponse = new JwtResponse(jwt, "Bearer", user.getId(), userDetails.getUsername(),
+                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role);
+
+        return new LoginResult(jwtResponse, refreshToken);
     }
 
     @Override

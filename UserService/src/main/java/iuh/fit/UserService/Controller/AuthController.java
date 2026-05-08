@@ -5,6 +5,7 @@ import iuh.fit.UserService.Repository.UserRepository;
 import iuh.fit.UserService.Service.AuthService;
 import iuh.fit.UserService.domain.dto.JwtResponse;
 import iuh.fit.UserService.domain.dto.LoginRequest;
+import iuh.fit.UserService.domain.dto.LoginResult;
 import iuh.fit.UserService.domain.dto.SignupRequest;
 import iuh.fit.UserService.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,13 +50,13 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        JwtResponse response = authService.login(loginRequest);
+        LoginResult result = authService.login(loginRequest);
 
-        ResponseCookie refreshCookie = buildRefreshCookie(response.getRefreshToken());
+        ResponseCookie refreshCookie = buildRefreshCookie(result.refreshToken());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(response);
+                .body(result.jwtResponse());
     }
 
     @PostMapping("/refresh-token")
@@ -105,7 +106,7 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(new JwtResponse(newAccessToken, "Bearer", user.getId(), userDetails.getUsername(),
                         user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(),
-                        user.getRole().name(), newRefreshToken));
+                        user.getRole().name()));
     }
 
     @PostMapping("/signup")

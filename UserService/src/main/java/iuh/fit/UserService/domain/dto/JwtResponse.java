@@ -15,5 +15,4 @@ public class JwtResponse {
     private String phoneNumber;
     private String avatar;
     private String role;
-    private String refreshToken;
 }
