@@ -76,6 +76,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (!user.getEmailVerification()) {
+            throw new RuntimeException("Email not verified. Please check your inbox and verify your email before signing in.");
+        }
+
         persistRefreshToken(user, refreshToken);
 
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
