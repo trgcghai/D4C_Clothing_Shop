@@ -7,10 +7,12 @@ import {
   getCurrentUser,
   updateProfile,
   changePassword,
+  verifyEmail,
   type LoginRequest,
   type SignupRequest,
   type UpdateProfileRequest,
   type ChangePasswordRequest,
+  type VerifyEmailRequest,
   type UserResponse,
 } from "../services/authApi";
 import { useStore } from "../store";
@@ -116,5 +118,11 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (payload: ChangePasswordRequest) => changePassword(payload),
+  });
+}
+
+export function useVerifyEmail() {
+  return useMutation({
+    mutationFn: (payload: VerifyEmailRequest) => verifyEmail(payload),
   });
 }
