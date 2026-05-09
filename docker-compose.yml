@@ -152,6 +152,30 @@ services:
     networks:
       - d4c-net
 
+  orderservice:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    container_name: orderservice
+    hostname: orderservice
+    env_file:
+      - ./OrderService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/v3/api-docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
   api-gateway:
     build:
       context: ./Api-Gateway
@@ -168,6 +192,8 @@ services:
       productservice:
         condition: service_healthy
       notificationservice:
+        condition: service_healthy
+      orderservice:
         condition: service_healthy
     ports:
       - "8080:8080"
