@@ -29,7 +29,7 @@ const UserButton = () => {
     : user.username[0].toUpperCase();
 
   return (
-    <Button variant="ghost" size="sm" asChild className="gap-2 px-2">
+    <Button variant="ghost" asChild className="gap-2 px-2">
       <Link to="/profile">
         <Avatar size="sm">
           <AvatarImage src={user.avatar} alt={user.fullName} />

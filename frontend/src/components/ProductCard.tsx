@@ -42,7 +42,8 @@ export function ProductCard({ product }: ProductCardProps) {
             </p>
             {product.variants && product.variants.length > 0 && (
               <p className="text-[10px] text-muted-foreground shrink-0 bg-secondary px-1.5 py-0.5 rounded-sm">
-                {new Set(product.variants.map(v => v.color)).size} màu • {new Set(product.variants.map(v => v.size)).size} size
+                {new Set(product.variants.map((v) => v.color)).size} màu •{" "}
+                {new Set(product.variants.map((v) => v.size)).size} size
               </p>
             )}
           </div>
@@ -60,7 +61,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
 export function ProductCardSkeleton() {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden py-0">
       <div className="aspect-square bg-muted">
         <Skeleton className="h-full w-full rounded-none" />
       </div>

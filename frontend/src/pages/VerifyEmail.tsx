@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { useVerifyEmail } from "../hooks/useAuth";
 import { getUserIdByEmail } from "../services/authApi";
 
@@ -19,15 +24,16 @@ const VerifyEmail = () => {
   const urlUserId = searchParams.get("userId");
   const email = searchParams.get("email");
 
-  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
-  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
+  const [otpValue, setOtpValue] = useState("");
 
   const { mutate, isPending, error } = useVerifyEmail();
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  const [resolvedUserId, setResolvedUserId] = useState<string | null>(urlUserId);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(
+    urlUserId,
+  );
   const [userIdLoading, setUserIdLoading] = useState(!urlUserId && !!email);
   const [userIdError, setUserIdError] = useState<string | null>(null);
 
@@ -44,7 +50,9 @@ const VerifyEmail = () => {
           setUserIdLoading(false);
         })
         .catch(() => {
-          setUserIdError("Could not find account with this email. Please sign up first.");
+          setUserIdError(
+            "Could not find account with this email. Please sign up first.",
+          );
           setUserIdLoading(false);
         });
     } else {
@@ -52,56 +60,23 @@ const VerifyEmail = () => {
     }
   }, [urlUserId, email, navigate]);
 
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
-
   const effectiveUserId = resolvedUserId ?? urlUserId;
-
-  function handleChange(index: number, value: string) {
-    if (!/^\d*$/.test(value)) return;
-
-    const newDigits = [...digits];
-
-    if (value.length > 1) {
-      const pasted = value.replace(/\D/g, "").slice(0, 6).split("");
-      for (let i = 0; i < 6; i++) {
-        newDigits[i] = pasted[i] ?? "";
-      }
-      setDigits(newDigits);
-      const lastFilled = Math.min(pasted.length, 6) - 1;
-      inputRefs.current[Math.max(0, lastFilled)]?.focus();
-      return;
-    }
-
-    newDigits[index] = value;
-    setDigits(newDigits);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSuccessMessage(null);
     setResendMessage(null);
 
-    const code = digits.join("");
-    if (code.length !== 6 || !effectiveUserId) return;
+    if (otpValue.length !== 6 || !effectiveUserId) return;
 
     mutate(
-      { userId: Number(effectiveUserId), verificationCode: code },
+      { userId: Number(effectiveUserId), verificationCode: otpValue },
       {
         onSuccess: () => {
-          setSuccessMessage("Email verified successfully! Redirecting to sign in...");
-          setDigits(Array(6).fill(""));
+          setSuccessMessage(
+            "Email verified successfully! Redirecting to sign in...",
+          );
+          setOtpValue("");
           setTimeout(() => navigate("/signin"), 1500);
         },
       },
@@ -135,8 +110,8 @@ const VerifyEmail = () => {
           <CardTitle>Verify your email</CardTitle>
           <CardDescription>
             {email
-              ? `Enter the 6-digit code sent to ${email}.`
-              : "Enter the 6-digit code sent to your email address."}
+              ? `Enter the 6-digit code sent to ${email}. The code is valid for 5 minutes.`
+              : "Enter the 6-digit code sent to your email address. The code is valid for 5 minutes."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -181,23 +156,22 @@ const VerifyEmail = () => {
           ) : null}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="flex justify-center gap-2">
-              {digits.map((digit, index) => (
-                <Input
-                  key={index}
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-12 h-12 text-center text-xl"
-                  aria-label={`Digit ${index + 1}`}
-                />
-              ))}
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                pattern={REGEXP_ONLY_DIGITS}
+                value={otpValue}
+                onChange={setOtpValue}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>

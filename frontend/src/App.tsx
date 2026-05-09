@@ -16,6 +16,7 @@ import Admin from "./pages/Admin";
 import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
+import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +55,7 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
       <RouterProvider router={router} />
     </QueryClientProvider>
   );
