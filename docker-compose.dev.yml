@@ -37,6 +37,12 @@ services:
     ports:
       - "5007:5007"
 
+  notificationservice:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5008"
+    ports:
+      - "5008:5008"
+
 volumes:
   frontend_node_modules:
   product_node_modules:

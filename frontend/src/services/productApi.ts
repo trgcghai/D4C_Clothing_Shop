@@ -2,9 +2,13 @@ import axiosInstance from "./_axios";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
-export interface StockEntry {
+export interface Variant {
+  id?: string;
+  productId?: string;
+  color: string;
   size: string;
   quantity: number;
+  sku?: string;
 }
 
 export interface Product {
@@ -12,11 +16,11 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: string;
+  categoryId: string;
+  category?: string;
   brand: string;
   gender: string;
-  colors: string[];
-  stock: StockEntry[];
+  variants: Variant[];
   tags?: string[];
   isFeatured?: boolean;
   imageUrl?: string;
@@ -25,7 +29,7 @@ export interface Product {
 }
 
 export interface ProductFilters {
-  category?: string;
+  categoryId?: string;
   gender?: string;
   size?: string;
   color?: string;
@@ -61,11 +65,10 @@ export interface ProductCreatePayload {
   name: string;
   description: string;
   price: number;
-  category: string;
+  categoryId: string;
   brand: string;
   gender: string;
-  colors: string[];
-  stock: StockEntry[];
+  variants: Variant[];
   tags?: string[];
   isFeatured?: boolean;
 }

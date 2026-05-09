@@ -1,20 +1,47 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Input } from "@/components/ui/input";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
+import { useCategories } from "../hooks/useCategories";
 import type { ProductFilters } from "../services/productApi";
+import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import { cn } from "@/src/lib/utils";
+import CustomPagination from "../components/CustomPagination";
 
-const CATEGORIES = ["Áo", "Quần", "Phụ kiện", "Giày", "Váy"];
 const GENDERS = ["Nam", "Nữ", "Unisex"];
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const COLORS = [
+  "Đen",
+  "Trắng",
+  "Xám",
+  "Đỏ",
+  "Xanh Navy",
+  "Xanh Dương",
+  "Xanh Lá",
+  "Vàng",
+  "Hồng",
+  "Nâu",
+];
+const BRANDS = [
+  "Nike",
+  "Adidas",
+  "Zara",
+  "D4C",
+  "H&M",
+  "Uniqlo",
+  "Local Brand",
+];
+
 const SORT_OPTIONS = [
   { value: "createdAt-desc", label: "Mới nhất" },
   { value: "price-asc", label: "Giá thấp → cao" },
@@ -24,12 +51,17 @@ const SORT_OPTIONS = [
 
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showFilters, setShowFilters] = useState(false);
+  const [brandSearch, setBrandSearch] = useState("");
+
+  const { data: categories = [] } = useCategories();
 
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 12;
-  const category = searchParams.get("category") || undefined;
+  const categoryId = searchParams.get("categoryId") || undefined;
   const gender = searchParams.get("gender") || undefined;
+  const size = searchParams.get("size") || undefined;
+  const color = searchParams.get("color") || undefined;
+  const brand = searchParams.get("brand") || undefined;
   const sort = searchParams.get("sort") || "createdAt-desc";
 
   const [sortBy, sortOrder] = sort.split("-");
@@ -37,8 +69,11 @@ const ProductsPage = () => {
   const filters: ProductFilters = {
     page,
     limit,
-    category,
+    categoryId,
     gender,
+    size,
+    color,
+    brand,
     sort_by: sortBy,
     sort_order: sortOrder as "asc" | "desc",
   };
@@ -62,181 +97,359 @@ const ProductsPage = () => {
     setSearchParams(params);
   };
 
+  const clearAllFilters = () => {
+    const params = new URLSearchParams();
+    params.set("sort", sort);
+    setSearchParams(params);
+    setBrandSearch("");
+  };
+
+  const updateMultipleValuesFilter = (
+    key: string,
+    value: string,
+    isActive: boolean,
+    currentValues: string[],
+  ) => {
+    let next = [...currentValues];
+    if (isActive) next = next.filter((x) => x !== value);
+    else next.push(value);
+    updateFilter(key, next.length > 0 ? next.join(",") : null);
+  };
+
+  const hasFilters = !!(categoryId || gender || size || color || brand);
+
   const totalPages = data?.totalPages ?? 1;
 
-  const pages = [];
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== -1) {
-      pages.push(-1);
-    }
-  }
+  const renderedSizes = useMemo(() => {
+    return SIZES.map((s) => {
+      const currentSizes = size ? size.split(",") : [];
+      const isActive = currentSizes.includes(s);
+
+      return {
+        s,
+        currentSizes,
+        isActive,
+      };
+    });
+  }, [size]);
+
+  const renderedColors = useMemo(() => {
+    return COLORS.map((c) => {
+      const currentColors = color ? color.split(",") : [];
+      const isActive = currentColors.includes(c);
+      return {
+        c,
+        currentColors,
+        isActive,
+      };
+    });
+  }, [color]);
+
+  const filteredBrands = useMemo(
+    () =>
+      BRANDS.filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase())),
+    [brandSearch],
+  );
 
   return (
     <main className="page-wrap px-4 pb-10 pt-8">
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-3xl font-bold">Tất cả sản phẩm</h1>
         <p className="text-muted-foreground mt-1">
           {data?.total ?? 0} sản phẩm
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          {showFilters ? "Ẩn bộ lọc" : "Bộ lọc"}
-        </Button>
+      <div
+        className={cn(
+          "mb-4 flex flex-wrap items-center gap-3",
+          hasFilters ? "justify-between" : "justify-end",
+        )}
+      >
+        {hasFilters && (
+          <div className="flex items-center flex-wrap gap-2">
+            <Button
+              variant="destructive"
+              onClick={clearAllFilters}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <X className="size-3.5" />
+              Xóa bộ lọc
+            </Button>
 
-        <select
-          value={sort}
-          onChange={(e) => updateFilter("sort", e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-          aria-label="Sắp xếp"
+            {categoryId && (
+              <FilterChip
+                label={`Danh mục: ${categories.find((c) => c.id === categoryId)?.name ?? categoryId}`}
+                onRemove={() => updateFilter("categoryId", null)}
+              />
+            )}
+            {gender && (
+              <FilterChip
+                label={`Giới tính: ${gender}`}
+                onRemove={() => updateFilter("gender", null)}
+              />
+            )}
+            {brand && (
+              <FilterChip
+                label={`Thương hiệu: ${brand}`}
+                onRemove={() => updateFilter("brand", null)}
+              />
+            )}
+            {size &&
+              size.split(",").map((s) => (
+                <FilterChip
+                  key={s}
+                  label={`Size: ${s}`}
+                  onRemove={() => {
+                    const remaining = size
+                      .split(",")
+                      .filter((x) => x !== s)
+                      .join(",");
+                    updateFilter("size", remaining || null);
+                  }}
+                />
+              ))}
+            {color &&
+              color.split(",").map((c) => (
+                <FilterChip
+                  key={c}
+                  label={`Màu: ${c}`}
+                  onRemove={() => {
+                    const remaining = color
+                      .split(",")
+                      .filter((x) => x !== c)
+                      .join(",");
+                    updateFilter("color", remaining || null);
+                  }}
+                />
+              ))}
+          </div>
+        )}
+
+        <Combobox
+          items={SORT_OPTIONS}
+          itemToStringLabel={(opt: { label: string; value: string }) =>
+            opt.label
+          }
         >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          <ComboboxInput placeholder="Sắp xếp" showClear />
+          <ComboboxContent>
+            <ComboboxList>
+              {(item: { label: string; value: string }) => (
+                <ComboboxItem key={item.label} value={item}>
+                  {item.label}
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
       </div>
 
-      {showFilters && (
-        <div className="flex flex-wrap gap-3 mb-6 p-4 rounded-lg bg-muted/50">
+      <div className="flex flex-col gap-6 md:flex-row">
+        <aside className="w-full shrink-0 md:w-60 space-y-6">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Danh mục
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </h3>
+            <div className="space-y-1.5">
               <Button
-                variant={!category ? "default" : "outline"}
-                size="sm"
-                onClick={() => updateFilter("category", null)}
+                variant={!categoryId ? "default" : "ghost"}
+                onClick={() => updateFilter("categoryId", null)}
+                className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
               >
-                Tất cả
+                Tất cả danh mục
               </Button>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <Button
-                  key={cat}
-                  variant={category === cat ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("category", cat)}
+                  key={cat.id}
+                  variant={categoryId === cat.id ? "default" : "ghost"}
+                  onClick={() => updateFilter("categoryId", cat.id)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
                 >
-                  {cat}
+                  {cat.name}
                 </Button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Giới tính
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </h3>
+            <div className="space-y-1.5">
               <Button
-                variant={!gender ? "default" : "outline"}
-                size="sm"
+                variant={!gender ? "default" : "ghost"}
                 onClick={() => updateFilter("gender", null)}
+                className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
               >
                 Tất cả
               </Button>
               {GENDERS.map((g) => (
                 <Button
                   key={g}
-                  variant={gender === g ? "default" : "outline"}
-                  size="sm"
+                  variant={gender === g ? "default" : "ghost"}
                   onClick={() => updateFilter("gender", g)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
                 >
                   {g}
                 </Button>
               ))}
             </div>
           </div>
-        </div>
-      )}
 
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ProductCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : data?.data && data.data.length > 0 ? (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {data.data.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Thương hiệu
+            </h3>
+            <Input
+              placeholder="Tìm thương hiệu..."
+              value={brandSearch}
+              onChange={(e) => setBrandSearch(e.target.value)}
+              className="mb-2 h-8 text-sm"
+            />
+            <div className="space-y-1.5">
+              <Button
+                variant={!brand ? "default" : "ghost"}
+                onClick={() => updateFilter("brand", null)}
+                className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
+              >
+                Tất cả
+              </Button>
+              {filteredBrands.map((b) => (
+                <Button
+                  key={b}
+                  variant={brand === b ? "default" : "ghost"}
+                  onClick={() => updateFilter("brand", b)}
+                  className={`block w-full text-left rounded-md px-2 py-1 text-sm transition-colors`}
+                >
+                  {b}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          {totalPages > 1 && (
-            <Pagination className="mt-8">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage(page - 1)}
-                    className={
-                      page <= 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Kích thước
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {renderedSizes.map(({ s, isActive, currentSizes }) => {
+                return (
+                  <Button
+                    size="sm"
+                    key={s}
+                    variant={isActive ? "default" : "outline"}
+                    className={`flex h-8 min-w-8 items-center justify-center rounded-md border text-xs font-medium transition-colors`}
+                    onClick={() =>
+                      updateMultipleValuesFilter(
+                        "size",
+                        s,
+                        isActive,
+                        currentSizes,
+                      )
                     }
-                  />
-                </PaginationItem>
+                  >
+                    {s}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
 
-                {pages.map((p, idx) =>
-                  p === -1 ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <span className="flex h-8 w-8 items-center justify-center text-muted-foreground">
-                        ...
-                      </span>
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={p}>
-                      <PaginationLink
-                        isActive={p === page}
-                        onClick={() => setPage(p)}
-                        className="cursor-pointer"
-                      >
-                        {p}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage(page + 1)}
-                    className={
-                      page >= totalPages
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Màu sắc
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {renderedColors.map(({ c, isActive, currentColors }) => {
+                return (
+                  <Button
+                    size="sm"
+                    key={c}
+                    variant={isActive ? "default" : "outline"}
+                    className={`flex h-7 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors`}
+                    onClick={() =>
+                      updateMultipleValuesFilter(
+                        "color",
+                        c,
+                        isActive,
+                        currentColors,
+                      )
                     }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+                  >
+                    {c}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: limit }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : data?.data && data.data.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {data.data.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+
+              <CustomPagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </>
+          ) : (
+            <div className="py-20 text-center">
+              <h2 className="text-xl font-semibold">
+                Không tìm thấy sản phẩm nào.
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Vui lòng thử điều chỉnh bộ lọc của bạn.
+              </p>
+              {hasFilters && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={clearAllFilters}
+                >
+                  Xóa tất cả bộ lọc
+                </Button>
+              )}
+            </div>
           )}
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-lg font-medium text-muted-foreground">
-            Không tìm thấy sản phẩm nào
-          </p>
-          <Button
-            variant="link"
-            className="mt-2"
-            onClick={() => setSearchParams({})}
-          >
-            Xóa bộ lọc
-          </Button>
         </div>
-      )}
+      </div>
     </main>
   );
 };
+
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <Badge variant="secondary" className="p-4">
+      {label}
+      <button
+        onClick={onRemove}
+        className="ml-0.5 hover:text-destructive"
+        aria-label="Xóa bộ lọc"
+      >
+        <X className="size-3" />
+      </button>
+    </Badge>
+  );
+}
 
 export default ProductsPage;

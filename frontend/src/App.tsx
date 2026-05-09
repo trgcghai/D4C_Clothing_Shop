@@ -9,11 +9,14 @@ import AdminLayout from "./layouts/AdminLayout";
 import Home from "./pages/Home";
 import Signup from "./pages/Signup";
 import Signin from "./pages/Signin";
+import VerifyEmail from "./pages/VerifyEmail";
 import Profile from "./pages/Profile";
 import ProductsPage from "./pages/ProductsPage";
 import Admin from "./pages/Admin";
 import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
+import CategoryManagement from "./pages/admin/CategoryManagement";
+import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +33,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/signin", element: <Signin /> },
       { path: "/signup", element: <Signup /> },
+      { path: "/verify-email", element: <VerifyEmail /> },
     ],
   },
   {
@@ -37,6 +41,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/admin", element: <Admin /> },
       { path: "/admin/products", element: <ProductManagement /> },
+      { path: "/admin/categories", element: <CategoryManagement /> },
     ],
   },
   {
@@ -50,6 +55,7 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
       <RouterProvider router={router} />
     </QueryClientProvider>
   );

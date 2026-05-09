@@ -15,15 +15,5 @@ public class JwtResponse {
     private String phoneNumber;
     private String avatar;
     private String role;
-
-    public JwtResponse(String accessToken, Long id, String username, String email, String fullName, String phoneNumber, String avatar, String role) {
-        this.token = accessToken;
-        this.id = id;
-        this.username = username;
-        this.email = email;
-        this.fullName = fullName;
-        this.phoneNumber = phoneNumber;
-        this.avatar = avatar;
-        this.role = role;
-    }
+    private Boolean emailVerification;
 }

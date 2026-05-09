@@ -60,7 +60,4 @@ UserService/.mvn/wrapper/maven-wrapper.jar
 *.swo
 
 # Agents & Skills
-.agents
-skills-lock.json
 **.txt
-.opencode
