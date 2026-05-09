@@ -15,6 +15,7 @@ logs/
 .env
 .env.*
 !.env.example
+/UserService/.env
 
 # 🌐 Node.js (frontend + ProductService)
 **/node_modules/
@@ -61,3 +62,4 @@ UserService/.mvn/wrapper/maven-wrapper.jar
 
 # Agents & Skills
 **.txt
+UserService/.env
