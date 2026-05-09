@@ -80,6 +80,10 @@ public class CartService {
             throw new RuntimeException("Product not found");
         }
 
+        if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+            throw new RuntimeException("Product '" + product.getName() + "' is inactive");
+        }
+
         VariantDto variant = product.getVariants().stream()
                 .filter(v -> v.getId().equals(request.getVariantId()))
                 .findFirst()
@@ -190,6 +194,24 @@ public class CartService {
         }
     }
 
+    @Transactional
+    public void clearCartAfterCheckout(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElse(null);
+        if (cart != null) {
+            List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+            if (!items.isEmpty()) {
+                cartItemRepository.deleteByCartId(cart.getId());
+                invalidateCache(userId);
+                log.info("Cart cleared after checkout for user {}", userId);
+            } else {
+                log.info("Cart already empty for user {}, skip clear", userId);
+            }
+        } else {
+            log.info("No cart found for user {}, skip clear (idempotent)", userId);
+        }
+    }
+
     public ValidationResponse validateCart(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElse(null);
@@ -216,6 +238,15 @@ public class CartService {
                             .variantId(item.getVariantId())
                             .reason("VARIANT_NOT_FOUND")
                             .message("Variant '" + item.getVariantId() + "' không tồn tại")
+                            .build());
+                    continue;
+                }
+
+                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                    errors.add(ValidationResponse.ValidationError.builder()
+                            .variantId(item.getVariantId())
+                            .reason("PRODUCT_INACTIVE")
+                            .message("Product '" + product.getName() + "' không còn hoạt động")
                             .build());
                     continue;
                 }

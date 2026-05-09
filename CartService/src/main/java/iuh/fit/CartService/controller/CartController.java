@@ -83,6 +83,14 @@ public class CartController {
                 .body(cartService.checkout(userId));
     }
 
+    @PostMapping("/checkout/clear")
+    @Operation(summary = "Clear cart after successful checkout", description = "Idempotent cart clearing after order is confirmed. Safe to call multiple times. Called by OrderService after payment success.")
+    public ResponseEntity<Void> clearCartAfterCheckout(Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        cartService.clearCartAfterCheckout(userId);
+        return ResponseEntity.noContent().build();
+    }
+
     private Long extractUserId(Authentication authentication) {
         return Long.parseLong(authentication.getName());
     }
