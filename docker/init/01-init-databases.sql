@@ -1,0 +1,13 @@
+CREATE DATABASE
+IF NOT EXISTS user_db;
+GRANT ALL PRIVILEGES ON user_db.* TO 'user'@'%';
+
+CREATE DATABASE
+IF NOT EXISTS notification_db;
+GRANT ALL PRIVILEGES ON notification_db.* TO 'user'@'%';
+
+CREATE DATABASE
+IF NOT EXISTS order_db;
+GRANT ALL PRIVILEGES ON order_db.* TO 'user'@'%';
+
+FLUSH PRIVILEGES;

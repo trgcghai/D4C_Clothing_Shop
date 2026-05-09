@@ -1,3 +1,0 @@
-CREATE DATABASE IF NOT EXISTS notification_db;
-GRANT ALL PRIVILEGES ON notification_db.* TO 'user'@'%';
-FLUSH PRIVILEGES;

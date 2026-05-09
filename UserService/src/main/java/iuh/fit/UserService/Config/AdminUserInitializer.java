@@ -40,6 +40,7 @@ public class AdminUserInitializer implements CommandLineRunner {
         admin.setFullName("System Admin");
         admin.setPhoneNumber("0987654321");
         admin.setPassword(passwordEncoder.encode(adminPassword));
+        admin.setEmailVerification(true);
         admin.setRole(Role.ADMIN);
 
         userRepository.save(admin);
