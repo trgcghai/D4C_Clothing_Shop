@@ -2,6 +2,7 @@ package com.iuh.fit.controller;
 
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
+import com.iuh.fit.domain.dto.PagedResponse;
 import com.iuh.fit.domain.dto.UpdateOrderStatusRequest;
 import com.iuh.fit.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,9 +19,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -45,10 +45,13 @@ public class OrderController {
     }
 
     @GetMapping
-    @Operation(summary = "List my orders")
-    public ResponseEntity<List<OrderResponse>> getMyOrders(Authentication authentication) {
+    @Operation(summary = "List my orders with pagination")
+    public ResponseEntity<PagedResponse<OrderResponse>> getMyOrders(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         Long userId = extractUserId(authentication);
-        return ResponseEntity.ok(orderService.getMyOrders(userId));
+        return ResponseEntity.ok(orderService.getMyOrders(userId, page, size));
     }
 
     @GetMapping("/{id}")
