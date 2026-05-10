@@ -7,7 +7,11 @@ WORKDIR /app
 
 # Install dependencies first (cached unless package files change)
 COPY package.json package-lock.json ./
-RUN npm install --ignore-scripts
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 300000 \
+ && npm ci --ignore-scripts
 
 # Copy source and build
 COPY . .
@@ -20,7 +24,11 @@ WORKDIR /app
 
 # Install production dependencies
 COPY package.json package-lock.json ./
-RUN npm install --omit=dev --ignore-scripts
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 300000 \
+ && npm ci --omit=dev --ignore-scripts
 
 # Copy built assets from builder
 COPY --from=builder /app/dist ./dist
