@@ -31,6 +31,12 @@ services:
     ports:
       - "5006:5006"
 
+  cartservice:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5009"
+    ports:
+      - "5009:5009"
+
   discovery-server:
     environment:
       JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007"

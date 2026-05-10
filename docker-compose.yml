@@ -176,6 +176,32 @@ services:
     networks:
       - d4c-net
 
+  cartservice:
+    build:
+      context: ./CartService
+      dockerfile: Dockerfile
+    container_name: cartservice
+    hostname: cartservice
+    env_file:
+      - ./CartService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
   api-gateway:
     build:
       context: ./Api-Gateway
@@ -194,6 +220,8 @@ services:
       notificationservice:
         condition: service_healthy
       orderservice:
+        condition: service_healthy
+      cartservice:
         condition: service_healthy
     ports:
       - "8080:8080"
