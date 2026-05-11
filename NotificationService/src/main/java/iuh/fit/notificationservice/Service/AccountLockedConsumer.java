@@ -21,7 +21,7 @@ public class AccountLockedConsumer {
         this.notificationService = notificationService;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.EMAIL_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.EMAIL_LOCK_QUEUE)
     public void handleAccountLockedEmail(
             AccountLockedEvent event,
             Channel channel,
