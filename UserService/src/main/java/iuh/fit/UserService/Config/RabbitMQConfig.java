@@ -15,6 +15,7 @@ public class RabbitMQConfig {
 
     public static final String EMAIL_EXCHANGE = "email.exchange";
     public static final String EMAIL_ROUTING_KEY = "email.verification";
+    public static final String EMAIL_LOCK_ROUTING_KEY = "email.account.locked";
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
