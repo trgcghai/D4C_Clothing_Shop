@@ -47,5 +47,8 @@ public class User {
     @Column(nullable = false)
     private Boolean enabled = true;
 
+    @Column(length = 500)
+    private String lockReason;
+
     private Instant createdAt = Instant.now();
 }
