@@ -3,6 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,12 +35,21 @@ import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
+const LOCK_REASON_TEMPLATES = [
+  { label: "Vi phạm quy định cộng đồng", value: "Vi phạm quy định cộng đồng" },
+  { label: "Spam hoặc quảng cáo không mong muốn", value: "Spam hoặc quảng cáo không mong muốn" },
+  { label: "Tài khoản giả mạo", value: "Tài khoản giả mạo" },
+  { label: "Khác (nhập lý do)", value: "" },
+];
+
 export default function UserManagement() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [disableUserId, setDisableUserId] = useState<number | null>(null);
   const [disableUserName, setDisableUserName] = useState("");
+  const [lockReason, setLockReason] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
 
   const { data, isLoading } = useUsers({
     q: debouncedSearch || undefined,
@@ -55,32 +73,53 @@ export default function UserManagement() {
     if (enabled) {
       setDisableUserId(userId);
       setDisableUserName(fullName);
+      setLockReason("");
+      setSelectedTemplate("");
     } else {
-      toggleMutation.mutate(userId, {
-        onSuccess: () => {
-          toast.success("Đã mở khóa tài khoản");
+      toggleMutation.mutate(
+        { userId },
+        {
+          onSuccess: () => {
+            toast.success("Đã mở khóa tài khoản");
+          },
+          onError: () => {
+            toast.error("Có lỗi xảy ra, vui lòng thử lại");
+          },
         },
-        onError: () => {
-          toast.error("Có lỗi xảy ra, vui lòng thử lại");
-        },
-      });
+      );
     }
   };
 
   const confirmDisable = () => {
-    if (disableUserId !== null) {
-      toggleMutation.mutate(disableUserId, {
-        onSuccess: () => {
-          toast.success("Đã khóa tài khoản");
+    if (disableUserId !== null && lockReason.trim()) {
+      toggleMutation.mutate(
+        {
+          userId: disableUserId,
+          payload: { lockReason: lockReason.trim() },
         },
-        onError: () => {
-          toast.error("Có lỗi xảy ra, vui lòng thử lại");
+        {
+          onSuccess: () => {
+            toast.success("Đã khóa tài khoản");
+          },
+          onError: () => {
+            toast.error("Có lỗi xảy ra, vui lòng thử lại");
+          },
+          onSettled: () => {
+            setDisableUserId(null);
+            setDisableUserName("");
+            setLockReason("");
+            setSelectedTemplate("");
+          },
         },
-        onSettled: () => {
-          setDisableUserId(null);
-          setDisableUserName("");
-        },
-      });
+      );
+    }
+  };
+
+  const handleTemplateChange = (value: string) => {
+    setSelectedTemplate(value);
+    const template = LOCK_REASON_TEMPLATES.find((t) => t.value === value);
+    if (template) {
+      setLockReason(template.value);
     }
   };
 
@@ -228,6 +267,8 @@ export default function UserManagement() {
           if (!open) {
             setDisableUserId(null);
             setDisableUserName("");
+            setLockReason("");
+            setSelectedTemplate("");
           }
         }}
       >
@@ -239,17 +280,61 @@ export default function UserManagement() {
               dùng này sẽ không thể đăng nhập.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="lock-reason-template">
+                Chọn lý do khóa tài khoản
+              </Label>
+              <Select
+                value={selectedTemplate}
+                onValueChange={handleTemplateChange}
+              >
+                <SelectTrigger id="lock-reason-template">
+                  <SelectValue placeholder="Chọn một lý do..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCK_REASON_TEMPLATES.map((template) => (
+                    <SelectItem key={template.value} value={template.value}>
+                      {template.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lock-reason">
+                Lý do chi tiết <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="lock-reason"
+                placeholder="Nhập lý do khóa tài khoản..."
+                value={lockReason}
+                onChange={(e) => setLockReason(e.target.value)}
+                rows={3}
+                required
+              />
+            </div>
+          </div>
+
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setDisableUserId(null);
                 setDisableUserName("");
+                setLockReason("");
+                setSelectedTemplate("");
               }}
             >
               Hủy
             </Button>
-            <Button variant="destructive" onClick={confirmDisable}>
+            <Button
+              variant="destructive"
+              onClick={confirmDisable}
+              disabled={!lockReason.trim() || toggleMutation.isPending}
+            >
               Khóa tài khoản
             </Button>
           </DialogFooter>
