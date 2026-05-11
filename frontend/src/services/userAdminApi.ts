@@ -8,6 +8,7 @@ export interface UserSummary {
   fullName: string;
   role: Role;
   enabled: boolean;
+  avatar?: string;
   createdAt: string;
 }
 

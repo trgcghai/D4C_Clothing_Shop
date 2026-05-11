@@ -15,5 +15,6 @@ public class UserSummaryResponse {
     private String fullName;
     private Role role;
     private Boolean enabled;
+    private String avatar;
     private Instant createdAt;
 }

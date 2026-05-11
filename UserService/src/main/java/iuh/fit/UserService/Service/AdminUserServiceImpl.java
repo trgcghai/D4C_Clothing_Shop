@@ -66,6 +66,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 user.getFullName(),
                 user.getRole(),
                 user.getEnabled(),
+                user.getAvatar(),
                 null
         );
     }

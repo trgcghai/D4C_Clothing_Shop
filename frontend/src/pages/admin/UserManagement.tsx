@@ -12,15 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Search, Shield, ShieldOff, Users } from "lucide-react";
 import { useUsers, useToggleUserStatus } from "@/src/hooks/useUsers";
 import ProductPagination from "@/src/components/CustomPagination";
@@ -62,6 +60,9 @@ export default function UserManagement() {
         onSuccess: () => {
           toast.success("Đã mở khóa tài khoản");
         },
+        onError: () => {
+          toast.error("Có lỗi xảy ra, vui lòng thử lại");
+        },
       });
     }
   };
@@ -71,6 +72,9 @@ export default function UserManagement() {
       toggleMutation.mutate(disableUserId, {
         onSuccess: () => {
           toast.success("Đã khóa tài khoản");
+        },
+        onError: () => {
+          toast.error("Có lỗi xảy ra, vui lòng thử lại");
         },
         onSettled: () => {
           setDisableUserId(null);
@@ -213,33 +217,35 @@ export default function UserManagement() {
         onPageChange={setPage}
       />
 
-      <AlertDialog
+      <Dialog
         open={disableUserId !== null}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) {
             setDisableUserId(null);
             setDisableUserName("");
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận khóa tài khoản</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận khóa tài khoản</DialogTitle>
+            <DialogDescription>
               Bạn có chắc chắn muốn khóa tài khoản "{disableUserName}"? Người dùng này sẽ không thể đăng nhập.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDisableUserId(null); setDisableUserName(""); }}>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
               onClick={confirmDisable}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Khóa tài khoản
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
