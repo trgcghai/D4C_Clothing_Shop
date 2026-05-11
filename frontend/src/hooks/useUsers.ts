@@ -7,9 +7,9 @@ export const userKeys = {
   list: (filters: UserFilters) => [...userKeys.lists(), filters] as const,
 };
 
-export function useUsers(filters: UserFilters) {
+export function useUsers(filters?: UserFilters) {
   return useQuery({
-    queryKey: userKeys.list(filters),
+    queryKey: userKeys.list(filters ?? {}),
     queryFn: () => getUsers(filters),
     staleTime: 30_000,
   });

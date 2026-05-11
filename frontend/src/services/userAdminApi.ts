@@ -32,12 +32,20 @@ export interface ToggleStatusResponse {
   enabled: boolean;
 }
 
+/**
+ * GET /api/admin/users
+ * Get a paginated list of users with optional search.
+ */
 export const getUsers = async (
   params?: UserFilters,
 ): Promise<PaginatedUsersResponse> => {
   return axiosInstance.get("/api/admin/users", { params }).then((res) => res.data);
 };
 
+/**
+ * PATCH /api/admin/users/{userId}/toggle-status
+ * Toggle a user's enabled status.
+ */
 export const toggleUserStatus = async (
   userId: number,
 ): Promise<ToggleStatusResponse> => {
