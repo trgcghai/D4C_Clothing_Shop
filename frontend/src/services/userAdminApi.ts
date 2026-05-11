@@ -9,7 +9,6 @@ export interface UserSummary {
   role: Role;
   enabled: boolean;
   avatar?: string;
-  createdAt: string;
 }
 
 export interface PaginatedUsersResponse {

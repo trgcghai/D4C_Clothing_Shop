@@ -1,6 +1,7 @@
 package iuh.fit.UserService.Service;
 
 import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.dto.PaginatedUserResponse;
 import iuh.fit.UserService.domain.dto.UserSummaryResponse;
 import iuh.fit.UserService.domain.entity.User;
@@ -51,6 +52,11 @@ public class AdminUserServiceImpl implements AdminUserService {
     public boolean toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
+
+        // Prevent disabling admin accounts
+        if (user.getRole() != null && user.getRole() == Role.ADMIN && user.getEnabled()) {
+            throw new RuntimeException("Cannot disable admin accounts");
+        }
 
         user.setEnabled(!user.getEnabled());
         userRepository.save(user);
