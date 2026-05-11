@@ -1,0 +1,18 @@
+package iuh.fit.notificationservice.Domain.DTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AccountLockedEvent {
+    private Long userId;
+    private String email;
+    private String fullName;
+    private String lockReason;
+    private Instant timestamp;
+}
