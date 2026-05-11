@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, toggleUserStatus, type UserFilters } from "../services/userAdminApi";
+import { getUsers, toggleUserStatus, type UserFilters, type ToggleUserStatusPayload } from "../services/userAdminApi";
 
 export const userKeys = {
   all: ["admin-users"] as const,
@@ -19,7 +19,8 @@ export function useToggleUserStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (userId: number) => toggleUserStatus(userId),
+    mutationFn: (vars: { userId: number; payload?: ToggleUserStatusPayload }) =>
+      toggleUserStatus(vars.userId, vars.payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
     },
