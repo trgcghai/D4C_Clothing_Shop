@@ -68,11 +68,13 @@ Endpoints:
 | `PATCH` | `/api/admin/users/{id}/toggle-status` | Toggle enabled/disabled |
 
 Query params for GET:
-- `q` (optional) — search term, matched against fullName, username, email
-- `page` (default 0)
+- `q` (optional) — search term, matched against fullName, username, email (case-insensitive OR)
+- `page` (default 1, 1-indexed for frontend; backend converts to 0-indexed for Spring Pageable)
 - `size` (default 10)
 - `sort_by` (default `createdAt`)
 - `sort_order` (default `desc`)
+
+Pagination note: Frontend sends 1-indexed `page` param. Controller converts to 0-indexed before creating `PageRequest`. Response `page` field returns 1-indexed value for frontend consumption.
 
 ### 1.6 New Service
 
