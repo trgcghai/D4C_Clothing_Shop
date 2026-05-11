@@ -5,5 +5,6 @@ import org.springframework.data.domain.Pageable;
 
 public interface AdminUserService {
     PaginatedUserResponse getUsers(String q, Pageable pageable);
-    boolean toggleUserStatus(Long userId);
+    boolean willBeEnabled(Long userId);
+    boolean toggleUserStatus(Long userId, String lockReason);
 }
