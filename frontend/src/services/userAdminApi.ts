@@ -33,6 +33,10 @@ export interface ToggleStatusResponse {
   enabled: boolean;
 }
 
+export interface ToggleUserStatusPayload {
+  lockReason?: string;
+}
+
 /**
  * GET /api/admin/users
  * Get a paginated list of users with optional search.
@@ -46,11 +50,13 @@ export const getUsers = async (
 /**
  * PATCH /api/admin/users/{userId}/toggle-status
  * Toggle a user's enabled status.
+ * When locking, lockReason is required.
  */
 export const toggleUserStatus = async (
   userId: number,
+  payload?: ToggleUserStatusPayload,
 ): Promise<ToggleStatusResponse> => {
   return axiosInstance
-    .patch(`/api/admin/users/${userId}/toggle-status`)
+    .patch(`/api/admin/users/${userId}/toggle-status`, payload)
     .then((res) => res.data);
 };
