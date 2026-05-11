@@ -2,6 +2,7 @@ package com.iuh.fit.service;
 
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
+import com.iuh.fit.domain.dto.PagedResponse;
 import com.iuh.fit.domain.dto.UpdateOrderStatusRequest;
 import com.iuh.fit.domain.entity.Order;
 import com.iuh.fit.domain.entity.OrderItem;
@@ -10,6 +11,10 @@ import com.iuh.fit.exception.BadRequestException;
 import com.iuh.fit.exception.ResourceNotFoundException;
 import com.iuh.fit.repository.OrderRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,11 +85,28 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(Long userId) {
-        return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
+    public PagedResponse<OrderResponse> getMyOrders(Long userId, int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("Page must be >= 0");
+        }
+        if (size <= 0 || size > 100) {
+            throw new BadRequestException("Size must be between 1 and 100");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
+
+        PagedResponse<OrderResponse> response = new PagedResponse<>();
+        response.setContent(orderPage.getContent().stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
+        response.setPage(orderPage.getNumber());
+        response.setSize(orderPage.getSize());
+        response.setTotalElements(orderPage.getTotalElements());
+        response.setTotalPages(orderPage.getTotalPages());
+        response.setFirst(orderPage.isFirst());
+        response.setLast(orderPage.isLast());
+        return response;
     }
 
     @Transactional(readOnly = true)
