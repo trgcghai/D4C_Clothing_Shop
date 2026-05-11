@@ -1,6 +1,7 @@
 package iuh.fit.UserService.Service;
 
 import iuh.fit.UserService.Config.JwtUtils;
+import iuh.fit.UserService.Exception.AccountDisabledException;
 import iuh.fit.UserService.Repository.UserRepository;
 import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.dto.LoginRequest;
@@ -71,6 +72,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (Boolean.FALSE.equals(user.getEmailVerification())) {
             throw new EmailNotVerifiedException("Email not verified. Please check your inbox and verify your email before signing in.");
+        }
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new AccountDisabledException("Tài khoản đã bị vô hiệu hóa");
         }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
