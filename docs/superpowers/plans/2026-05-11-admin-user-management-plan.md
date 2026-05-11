@@ -13,6 +13,7 @@
 ### Task 1: Add `enabled` field to User entity
 
 **Files:**
+
 - Modify: `UserService/src/main/java/iuh/fit/UserService/domain/entity/User.java`
 
 - [ ] **Step 1: Add `enabled` field to User entity**
@@ -104,6 +105,7 @@ git commit -m "feat(user): add enabled field to User entity"
 ### Task 2: Create `AccountDisabledException` and handler
 
 **Files:**
+
 - Create: `UserService/src/main/java/iuh/fit/UserService/Exception/AccountDisabledException.java`
 - Modify: `UserService/src/main/java/iuh/fit/UserService/Exception/GlobalExceptionHandler.java`
 
@@ -211,6 +213,7 @@ git commit -m "feat(auth): add AccountDisabledException and 403 handler"
 ### Task 3: Update login flow to check `enabled` status
 
 **Files:**
+
 - Modify: `UserService/src/main/java/iuh/fit/UserService/Service/AuthServiceImpl.java`
 
 - [ ] **Step 1: Add `enabled` check in `login()` method**
@@ -224,6 +227,7 @@ In the `login()` method, after the `emailVerification` check and before `Securit
 ```
 
 Also add the import at the top:
+
 ```java
 import iuh.fit.UserService.Exception.AccountDisabledException;
 ```
@@ -277,6 +281,7 @@ git commit -m "feat(auth): block disabled users from signing in"
 ### Task 4: Create DTOs for admin user responses
 
 **Files:**
+
 - Create: `UserService/src/main/java/iuh/fit/UserService/domain/dto/UserSummaryResponse.java`
 - Create: `UserService/src/main/java/iuh/fit/UserService/domain/dto/PaginatedUserResponse.java`
 
@@ -337,6 +342,7 @@ git commit -m "feat(admin): add UserSummaryResponse and PaginatedUserResponse DT
 ### Task 5: Add search query to UserRepository
 
 **Files:**
+
 - Modify: `UserService/src/main/java/iuh/fit/UserService/Repository/UserRepository.java`
 
 - [ ] **Step 1: Add search method to UserRepository**
@@ -379,6 +385,7 @@ git commit -m "feat(admin): add user search query to UserRepository"
 ### Task 6: Create AdminUserService interface and implementation
 
 **Files:**
+
 - Create: `UserService/src/main/java/iuh/fit/UserService/Service/AdminUserService.java`
 - Create: `UserService/src/main/java/iuh/fit/UserService/Service/AdminUserServiceImpl.java`
 
@@ -483,6 +490,7 @@ git commit -m "feat(admin): add AdminUserService with list and toggle status"
 ### Task 7: Create AdminUserController
 
 **Files:**
+
 - Create: `UserService/src/main/java/iuh/fit/UserService/Controller/AdminUserController.java`
 
 - [ ] **Step 1: Create `AdminUserController.java`**
@@ -574,6 +582,7 @@ git commit -m "feat(admin): add AdminUserController with list and toggle endpoin
 ### Task 8: Update SecurityConfig to protect admin endpoints
 
 **Files:**
+
 - Modify: `UserService/src/main/java/iuh/fit/UserService/Config/SecurityConfig.java`
 
 - [ ] **Step 1: Add admin role check to SecurityConfig**
@@ -659,6 +668,7 @@ git commit -m "feat(security): protect admin endpoints with ADMIN role"
 ### Task 9: Create frontend API layer for user management
 
 **Files:**
+
 - Create: `frontend/src/services/userAdminApi.ts`
 
 - [ ] **Step 1: Create `userAdminApi.ts`**
@@ -701,7 +711,9 @@ export interface ToggleStatusResponse {
 export const getUsers = async (
   params?: UserFilters,
 ): Promise<PaginatedUsersResponse> => {
-  return axiosInstance.get("/api/admin/users", { params }).then((res) => res.data);
+  return axiosInstance
+    .get("/api/admin/users", { params })
+    .then((res) => res.data);
 };
 
 export const toggleUserStatus = async (
@@ -725,13 +737,18 @@ git commit -m "feat(frontend): add user admin API service"
 ### Task 10: Create frontend hooks for user management
 
 **Files:**
+
 - Create: `frontend/src/hooks/useUsers.ts`
 
 - [ ] **Step 1: Create `useUsers.ts`**
 
 ```ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, toggleUserStatus, type UserFilters } from "../services/userAdminApi";
+import {
+  getUsers,
+  toggleUserStatus,
+  type UserFilters,
+} from "../services/userAdminApi";
 
 export const userKeys = {
   all: ["admin-users"] as const,
@@ -771,6 +788,7 @@ git commit -m "feat(frontend): add useUsers and useToggleUserStatus hooks"
 ### Task 11: Create UserManagement page
 
 **Files:**
+
 - Create: `frontend/src/pages/admin/UserManagement.tsx`
 
 - [ ] **Step 1: Create `UserManagement.tsx`**
@@ -890,13 +908,13 @@ export default function UserManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[60px]">Avatar</TableHead>
+              <TableHead className="w-15">Avatar</TableHead>
               <TableHead>Họ tên</TableHead>
               <TableHead>Username</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Vai trò</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="w-[120px]">Thao tác</TableHead>
+              <TableHead className="w-30">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -931,7 +949,8 @@ export default function UserManagement() {
                       />
                     ) : (
                       <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-sm font-medium">
-                        {user.fullName?.charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase()}
+                        {user.fullName?.charAt(0).toUpperCase() ||
+                          user.username.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </TableCell>
@@ -961,7 +980,11 @@ export default function UserManagement() {
                       variant={user.enabled ? "destructive" : "outline"}
                       size="sm"
                       onClick={() =>
-                        handleToggle(user.id, user.enabled, user.fullName || user.username)
+                        handleToggle(
+                          user.id,
+                          user.enabled,
+                          user.fullName || user.username,
+                        )
                       }
                       disabled={toggleMutation.isPending}
                     >
@@ -1004,7 +1027,8 @@ export default function UserManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận khóa tài khoản</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn khóa tài khoản "{disableUserName}"? Người dùng này sẽ không thể đăng nhập.
+              Bạn có chắc chắn muốn khóa tài khoản "{disableUserName}"? Người
+              dùng này sẽ không thể đăng nhập.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1035,17 +1059,20 @@ git commit -m "feat(frontend): add UserManagement page with search, pagination, 
 ### Task 12: Add route and sidebar navigation
 
 **Files:**
+
 - Modify: `frontend/src/App.tsx`
 - Modify: `frontend/src/layouts/AdminLayout.tsx`
 
 - [ ] **Step 1: Add route in `App.tsx`**
 
 Add import:
+
 ```tsx
 import UserManagement from "./pages/admin/UserManagement";
 ```
 
 Add route under AdminLayout children:
+
 ```tsx
 { path: "/admin/users", element: <UserManagement /> },
 ```
@@ -1124,11 +1151,13 @@ export default App;
 - [ ] **Step 2: Add nav item in `AdminLayout.tsx`**
 
 Add `Users` to lucide-react import:
+
 ```tsx
 import { Package, LayoutGrid, Users } from "lucide-react";
 ```
 
 Add to `navItems` array:
+
 ```tsx
 { to: "/admin/users", label: "Quản lý người dùng", icon: Users },
 ```

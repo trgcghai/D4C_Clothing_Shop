@@ -216,8 +216,10 @@ public class NotificationServiceImpl implements NotificationService {
         templateVars.put("userName", event.getFullName() != null ? event.getFullName() : "bạn");
         templateVars.put("lockReason", event.getLockReason());
         templateVars.put("lockedAt", event.getTimestamp() != null
-                ? event.getTimestamp().toString()
-                : java.time.Instant.now().toString());
+                ? event.getTimestamp().atZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : java.time.Instant.now().atZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
