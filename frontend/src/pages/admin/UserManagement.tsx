@@ -116,13 +116,13 @@ export default function UserManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[60px]">Avatar</TableHead>
+              <TableHead className="w-15">Avatar</TableHead>
               <TableHead>Họ tên</TableHead>
               <TableHead>Username</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Vai trò</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="w-[120px]">Thao tác</TableHead>
+              <TableHead className="w-30">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,7 +157,8 @@ export default function UserManagement() {
                       />
                     ) : (
                       <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-sm font-medium">
-                        {user.fullName?.charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase()}
+                        {user.fullName?.charAt(0).toUpperCase() ||
+                          user.username.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </TableCell>
@@ -187,7 +188,11 @@ export default function UserManagement() {
                       variant={user.enabled ? "destructive" : "outline"}
                       size="sm"
                       onClick={() =>
-                        handleToggle(user.id, user.enabled, user.fullName || user.username)
+                        handleToggle(
+                          user.id,
+                          user.enabled,
+                          user.fullName || user.username,
+                        )
                       }
                       disabled={toggleMutation.isPending}
                     >
@@ -226,21 +231,25 @@ export default function UserManagement() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Xác nhận khóa tài khoản</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn khóa tài khoản "{disableUserName}"? Người dùng này sẽ không thể đăng nhập.
+              Bạn có chắc chắn muốn khóa tài khoản "{disableUserName}"? Người
+              dùng này sẽ không thể đăng nhập.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDisableUserId(null); setDisableUserName(""); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDisableUserId(null);
+                setDisableUserName("");
+              }}
+            >
               Hủy
             </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDisable}
-            >
+            <Button variant="destructive" onClick={confirmDisable}>
               Khóa tài khoản
             </Button>
           </DialogFooter>

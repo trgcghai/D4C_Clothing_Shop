@@ -1,6 +1,7 @@
-package iuh.fit.UserService.Service;
+package iuh.fit.UserService.Service.impl;
 
 import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.Service.AdminUserService;
 import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.dto.PaginatedUserResponse;
 import iuh.fit.UserService.domain.dto.UserSummaryResponse;
@@ -73,7 +74,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 user.getRole(),
                 user.getEnabled(),
                 user.getAvatar(),
-                null
+                user.getCreatedAt()
         );
     }
 }

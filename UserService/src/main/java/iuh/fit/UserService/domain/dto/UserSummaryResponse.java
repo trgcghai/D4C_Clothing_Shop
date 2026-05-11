@@ -4,6 +4,8 @@ import iuh.fit.UserService.domain.common.Role;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 @AllArgsConstructor
 public class UserSummaryResponse {
@@ -14,4 +16,5 @@ public class UserSummaryResponse {
     private Role role;
     private Boolean enabled;
     private String avatar;
+    private Instant createdAt;
 }

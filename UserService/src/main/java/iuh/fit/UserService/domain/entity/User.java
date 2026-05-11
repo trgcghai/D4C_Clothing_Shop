@@ -46,4 +46,6 @@ public class User {
 
     @Column(nullable = false)
     private Boolean enabled = true;
+
+    private Instant createdAt = Instant.now();
 }
