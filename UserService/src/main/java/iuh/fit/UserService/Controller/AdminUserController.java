@@ -2,6 +2,7 @@ package iuh.fit.UserService.Controller;
 
 import iuh.fit.UserService.Service.AdminUserService;
 import iuh.fit.UserService.domain.dto.PaginatedUserResponse;
+import iuh.fit.UserService.domain.dto.ToggleUserStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -65,14 +66,28 @@ public class AdminUserController {
     @Operation(summary = "Toggle user enabled status")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Status toggled successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request - lockReason required when locking"),
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "403", description = "Forbidden - Admin only")
     })
     public ResponseEntity<Map<String, Object>> toggleUserStatus(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestBody(required = false) ToggleUserStatusRequest request
     ) {
-        boolean enabled = adminUserService.toggleUserStatus(id);
+        boolean willBeEnabled = adminUserService.willBeEnabled(id);
+
+        if (!willBeEnabled) {
+            if (request == null || request.getLockReason() == null || request.getLockReason().isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "lockReason is required when locking an account"
+                    ));
+            }
+        }
+
+        String lockReason = request != null ? request.getLockReason() : null;
+        boolean enabled = adminUserService.toggleUserStatus(id, lockReason);
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "enabled", enabled
