@@ -75,17 +75,6 @@ public class AdminUserController {
             @PathVariable Long id,
             @RequestBody(required = false) ToggleUserStatusRequest request
     ) {
-        boolean willBeEnabled = adminUserService.willBeEnabled(id);
-
-        if (!willBeEnabled) {
-            if (request == null || request.getLockReason() == null || request.getLockReason().isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "success", false,
-                        "message", "lockReason is required when locking an account"
-                    ));
-            }
-        }
-
         String lockReason = request != null ? request.getLockReason() : null;
         boolean enabled = adminUserService.toggleUserStatus(id, lockReason);
         return ResponseEntity.ok(Map.of(

@@ -82,6 +82,9 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         if (!willBeEnabled) {
             // Locking account — require and store reason
+            if (lockReason == null || lockReason.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lock reason is required");
+            }
             user.setLockReason(lockReason);
         } else {
             // Unlocking account — clear reason
