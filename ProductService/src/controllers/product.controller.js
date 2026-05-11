@@ -142,3 +142,29 @@ export const deleteProduct = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi xóa sản phẩm", error: error.message });
   }
 };
+
+// ─── Stock Management ──────────────────────────────────────────────────────────
+
+/**
+ * POST /api/products/variants/:variantId/deduct-stock
+ * Body: { quantity: number }
+ */
+export const deductStock = async (req, res) => {
+  try {
+    const { variantId } = req.params;
+    const { quantity } = req.body;
+
+    if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
+      return res.status(400).json({ message: "Số lượng phải là số nguyên dương" });
+    }
+
+    const result = await productService.deductVariantStock(variantId, quantity);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.startsWith("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error("Lỗi trừ tồn kho:", error);
+    res.status(500).json({ message: "Lỗi khi trừ tồn kho", error: error.message });
+  }
+};

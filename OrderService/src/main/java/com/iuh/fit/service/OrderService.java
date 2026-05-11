@@ -50,7 +50,7 @@ public class OrderService {
         Order order = new Order();
         order.setUserId(userId);
         order.setCheckoutOrderId(request.getOrderId());
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setStatus(OrderStatus.PAID);
         order.setTotalAmount(calculatedTotal);
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {

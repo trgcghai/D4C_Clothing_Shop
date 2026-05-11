@@ -1,12 +1,15 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProductById, useRelatedProducts } from "../hooks/useProducts";
-import { Shirt, Minus, Plus } from "lucide-react";
+import { useAddToCart } from "../hooks/useCart";
+import { useAuth } from "../store";
+import { Shirt, Minus, Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const ProductDetail = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -31,7 +34,10 @@ const ProductDetail = () => {
 };
 
 function ProductDetailContent({ productId }: { productId: string }) {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { data: product, isLoading, isError } = useProductById(productId);
+  const addToCart = useAddToCart();
 
   const allColors = useMemo(
     () => Array.from(new Set(product?.variants?.map((v) => v.color) || [])),
@@ -235,14 +241,60 @@ function ProductDetailContent({ productId }: { productId: string }) {
           </div>
 
           <div className="flex gap-3">
-            <Button className="flex-1" size="lg" disabled={!canBuy}>
-              {!selectedColor || !selectedSize
-                ? "Chọn màu & size"
-                : !canBuy
-                ? "Hết hàng"
-                : "Thêm vào giỏ hàng"}
+            <Button
+              className="flex-1"
+              size="lg"
+              disabled={!canBuy || addToCart.isPending}
+              onClick={() => {
+                if (!selectedVariant) return;
+                if (!isAuthenticated) {
+                  toast.info("Vui lòng đăng nhập để thêm vào giỏ hàng");
+                  navigate("/signin");
+                  return;
+                }
+                addToCart.mutate(
+                  { productId, variantId: selectedVariant.id!, quantity: purchaseQty },
+                  {
+                    onSuccess: () => setPurchaseQty(1),
+                  },
+                );
+              }}
+            >
+              {addToCart.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang thêm...
+                </>
+              ) : !selectedColor || !selectedSize ? (
+                "Chọn màu & size"
+              ) : !canBuy ? (
+                "Hết hàng"
+              ) : (
+                "Thêm vào giỏ hàng"
+              )}
             </Button>
-            <Button variant="outline" size="lg" disabled={!canBuy}>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={!canBuy || addToCart.isPending}
+              onClick={() => {
+                if (!selectedVariant) return;
+                if (!isAuthenticated) {
+                  toast.info("Vui lòng đăng nhập để mua hàng");
+                  navigate("/signin");
+                  return;
+                }
+                addToCart.mutate(
+                  { productId, variantId: selectedVariant.id!, quantity: purchaseQty },
+                  {
+                    onSuccess: () => {
+                      setPurchaseQty(1);
+                      navigate("/cart");
+                    },
+                  },
+                );
+              }}
+            >
               Mua ngay
             </Button>
           </div>

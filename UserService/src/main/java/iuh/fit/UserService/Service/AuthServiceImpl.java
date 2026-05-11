@@ -75,8 +75,8 @@ public class AuthServiceImpl implements AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String jwt = jwtUtils.generateToken(userDetails);
-        String refreshToken = jwtUtils.generateRefreshToken(userDetails);
+        String jwt = jwtUtils.generateToken(userDetails, user.getId());
+        String refreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId());
 
         persistRefreshToken(user, refreshToken);
 

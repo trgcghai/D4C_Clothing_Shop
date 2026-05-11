@@ -1,6 +1,8 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { cn } from "@/src/lib/utils";
 import UserButton from "@/src/components/UserButton";
+import CartIcon from "@/src/components/CartIcon";
+import { useAuth } from "@/src/store";
 
 const navLinks = [
   { to: "/", label: "Trang chủ" },
@@ -9,6 +11,7 @@ const navLinks = [
 
 const AppLayout = () => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -36,6 +39,7 @@ const AppLayout = () => {
           </nav>
 
           <div className="flex items-center gap-2">
+            {isAuthenticated && <CartIcon />}
             <UserButton />
           </div>
         </div>
