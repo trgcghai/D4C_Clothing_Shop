@@ -6,8 +6,10 @@ import iuh.fit.UserService.domain.dto.UserSummaryResponse;
 import iuh.fit.UserService.domain.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
@@ -48,7 +50,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Transactional
     public boolean toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
 
         user.setEnabled(!user.getEnabled());
         userRepository.save(user);
