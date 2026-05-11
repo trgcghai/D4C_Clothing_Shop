@@ -1,5 +1,6 @@
 package iuh.fit.notificationservice.Service;
 
+import iuh.fit.notificationservice.Domain.DTO.AccountLockedEvent;
 import iuh.fit.notificationservice.Domain.DTO.NotificationResponse;
 import iuh.fit.notificationservice.Domain.DTO.SendNotificationRequest;
 import iuh.fit.notificationservice.Domain.DTO.SendVerificationEmailRequest;
@@ -206,6 +207,57 @@ public class NotificationServiceImpl implements NotificationService {
             notificationRepository.save(notification);
 
             throw new RuntimeException("Failed to send verification email", e);
+        }
+    }
+
+    @Override
+    public void sendAccountLockedEmail(AccountLockedEvent event) {
+        java.util.Map<String, String> templateVars = new java.util.HashMap<>();
+        templateVars.put("userName", event.getFullName() != null ? event.getFullName() : "bạn");
+        templateVars.put("lockReason", event.getLockReason());
+        templateVars.put("lockedAt", event.getTimestamp() != null
+                ? event.getTimestamp().toString()
+                : java.time.Instant.now().toString());
+
+        Notification notification = Notification.builder()
+                .userId(event.getUserId())
+                .type(NotificationType.ACCOUNT_ALERT)
+                .subject("Thông báo: Tài khoản của bạn đã bị khóa - D4C Clothing Shop")
+                .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
+                .status(NotificationStatus.PENDING)
+                .templateName("account-locked")
+                .templateVars(templateVars)
+                .provider(NotificationProvider.SMTP)
+                .retryCount(0)
+                .build();
+
+        notificationRepository.save(notification);
+
+        try {
+            String htmlContent = emailTemplateService.render("account-locked", templateVars);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(event.getEmail());
+            helper.setSubject(notification.getSubject());
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(LocalDateTime.now());
+            notificationRepository.save(notification);
+
+            log.info("Account locked email sent to {} for user {}", event.getEmail(), event.getUserId());
+
+        } catch (MessagingException e) {
+            log.error("Failed to send account locked email to {}: {}", event.getEmail(), e.getMessage());
+
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setErrorMessage(e.getMessage());
+            notificationRepository.save(notification);
+
+            throw new RuntimeException("Failed to send account locked email", e);
         }
     }
 }
