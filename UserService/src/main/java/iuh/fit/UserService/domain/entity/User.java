@@ -43,4 +43,7 @@ public class User {
 
     @Column(nullable = false)
     private Boolean emailVerification = false;
+
+    @Column(nullable = false)
+    private Boolean enabled = true;
 }
