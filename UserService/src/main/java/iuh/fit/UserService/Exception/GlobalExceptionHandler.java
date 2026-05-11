@@ -38,6 +38,15 @@ public class GlobalExceptionHandler {
         return buildBadRequest(ex.getMessage(), null);
     }
 
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountDisabledException(AccountDisabledException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     private ResponseEntity<Map<String, Object>> buildBadRequest(String message, Map<String, String> errors) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now());
