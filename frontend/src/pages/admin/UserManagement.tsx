@@ -36,10 +36,22 @@ import { toast } from "sonner";
 const PAGE_SIZE = 10;
 
 const LOCK_REASON_TEMPLATES = [
-  { label: "Vi phạm quy định cộng đồng", value: "Vi phạm quy định cộng đồng" },
-  { label: "Spam hoặc quảng cáo không mong muốn", value: "Spam hoặc quảng cáo không mong muốn" },
-  { label: "Tài khoản giả mạo", value: "Tài khoản giả mạo" },
-  { label: "Khác (nhập lý do)", value: "" },
+  {
+    label: "Vi phạm quy định cộng đồng",
+    value: "Vi phạm quy định cộng đồng",
+  },
+  {
+    label: "Spam hoặc quảng cáo không mong muốn",
+    value: "Spam hoặc quảng cáo không mong muốn",
+  },
+  {
+    label: "Tài khoản giả mạo",
+    value: "Tài khoản giả mạo",
+  },
+  {
+    label: "Khác (nhập lý do)",
+    value: "Khác (nhập lý do)",
+  },
 ];
 
 export default function UserManagement() {
@@ -290,7 +302,7 @@ export default function UserManagement() {
                 value={selectedTemplate}
                 onValueChange={handleTemplateChange}
               >
-                <SelectTrigger id="lock-reason-template">
+                <SelectTrigger id="lock-reason-template" className="w-full">
                   <SelectValue placeholder="Chọn một lý do..." />
                 </SelectTrigger>
                 <SelectContent>
