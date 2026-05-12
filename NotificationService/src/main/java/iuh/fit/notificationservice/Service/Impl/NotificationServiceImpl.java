@@ -1,4 +1,4 @@
-package iuh.fit.notificationservice.Service;
+package iuh.fit.notificationservice.Service.Impl;
 
 import iuh.fit.notificationservice.Domain.DTO.AccountEvent;
 import iuh.fit.notificationservice.Domain.DTO.NotificationResponse;
@@ -10,6 +10,8 @@ import iuh.fit.notificationservice.Domain.Enum.NotificationStatus;
 import iuh.fit.notificationservice.Domain.Enum.NotificationType;
 import iuh.fit.notificationservice.Domain.Enum.NotificationProvider;
 import iuh.fit.notificationservice.Repository.NotificationRepository;
+import iuh.fit.notificationservice.Service.EmailTemplateService;
+import iuh.fit.notificationservice.Service.NotificationService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -58,8 +60,7 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             String htmlContent = emailTemplateService.render(
                     request.getTemplateName(),
-                    request.getTemplateVars()
-            );
+                    request.getTemplateVars());
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
