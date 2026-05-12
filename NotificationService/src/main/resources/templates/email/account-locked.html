@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài khoản bị khóa - D4C Clothing Shop</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #1a1a2e; padding: 30px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">D4C Clothing Shop</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="color: #dc2626; margin: 0 0 16px 0; font-size: 20px;">
+                                Tài khoản của bạn đã bị khóa
+                            </h2>
+                            <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                Chào <span th:text="${userName}">bạn</span>,
+                            </p>
+                            <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                Chúng tôi rất tiếc thông báo rằng tài khoản của bạn tại D4C Clothing Shop đã bị khóa bởi quản trị viên hệ thống.
+                            </p>
+
+                            <!-- Lock Reason -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto; width: 100%;">
+                                <tr>
+                                    <td style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 4px; padding: 16px 20px;">
+                                        <p style="color: #dc2626; font-size: 12px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Lý do khóa</p>
+                                        <p style="color: #555555; font-size: 14px; margin: 0; line-height: 1.6;" th:text="${lockReason}">---</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="color: #888888; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;">
+                                Thời gian khóa: <span th:text="${lockedAt}">---</span>
+                            </p>
+
+                            <p style="color: #888888; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Nếu bạn cho rằng đây là một nhầm lẫn, vui lòng liên hệ với quản trị viên hệ thống để được hỗ trợ.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f8f8; padding: 24px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="color: #888888; font-size: 12px; margin: 0;">
+                                Email này được gửi tự động từ D4C Clothing Shop. Vui lòng không trả lời email này.
+                            </p>
+                            <p style="color: #888888; font-size: 12px; margin: 8px 0 0 0;">
+                                &copy; 2026 D4C Clothing Shop. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

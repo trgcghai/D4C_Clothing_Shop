@@ -1,8 +1,10 @@
-package iuh.fit.notificationservice.Service;
+package iuh.fit.notificationservice.Service.Consumer;
 
 import com.rabbitmq.client.Channel;
 import iuh.fit.notificationservice.Config.RabbitMQConfig;
 import iuh.fit.notificationservice.Domain.DTO.VerificationEmailEvent;
+import iuh.fit.notificationservice.Service.NotificationService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

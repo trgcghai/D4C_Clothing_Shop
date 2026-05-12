@@ -1,5 +1,6 @@
 package iuh.fit.notificationservice.Service;
 
+import iuh.fit.notificationservice.Domain.DTO.AccountEvent;
 import iuh.fit.notificationservice.Domain.DTO.NotificationResponse;
 import iuh.fit.notificationservice.Domain.DTO.SendNotificationRequest;
 import iuh.fit.notificationservice.Domain.DTO.SendVerificationEmailRequest;
@@ -12,4 +13,8 @@ public interface NotificationService {
     NotificationResponse sendVerificationEmail(SendVerificationEmailRequest request);
 
     void sendVerificationEmail(VerificationEmailEvent event);
+
+    void sendAccountLockedEmail(AccountEvent event);
+
+    void sendAccountUnlockedEmail(AccountEvent event);
 }

@@ -7,13 +7,14 @@ import {
 } from "react-router-dom";
 import { useStore } from "../store";
 import { cn } from "../lib/utils";
-import { Package, LayoutGrid } from "lucide-react";
+import { Package, LayoutGrid, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/src/hooks/useAuth";
 
 const navItems = [
   { to: "/admin/products", label: "Quản lý sản phẩm", icon: Package },
   { to: "/admin/categories", label: "Quản lý danh mục", icon: LayoutGrid },
+  { to: "/admin/users", label: "Quản lý người dùng", icon: Users },
 ];
 
 const AdminLayout = () => {

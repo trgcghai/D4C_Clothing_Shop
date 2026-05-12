@@ -1,7 +1,10 @@
-package iuh.fit.UserService.Service;
+package iuh.fit.UserService.Service.impl;
 
 import iuh.fit.UserService.Config.JwtUtils;
+import iuh.fit.UserService.Exception.AccountDisabledException;
+import iuh.fit.UserService.Exception.EmailNotVerifiedException;
 import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.Service.AuthService;
 import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.dto.LoginRequest;
 import iuh.fit.UserService.domain.dto.LoginResult;
@@ -20,7 +23,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +40,6 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
     private final JwtUtils jwtUtils;
-    private final UserDetailsService userDetailsService;
     private final RedisTemplate<String, String> redisTemplate;
     private final RabbitTemplate rabbitTemplate;
 
@@ -47,14 +48,12 @@ public class AuthServiceImpl implements AuthService {
             UserRepository userRepository,
             PasswordEncoder encoder,
             JwtUtils jwtUtils,
-            UserDetailsService userDetailsService,
             RedisTemplate<String, String> redisTemplate,
             RabbitTemplate rabbitTemplate) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.encoder = encoder;
         this.jwtUtils = jwtUtils;
-        this.userDetailsService = userDetailsService;
         this.redisTemplate = redisTemplate;
         this.rabbitTemplate = rabbitTemplate;
     }
@@ -70,7 +69,12 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (Boolean.FALSE.equals(user.getEmailVerification())) {
-            throw new EmailNotVerifiedException("Email not verified. Please check your inbox and verify your email before signing in.");
+            throw new EmailNotVerifiedException(
+                    "Email not verified. Please check your inbox and verify your email before signing in.");
+        }
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new AccountDisabledException("Tài khoản đã bị vô hiệu hóa");
         }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -83,7 +87,8 @@ public class AuthServiceImpl implements AuthService {
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
         JwtResponse jwtResponse = new JwtResponse(jwt, "Bearer", user.getId(), userDetails.getUsername(),
-                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role, user.getEmailVerification());
+                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role,
+                user.getEmailVerification());
 
         return new LoginResult(jwtResponse, refreshToken);
     }
@@ -119,15 +124,13 @@ public class AuthServiceImpl implements AuthService {
             redisTemplate.opsForValue().set(
                     "verification:" + user.getId(),
                     code,
-                    Duration.ofMinutes(5)
-            );
+                    Duration.ofMinutes(5));
 
             VerificationEmailEvent event = new VerificationEmailEvent(
                     user.getId(),
                     user.getEmail(),
                     user.getFullName(),
-                    code
-            );
+                    code);
 
             rabbitTemplate.convertAndSend(RabbitMQConfig.EMAIL_EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
             log.info("Verification email event published for user {} ({})", user.getId(), user.getEmail());

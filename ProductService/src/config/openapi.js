@@ -19,6 +19,7 @@ const options = {
     ],
     tags: [
       { name: "products", description: "Product browsing and management endpoints" },
+      { name: "categories", description: "Category management endpoints" },
     ],
     components: {
       schemas: {
@@ -88,6 +89,26 @@ const options = {
           properties: {
             message: { type: "string", example: "Lỗi server khi lấy dữ liệu sản phẩm" },
             error: { type: "string", example: "Internal server error" },
+          },
+        },
+        Category: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
+            name: { type: "string", example: "Tops" },
+            description: { type: "string", example: "Áo các loại" },
+            imageUrl: { type: "string", example: "https://example.com/category.jpg" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        CategoryUpsertRequest: {
+          type: "object",
+          required: ["name"],
+          properties: {
+            name: { type: "string", example: "Tops" },
+            description: { type: "string", example: "Áo các loại" },
+            categoryImage: { type: "string", format: "binary" },
           },
         },
       },
