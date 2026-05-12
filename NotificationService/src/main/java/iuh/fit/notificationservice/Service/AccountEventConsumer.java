@@ -27,7 +27,8 @@ public class AccountEventConsumer {
             Channel channel,
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         try {
-            log.info("Received account {} event for user {}", event.getType().toLowerCase(), event.getUserId());
+            String eventType = event.getType() != null ? event.getType() : "UNKNOWN";
+            log.info("Received account {} event for user {}", eventType.toLowerCase(), event.getUserId());
 
             if ("LOCKED".equals(event.getType())) {
                 notificationService.sendAccountLockedEmail(event);
@@ -40,9 +41,9 @@ public class AccountEventConsumer {
             }
 
             channel.basicAck(deliveryTag, false);
-            log.info("Successfully processed account {} event for user {}", event.getType().toLowerCase(), event.getUserId());
+            log.info("Successfully processed account {} event for user {}", eventType.toLowerCase(), event.getUserId());
         } catch (Exception e) {
-            log.error("Failed to process account {} event for user {}: {}", event.getType(), event.getUserId(), e.getMessage());
+            log.error("Failed to process account {} event for user {}", event.getType(), event.getUserId(), e);
             try {
                 channel.basicNack(deliveryTag, false, false);
             } catch (Exception nackException) {
