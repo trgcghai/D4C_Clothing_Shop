@@ -94,17 +94,20 @@ public class AdminUserServiceImpl implements AdminUserService {
         user.setEnabled(willBeEnabled);
         userRepository.save(user);
 
-        // Publish event when account is locked
+        // Publish event when account is locked or unlocked
         if (!willBeEnabled && lockReason != null && !lockReason.isBlank()) {
-            publishAccountLockedEvent(user);
+            publishAccountEvent(user, "LOCKED", RabbitMQConfig.EMAIL_LOCK_ROUTING_KEY);
+        } else if (willBeEnabled) {
+            publishAccountEvent(user, "UNLOCKED", RabbitMQConfig.EMAIL_UNLOCK_ROUTING_KEY);
         }
 
         return user.getEnabled();
     }
 
-    private void publishAccountLockedEvent(User user) {
+    private void publishAccountEvent(User user, String type, String routingKey) {
         try {
             AccountLockEvent event = new AccountLockEvent(
+                    type,
                     user.getId(),
                     user.getEmail(),
                     user.getFullName(),
@@ -114,12 +117,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.EMAIL_EXCHANGE,
-                    RabbitMQConfig.EMAIL_LOCK_ROUTING_KEY,
+                    routingKey,
                     event
             );
-            log.info("Account locked event published for user {} ({})", user.getId(), user.getEmail());
+            log.info("Account {} event published for user {} ({})", type.toLowerCase(), user.getId(), user.getEmail());
         } catch (AmqpException e) {
-            log.error("Failed to publish account locked event for user {}: {}", user.getId(), e.getMessage());
+            log.error("Failed to publish account {} event for user {}: {}", type.toLowerCase(), user.getId(), e.getMessage());
         }
     }
 
