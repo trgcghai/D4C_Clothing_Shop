@@ -40,10 +40,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
+                String[] roles = jwtUtils.getRolesFromToken(jwt);
+                String[] granted = java.util.Arrays.stream(roles)
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                    .toArray(String[]::new);
+
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userId.toString(),
-                        null,
-                        AuthorityUtils.NO_AUTHORITIES
+                    userId.toString(),
+                    null,
+                    AuthorityUtils.createAuthorityList(granted)
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);

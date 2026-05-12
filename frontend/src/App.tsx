@@ -17,6 +17,7 @@ import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import UserManagement from "./pages/admin/UserManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
 import CartPage from "./pages/CartPage";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "/admin/products", element: <ProductManagement /> },
       { path: "/admin/categories", element: <CategoryManagement /> },
       { path: "/admin/users", element: <UserManagement /> },
+      { path: "/admin/orders", element: <OrderManagement /> },
     ],
   },
   {

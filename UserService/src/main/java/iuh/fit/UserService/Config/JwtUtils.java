@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Date;
+import java.util.stream.Collectors;
 @Component
 public class JwtUtils {
     @Value("${jwt.secret}")
@@ -46,6 +48,7 @@ public class JwtUtils {
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
+                .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(getSigningKey())
@@ -56,6 +59,7 @@ public class JwtUtils {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claim("userId", userId)
+                .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(getSigningKey())
@@ -65,6 +69,7 @@ public class JwtUtils {
     public String generateRefreshToken(UserDetails userDetails) {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
+                .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
                 .signWith(getSigningKey())
@@ -75,10 +80,18 @@ public class JwtUtils {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claim("userId", userId)
+                .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    private List<String> extractRoles(UserDetails userDetails) {
+        return userDetails.getAuthorities()
+                .stream()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .collect(Collectors.toList());
     }
 
     public Long getUserIdFromToken(String token) {

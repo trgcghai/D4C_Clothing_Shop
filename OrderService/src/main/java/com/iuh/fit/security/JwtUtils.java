@@ -52,6 +52,35 @@ public class JwtUtils {
         return userId != null ? Long.valueOf(userId.toString()) : null;
     }
 
+    @SuppressWarnings("unchecked")
+    public String[] getRolesFromToken(String token) {
+        var claims = Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        Object rolesObj = claims.get("roles");
+        if (rolesObj == null) {
+            rolesObj = claims.get("role");
+        }
+
+        if (rolesObj == null) return new String[0];
+
+        if (rolesObj instanceof String) {
+            String s = (String) rolesObj;
+            if (s.contains(",")) return s.split(",");
+            return new String[]{s};
+        }
+
+        if (rolesObj instanceof java.util.List) {
+            java.util.List<?> list = (java.util.List<?>) rolesObj;
+            return list.stream().map(Object::toString).toArray(String[]::new);
+        }
+
+        return new String[0];
+    }
+
     public boolean validateJwtToken(String token) {
         try {
             Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token);
