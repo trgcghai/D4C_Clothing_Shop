@@ -31,10 +31,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
+                Long userId = jwtUtils.getUserIdFromToken(jwt);
+                if (userId == null) {
+                    logger.warn("JWT does not contain userId claim");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Missing userId in token. Please re-login.\"}");
+                    return;
+                }
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        username,
+                        userId.toString(),
                         null,
                         AuthorityUtils.NO_AUTHORITIES
                 );

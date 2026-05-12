@@ -17,6 +17,7 @@ import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import UserManagement from "./pages/admin/UserManagement";
+import CartPage from "./pages/CartPage";
 import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "/", element: <Home /> },
       { path: "/products", element: <ProductsPage /> },
       { path: "/products/:productId", element: <ProductDetail /> },
+      { path: "/cart", element: <CartPage /> },
       { path: "/profile", element: <Profile /> },
     ],
   },

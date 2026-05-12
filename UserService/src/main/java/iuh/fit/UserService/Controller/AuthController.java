@@ -94,8 +94,8 @@ public class AuthController {
                         .authorities(user.getRole().name())
                         .build();
 
-        String newAccessToken = jwtUtils.generateToken(userDetails);
-        String newRefreshToken = jwtUtils.generateRefreshToken(userDetails);
+        String newAccessToken = jwtUtils.generateToken(userDetails, user.getId());
+        String newRefreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId());
 
         user.setRefreshToken(newRefreshToken);
         user.setRefreshTokenExpiryDate(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpirationMs()));

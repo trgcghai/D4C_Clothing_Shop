@@ -71,7 +71,7 @@ public class CartService {
     public CartResponse addItem(Long userId, AddCartItemRequest request) {
         ProductDto product;
         try {
-            product = productServiceClient.getProductById(request.getVariantId());
+            product = productServiceClient.getProductById(request.getProductId());
         } catch (Exception e) {
             throw new RuntimeException("Cannot fetch product info from ProductService");
         }
@@ -114,6 +114,7 @@ public class CartService {
             CartItem newItem = CartItem.builder()
                     .cart(cart)
                     .variantId(variant.getId())
+                    .productId(product.getId())
                     .productName(product.getName())
                     .color(variant.getColor())
                     .size(variant.getSize())
@@ -150,7 +151,7 @@ public class CartService {
 
         ProductDto product;
         try {
-            product = productServiceClient.getProductById(item.getVariantId());
+            product = productServiceClient.getProductById(item.getProductId());
         } catch (Exception e) {
             throw new RuntimeException("Cannot fetch product info from ProductService");
         }
@@ -227,7 +228,7 @@ public class CartService {
 
         for (CartItem item : items) {
             try {
-                ProductDto product = productServiceClient.getProductById(item.getVariantId());
+                ProductDto product = productServiceClient.getProductById(item.getProductId());
                 VariantDto variant = product.getVariants().stream()
                         .filter(v -> v.getId().equals(item.getVariantId()))
                         .findFirst()
@@ -294,11 +295,47 @@ public class CartService {
             throw new RuntimeException("Cart is empty");
         }
 
+        List<String> validationErrors = new ArrayList<>();
+        for (CartItem item : items) {
+            try {
+                ProductDto product = productServiceClient.getProductById(item.getProductId());
+                if (product == null) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
+                    continue;
+                }
+                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
+                    continue;
+                }
+                VariantDto variant = product.getVariants().stream()
+                        .filter(v -> v.getId().equals(item.getVariantId()))
+                        .findFirst()
+                        .orElse(null);
+                if (variant == null) {
+                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
+                    continue;
+                }
+                if (variant.getQuantity() < item.getQuantity()) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName()
+                            + "' (" + item.getColor() + ", " + item.getSize()
+                            + ") chỉ còn " + variant.getQuantity()
+                            + ", bạn cần " + item.getQuantity());
+                }
+            } catch (Exception e) {
+                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
+            }
+        }
+
+        if (!validationErrors.isEmpty()) {
+            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
+        }
+
         String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
 
         List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
                 .map(item -> {
                     CheckoutResponse.CheckoutItem ci = new CheckoutResponse.CheckoutItem();
+                    ci.setVariantId(item.getVariantId());
                     ci.setProductName(item.getProductName());
                     ci.setColor(item.getColor());
                     ci.setSize(item.getSize());

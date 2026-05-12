@@ -21,6 +21,9 @@ public class CartItem {
     @Column(name = "variant_id", nullable = false, length = 36)
     private String variantId;
 
+    @Column(name = "product_id", nullable = false, length = 36)
+    private String productId;
+
     @Column(name = "product_name", nullable = false)
     private String productName;
 
@@ -41,10 +44,11 @@ public class CartItem {
 
     public CartItem() {}
 
-    public CartItem(Long id, Cart cart, String variantId, String productName, String color, String size, BigDecimal price, Integer quantity, String sku) {
+    public CartItem(Long id, Cart cart, String variantId, String productId, String productName, String color, String size, BigDecimal price, Integer quantity, String sku) {
         this.id = id;
         this.cart = cart;
         this.variantId = variantId;
+        this.productId = productId;
         this.productName = productName;
         this.color = color;
         this.size = size;
@@ -59,6 +63,8 @@ public class CartItem {
     public void setCart(Cart cart) { this.cart = cart; }
     public String getVariantId() { return variantId; }
     public void setVariantId(String variantId) { this.variantId = variantId; }
+    public String getProductId() { return productId; }
+    public void setProductId(String productId) { this.productId = productId; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getColor() { return color; }
@@ -84,6 +90,7 @@ public class CartItem {
         private Long id;
         private Cart cart;
         private String variantId;
+        private String productId;
         private String productName;
         private String color;
         private String size;
@@ -96,12 +103,13 @@ public class CartItem {
         public CartItemBuilder id(Long id) { this.id = id; return this; }
         public CartItemBuilder cart(Cart cart) { this.cart = cart; return this; }
         public CartItemBuilder variantId(String variantId) { this.variantId = variantId; return this; }
+        public CartItemBuilder productId(String productId) { this.productId = productId; return this; }
         public CartItemBuilder productName(String productName) { this.productName = productName; return this; }
         public CartItemBuilder color(String color) { this.color = color; return this; }
         public CartItemBuilder size(String size) { this.size = size; return this; }
         public CartItemBuilder price(BigDecimal price) { this.price = price; return this; }
         public CartItemBuilder quantity(Integer quantity) { this.quantity = quantity; return this; }
         public CartItemBuilder sku(String sku) { this.sku = sku; return this; }
-        public CartItem build() { return new CartItem(id, cart, variantId, productName, color, size, price, quantity, sku); }
+        public CartItem build() { return new CartItem(id, cart, variantId, productId, productName, color, size, price, quantity, sku); }
     }
 }
