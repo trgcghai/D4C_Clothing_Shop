@@ -10,6 +10,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AccountLockEvent {
+    private String type;
     private Long userId;
     private String email;
     private String fullName;
