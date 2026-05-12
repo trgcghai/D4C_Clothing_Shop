@@ -2,10 +2,16 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import { useUserOrders } from "@/src/hooks/useUserOrders";
 import type { OrderResponse } from "@/src/services/orderApi";
-import { ClipboardList, Loader2, Package } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -36,7 +42,11 @@ function OrderCard({ order }: { order: OrderResponse }) {
   const navigate = useNavigate();
 
   return (
-    <div className="rounded-lg border p-4 transition-colors hover:bg-muted/30">
+    <div
+      className="rounded-lg border p-4 transition-colors hover:bg-muted/30 cursor-pointer"
+      onClick={() => navigate(`/orders/${order.id}`)}
+      title="Xem chi tiết"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -62,13 +72,6 @@ function OrderCard({ order }: { order: OrderResponse }) {
               {formatCurrency(order.totalAmount)}
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/orders/${order.id}`)}
-          >
-            Xem chi tiết
-          </Button>
         </div>
       </div>
     </div>
@@ -145,10 +148,9 @@ export default function MyOrders() {
 
   return (
     <main className="page-wrap px-4 py-10">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto">
         <div className="mb-6">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <ClipboardList className="size-6 text-primary" />
             Đơn hàng của tôi
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">

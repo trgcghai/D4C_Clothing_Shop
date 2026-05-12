@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import {
   useCart,
   useUpdateCartItem,
@@ -15,7 +21,14 @@ import {
 } from "@/src/hooks/useCart";
 import { deductStock } from "@/src/services/productApi";
 import { createOrderFromCheckout } from "@/src/services/orderApi";
-import { ShoppingCart, Trash2, Minus, Plus, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  ShoppingCart,
+  Trash2,
+  Minus,
+  Plus,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 
@@ -36,7 +49,10 @@ const CartPage = () => {
       <main className="page-wrap px-4 py-10">
         <div className="mx-auto max-w-4xl space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex gap-4 rounded-lg border p-4 animate-pulse">
+            <div
+              key={i}
+              className="flex gap-4 rounded-lg border p-4 animate-pulse"
+            >
               <div className="h-24 w-24 rounded bg-muted" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-1/3 bg-muted rounded" />
@@ -54,7 +70,9 @@ const CartPage = () => {
     return (
       <main className="page-wrap px-4 py-10">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-lg text-muted-foreground">Không thể tải giỏ hàng</p>
+          <p className="text-lg text-muted-foreground">
+            Không thể tải giỏ hàng
+          </p>
           <Button variant="link" onClick={() => refetch()} className="mt-2">
             Thử lại
           </Button>
@@ -134,7 +152,8 @@ const CartPage = () => {
           await deductStock(item.variantId, item.quantity);
         } catch (deductError) {
           if (isAxiosError(deductError)) {
-            const msg = deductError.response?.data?.message || "Không đủ tồn kho";
+            const msg =
+              deductError.response?.data?.message || "Không đủ tồn kho";
             toast.error(msg);
           } else {
             toast.error("Không đủ tồn kho, vui lòng kiểm tra lại giỏ hàng");
@@ -155,7 +174,9 @@ const CartPage = () => {
       await clearAfterCheckoutMutation.mutateAsync();
 
       // Step 5: Success
-      toast.success(`Đơn hàng ${order.checkoutOrderId} đã được tạo thành công!`);
+      toast.success(
+        `Đơn hàng ${order.checkoutOrderId} đã được tạo thành công!`,
+      );
       navigate("/orders");
     } catch (error) {
       if (isAxiosError(error)) {
@@ -171,8 +192,7 @@ const CartPage = () => {
 
   return (
     <main className="page-wrap px-4 py-10">
-      <div className="mx-auto max-w-5xl">
-        {/* Header */}
+      <div className="mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Giỏ hàng</h1>
@@ -188,7 +208,7 @@ const CartPage = () => {
               </Link>
             </Button>
             <Button
-              variant="ghost"
+              variant="destructive"
               size="sm"
               onClick={() => clearMutation.mutate()}
               disabled={clearMutation.isPending}
@@ -204,25 +224,22 @@ const CartPage = () => {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.items.map((item) => (
               <div
                 key={item.id}
                 className="flex gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
               >
-                {/* Product Image Placeholder */}
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   <ShoppingCart className="h-8 w-8" />
                 </div>
 
-                {/* Item Details */}
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <Link
                         to={`/products/${item.variantId}`}
-                        className="font-medium hover:text-primary transition-colors truncate block"
+                        className="font-normal hover:text-primary transition-colors truncate block"
                       >
                         {item.productName}
                       </Link>
@@ -233,31 +250,31 @@ const CartPage = () => {
                         <Badge variant="secondary" className="text-xs">
                           {item.size}
                         </Badge>
-                        {item.sku && (
-                          <Badge variant="outline" className="text-xs">
-                            {item.sku}
-                          </Badge>
-                        )}
                       </div>
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="destructive"
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={() => removeMutation.mutate(item.id)}
                       disabled={removeMutation.isPending}
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  {/* Price + Quantity */}
                   <div className="flex items-center justify-between mt-auto">
-                    <p className="font-semibold tabular-nums">
-                      {item.price.toLocaleString("vi-VN")}₫
+                    <p className="text-sm text-muted-foreground flex items-center">
+                      Đơn giá:
+                      <p className="font-semibold tabular-nums text-base inline-block ml-1">
+                        {item.price.toLocaleString("vi-VN")}₫
+                      </p>
                     </p>
 
                     <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground flex items-center">
+                        Số lượng
+                      </p>
                       <div className="flex items-center rounded-md border overflow-hidden">
                         <button
                           onClick={() => handleDecrement(item)}
@@ -270,12 +287,14 @@ const CartPage = () => {
                           type="number"
                           min={0}
                           value={editingQty[item.id] ?? item.quantity}
-                          onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                          onChange={(e) =>
+                            handleQtyChange(item.id, e.target.value)
+                          }
                           onBlur={() => handleQtySubmit(item.id)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleQtySubmit(item.id);
                           }}
-                          className="h-8 w-12 rounded-none border-x text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="h-8 w-12 rounded-none border-t-0 border-b-0 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <button
                           onClick={() => handleIncrement(item)}
@@ -287,8 +306,11 @@ const CartPage = () => {
                       </div>
                     </div>
 
-                    <p className="font-semibold tabular-nums min-w-[80px] text-right">
-                      {item.subtotal.toLocaleString("vi-VN")}₫
+                    <p className="text-sm text-muted-foreground flex items-center min-w-20 text-right">
+                      Tổng cộng:
+                      <p className="font-semibold tabular-nums inline-block ml-1 text-base">
+                        {item.subtotal.toLocaleString("vi-VN")}₫
+                      </p>
                     </p>
                   </div>
                 </div>
@@ -296,7 +318,6 @@ const CartPage = () => {
             ))}
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 rounded-lg border p-6 space-y-4">
               <h2 className="text-lg font-semibold">Tổng đơn hàng</h2>

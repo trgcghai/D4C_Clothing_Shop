@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, SquareArrowOutUpRight } from "lucide-react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -81,7 +81,7 @@ export default function OrderDetail() {
 
   return (
     <main className="page-wrap px-4 py-10">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto">
         <Button
           variant="ghost"
           onClick={() => navigate("/orders")}
@@ -126,7 +126,7 @@ export default function OrderDetail() {
                 <TableHead>Sản phẩm</TableHead>
                 <TableHead>Màu</TableHead>
                 <TableHead>Size</TableHead>
-                <TableHead>SL</TableHead>
+                <TableHead>Số lượng</TableHead>
                 <TableHead>Đơn giá</TableHead>
                 <TableHead>Thành tiền</TableHead>
               </TableRow>
@@ -142,6 +142,15 @@ export default function OrderDetail() {
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
                   <TableCell>{formatCurrency(item.lineTotal)}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="link"
+                      onClick={() => navigate(`/products/${item.id}`)}
+                    >
+                      <SquareArrowOutUpRight />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
