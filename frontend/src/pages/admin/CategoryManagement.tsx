@@ -20,14 +20,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Loader2, LayoutGrid, X, Image as ImageIcon } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Loader2,
+  LayoutGrid,
+  X,
+  Image as ImageIcon,
+} from "lucide-react";
 import {
   useCategories,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
 } from "@/src/hooks/useCategories";
-import type { Category, CategoryCreatePayload } from "@/src/services/categoryApi";
+import type {
+  Category,
+  CategoryCreatePayload,
+} from "@/src/services/categoryApi";
 
 const defaultForm: CategoryCreatePayload = {
   name: "",
@@ -52,10 +64,12 @@ export default function CategoryManagement() {
   const deleteMutation = useDeleteCategory();
 
   const isPending =
-    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
   const filteredCategories = categories.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    c.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const resetForm = () => {
@@ -105,26 +119,32 @@ export default function CategoryManagement() {
         { id: editingCategory.id, payload: form, image: image || undefined },
         {
           onSuccess: () => {
-            if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+            if (imagePreview.startsWith("blob:"))
+              URL.revokeObjectURL(imagePreview);
             setOpen(false);
           },
-        }
+        },
       );
     } else {
       createMutation.mutate(
         { payload: form, image: image || undefined },
         {
           onSuccess: () => {
-            if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+            if (imagePreview.startsWith("blob:"))
+              URL.revokeObjectURL(imagePreview);
             setOpen(false);
           },
-        }
+        },
       );
     }
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa danh mục này? Điều này có thể ảnh hưởng đến các sản phẩm đang thuộc danh mục này.")) {
+    if (
+      window.confirm(
+        "Bạn có chắc chắn muốn xóa danh mục này? Điều này có thể ảnh hưởng đến các sản phẩm đang thuộc danh mục này.",
+      )
+    ) {
       deleteMutation.mutate(id);
     }
   };
@@ -158,7 +178,7 @@ export default function CategoryManagement() {
           <DialogContent className="w-[95vw] max-w-3xl p-0 overflow-hidden">
             <DialogHeader className="px-6 py-4 border-b bg-muted/20">
               <DialogTitle className="text-xl">
-                {editingCategory ? "✏️ Chỉnh sửa danh mục" : "➕ Thêm danh mục mới"}
+                {editingCategory ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
                 Cấu hình thông tin cơ bản và hình ảnh đại diện cho danh mục.
@@ -166,23 +186,27 @@ export default function CategoryManagement() {
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2">
-              {/* Left Column: Image */}
               <div className="p-6 border-b md:border-b-0 md:border-r bg-muted/5 flex flex-col gap-3">
                 <Label className="text-sm font-semibold flex items-center gap-2">
                   <ImageIcon className="size-4" />
                   Hình ảnh đại diện
                 </Label>
-                
+
                 {imagePreview ? (
                   <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-background shadow-sm group">
-                    <img src={imagePreview} alt="Preview" className="size-full object-contain" />
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="size-full object-contain"
+                    />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                       <Button
+                      <Button
                         variant="destructive"
                         size="sm"
                         className="size-8 rounded-full p-0"
                         onClick={() => {
-                          if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+                          if (imagePreview.startsWith("blob:"))
+                            URL.revokeObjectURL(imagePreview);
                           setImage(null);
                           setImagePreview(editingCategory?.imageUrl || "");
                         }}
@@ -193,34 +217,59 @@ export default function CategoryManagement() {
                   </div>
                 ) : (
                   <div
-                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(true);
+                    }}
                     onDragLeave={() => setIsDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) validateAndSetImage(f); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) validateAndSetImage(f);
+                    }}
                     className={`flex aspect-square w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:bg-accent"}`}
                   >
                     <ImageIcon className="mb-2 size-10 text-muted-foreground opacity-50" />
-                    <p className="text-sm text-muted-foreground font-medium text-center px-4">Kéo thả ảnh hoặc click để chọn</p>
+                    <p className="text-sm text-muted-foreground font-medium text-center px-4">
+                      Kéo thả ảnh hoặc click để chọn
+                    </p>
                     <label className="mt-3 cursor-pointer">
                       <Button variant="outline" size="sm" asChild>
                         <span>Chọn tệp</span>
                       </Button>
-                      <input type="file" className="hidden" accept="image/*"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) validateAndSetImage(f); e.target.value = ""; }} />
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) validateAndSetImage(f);
+                          e.target.value = "";
+                        }}
+                      />
                     </label>
-                    <p className="mt-2 text-[10px] text-muted-foreground uppercase tracking-wider">JPG, PNG, WebP · Max 5MB</p>
+                    <p className="mt-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                      JPG, PNG, WebP · Max 5MB
+                    </p>
                   </div>
                 )}
-                {imageError && <p className="text-xs text-destructive font-medium text-center">{imageError}</p>}
-                
+                {imageError && (
+                  <p className="text-xs text-destructive font-medium text-center">
+                    {imageError}
+                  </p>
+                )}
+
                 <p className="text-[11px] text-muted-foreground italic mt-auto">
                   * Ảnh này sẽ hiển thị ở trang chủ và các bộ lọc tìm kiếm.
                 </p>
               </div>
 
-              {/* Right Column: Info */}
               <div className="p-6 space-y-5">
                 <div className="grid gap-2">
-                  <Label htmlFor="cat-name" className="text-sm font-semibold">Tên danh mục <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="cat-name" className="text-sm font-semibold">
+                    Tên danh mục <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="cat-name"
                     value={form.name}
@@ -229,15 +278,19 @@ export default function CategoryManagement() {
                     className="h-10 focus-visible:ring-primary"
                   />
                 </div>
-                
+
                 <div className="grid gap-2">
-                  <Label htmlFor="cat-desc" className="text-sm font-semibold">Mô tả chi tiết</Label>
+                  <Label htmlFor="cat-desc" className="text-sm font-semibold">
+                    Mô tả chi tiết
+                  </Label>
                   <Textarea
                     id="cat-desc"
                     value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
                     placeholder="Mô tả ngắn gọn về đặc điểm của các sản phẩm trong danh mục này..."
-                    className="min-h-[160px] resize-none focus-visible:ring-primary"
+                    className="min-h-40 resize-none focus-visible:ring-primary"
                   />
                 </div>
               </div>
@@ -247,8 +300,8 @@ export default function CategoryManagement() {
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 Hủy
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={isPending || !form.name.trim()}
                 className="px-8"
               >
@@ -274,20 +327,39 @@ export default function CategoryManagement() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-muted-foreground/10">
-              <TableHead className="w-[100px] font-semibold text-foreground">Ảnh</TableHead>
-              <TableHead className="font-semibold text-foreground">Tên danh mục</TableHead>
-              <TableHead className="font-semibold text-foreground">Mô tả</TableHead>
-              <TableHead className="font-semibold w-[120px] text-right text-foreground">Thao tác</TableHead>
+              <TableHead className="w-25 font-semibold text-foreground">
+                Ảnh
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Tên danh mục
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Mô tả
+              </TableHead>
+              <TableHead className="font-semibold w-30 text-right text-foreground">
+                Thao tác
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="size-12 rounded-lg" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                  <TableCell><div className="flex justify-end gap-2"><Skeleton className="size-8 rounded-md" /><Skeleton className="size-8 rounded-md" /></div></TableCell>
+                  <TableCell>
+                    <Skeleton className="size-12 rounded-lg" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-full" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="size-8 rounded-md" />
+                      <Skeleton className="size-8 rounded-md" />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : filteredCategories.length === 0 ? (
@@ -301,19 +373,30 @@ export default function CategoryManagement() {
                       <LayoutGrid className="size-8 opacity-20" />
                     </div>
                     <div className="space-y-1">
-                      <p className="font-semibold text-foreground">Không tìm thấy kết quả</p>
-                      <p className="text-sm">Thử thay đổi từ khóa tìm kiếm của bạn</p>
+                      <p className="font-semibold text-foreground">
+                        Không tìm thấy kết quả
+                      </p>
+                      <p className="text-sm">
+                        Thử thay đổi từ khóa tìm kiếm của bạn
+                      </p>
                     </div>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               filteredCategories.map((category) => (
-                <TableRow key={category.id} className="hover:bg-muted/20 transition-colors border-b-muted-foreground/10">
+                <TableRow
+                  key={category.id}
+                  className="hover:bg-muted/20 transition-colors border-b-muted-foreground/10"
+                >
                   <TableCell>
                     {category.imageUrl ? (
                       <div className="size-12 rounded-lg overflow-hidden border border-muted-foreground/10 bg-muted shadow-inner">
-                        <img src={category.imageUrl} alt={category.name} className="size-full object-cover" />
+                        <img
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="size-full object-cover"
+                        />
                       </div>
                     ) : (
                       <div className="size-12 rounded-lg bg-muted flex items-center justify-center border border-dashed border-muted-foreground/20">
@@ -325,7 +408,11 @@ export default function CategoryManagement() {
                     {category.name}
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-md truncate text-sm">
-                    {category.description || <span className="italic opacity-40">Chưa có nội dung mô tả...</span>}
+                    {category.description || (
+                      <span className="italic opacity-40">
+                        Chưa có nội dung mô tả...
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">

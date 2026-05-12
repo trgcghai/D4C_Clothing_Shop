@@ -8,13 +8,6 @@ import { useCategories } from "../hooks/useCategories";
 import type { ProductFilters } from "../services/productApi";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox";
 import { cn } from "@/src/lib/utils";
 import CustomPagination from "../components/CustomPagination";
 
@@ -40,13 +33,6 @@ const BRANDS = [
   "H&M",
   "Uniqlo",
   "Local Brand",
-];
-
-const SORT_OPTIONS = [
-  { value: "createdAt-desc", label: "Mới nhất" },
-  { value: "price-asc", label: "Giá thấp → cao" },
-  { value: "price-desc", label: "Giá cao → thấp" },
-  { value: "name-asc", label: "Tên A → Z" },
 ];
 
 const ProductsPage = () => {
@@ -225,24 +211,6 @@ const ProductsPage = () => {
               ))}
           </div>
         )}
-
-        <Combobox
-          items={SORT_OPTIONS}
-          itemToStringLabel={(opt: { label: string; value: string }) =>
-            opt.label
-          }
-        >
-          <ComboboxInput placeholder="Sắp xếp" showClear />
-          <ComboboxContent>
-            <ComboboxList>
-              {(item: { label: string; value: string }) => (
-                <ComboboxItem key={item.label} value={item}>
-                  {item.label}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
       </div>
 
       <div className="flex flex-col gap-6 md:flex-row">
