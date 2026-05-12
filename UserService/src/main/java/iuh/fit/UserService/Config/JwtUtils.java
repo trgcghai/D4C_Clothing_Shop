@@ -52,6 +52,16 @@ public class JwtUtils {
                 .compact();
     }
 
+    public String generateToken(UserDetails userDetails, Long userId) {
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .claim("userId", userId)
+                .issuedAt(new Date())
+                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
     public String generateRefreshToken(UserDetails userDetails) {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
@@ -59,6 +69,29 @@ public class JwtUtils {
                 .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, Long userId) {
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .claim("userId", userId)
+                .issuedAt(new Date())
+                .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public Long getUserIdFromToken(String token) {
+        Object userId = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("userId");
+        if (userId instanceof Integer) {
+            return ((Integer) userId).longValue();
+        }
+        return userId != null ? Long.valueOf(userId.toString()) : null;
     }
 
     // Lấy username từ JWT

@@ -10,6 +10,7 @@ import {
   getFeaturedProducts,
   getNewArrivals,
   getRelatedProducts,
+  deductStock,
 } from "../controllers/product.controller.js";
 
 const router = express.Router();
@@ -230,6 +231,51 @@ router.get("/:id", getProduct);
  *         description: Server error
  */
 router.get("/:id/related", getRelatedProducts);
+
+// ─── Stock Management ───────────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/products/variants/{variantId}/deduct-stock:
+ *   post:
+ *     tags: [products]
+ *     summary: Deduct variant stock atomically
+ *     parameters:
+ *       - in: path
+ *         name: variantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [quantity]
+ *             properties:
+ *               quantity:
+ *                 type: integer
+ *                 minimum: 1
+ *     responses:
+ *       200:
+ *         description: Stock deducted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 variantId:
+ *                   type: string
+ *                 remaining:
+ *                   type: integer
+ *       400:
+ *         description: Insufficient stock or invalid quantity
+ *       500:
+ *         description: Server error
+ */
+router.post("/variants/:variantId/deduct-stock", deductStock);
 
 // ─── Admin CRUD ─────────────────────────────────────────────────────────────────
 /**

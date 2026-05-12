@@ -6,6 +6,7 @@ import {
   UpdateCommand,
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -102,6 +103,38 @@ class VariantModel {
       await this.remove(variant.id);
     }
     return true;
+  }
+
+  async deductStock(id, quantity) {
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id },
+      UpdateExpression: "SET quantity = quantity - :qty",
+      ExpressionAttributeValues: {
+        ":qty": quantity,
+      },
+      ConditionExpression: "attribute_exists(id) AND quantity >= :qty",
+      ReturnValues: "ALL_NEW",
+    };
+
+    const command = new UpdateCommand(params);
+    try {
+      const response = await dynamoClient.send(command);
+      return {
+        success: true,
+        variantId: id,
+        remaining: response.Attributes.quantity,
+      };
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) {
+        const variant = await this.findById(id);
+        const current = variant ? variant.quantity : 0;
+        throw new Error(
+          `Không đủ tồn kho. Variant ${id}: còn ${current}, cần ${quantity}`
+        );
+      }
+      throw error;
+    }
   }
 }
 

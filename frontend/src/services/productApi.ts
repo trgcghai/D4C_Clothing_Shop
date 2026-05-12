@@ -80,6 +80,12 @@ export interface DeleteResponse {
   message: string;
 }
 
+export interface DeductStockResponse {
+  success: boolean;
+  variantId: string;
+  remaining: number;
+}
+
 export interface ErrorResponse {
   message: string;
   error?: string;
@@ -207,4 +213,17 @@ export const updateProduct = async (
  */
 export const deleteProduct = async (id: string): Promise<DeleteResponse> => {
   return axiosInstance.delete(`/api/products/${id}`).then((res) => res.data);
+};
+
+/**
+ * POST /api/products/variants/:variantId/deduct-stock
+ * Atomically deduct stock from a variant.
+ */
+export const deductStock = async (
+  variantId: string,
+  quantity: number,
+): Promise<DeductStockResponse> => {
+  return axiosInstance
+    .post(`/api/products/variants/${variantId}/deduct-stock`, { quantity })
+    .then((res) => res.data);
 };

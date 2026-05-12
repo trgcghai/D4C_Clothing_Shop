@@ -340,6 +340,13 @@ class ProductService {
     await productModel.remove(id);
     return { success: true, message: "Đã xóa sản phẩm thành công" };
   }
+
+  async deductVariantStock(variantId, quantity) {
+    if (!variantId || quantity <= 0) {
+      throw new Error("Variant ID và số lượng hợp lệ là bắt buộc");
+    }
+    return await variantModel.deductStock(variantId, quantity);
+  }
 }
 
 export const productService = new ProductService();
