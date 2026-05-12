@@ -95,7 +95,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         userRepository.save(user);
 
         // Publish event when account is locked or unlocked
-        if (!willBeEnabled && lockReason != null && !lockReason.isBlank()) {
+        if (!willBeEnabled) {
             publishAccountEvent(user, "LOCKED", RabbitMQConfig.EMAIL_LOCK_ROUTING_KEY);
         } else if (willBeEnabled) {
             publishAccountEvent(user, "UNLOCKED", RabbitMQConfig.EMAIL_UNLOCK_ROUTING_KEY);
