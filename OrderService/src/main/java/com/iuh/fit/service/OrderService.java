@@ -28,10 +28,12 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final AuditService auditService;
+    private final ProductServiceClient productServiceClient;
 
-    public OrderService(OrderRepository orderRepository, AuditService auditService) {
+    public OrderService(OrderRepository orderRepository, AuditService auditService, ProductServiceClient productServiceClient) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
+        this.productServiceClient = productServiceClient;
     }
 
     @Transactional
@@ -52,8 +54,9 @@ public class OrderService {
         Order order = new Order();
         order.setUserId(userId);
         order.setCheckoutOrderId(request.getOrderId());
-        order.setStatus(OrderStatus.PAID);
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setTotalAmount(calculatedTotal);
+        order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH");
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {
             if (itemDto.getQuantity() == null || itemDto.getQuantity() <= 0) {
@@ -72,6 +75,7 @@ public class OrderService {
             item.setSnapshotProductName(itemDto.getSnapshot().getProductName());
             item.setSnapshotVariantSku(itemDto.getSnapshot().getVariantSku());
             item.setSnapshotPriceAtCheckout(unitPrice);
+            item.setVariantId(itemDto.getVariantId());
             order.addItem(item);
         }
 
@@ -128,7 +132,34 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         // record audit for user's own change with actor = userId
         auditService.record(id, userId, prev, request.getStatus().name(), request.getNote());
+
+        if (request.getStatus() == OrderStatus.CANCELLED && prev != null) {
+            restoreStockForOrder(saved);
+        }
+
         return toResponse(saved);
+    }
+
+    @Transactional
+    public void updateOrderStatusByPaymentService(Long orderId, OrderStatus status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        validateStatusTransition(order.getStatus(), status);
+        String prev = order.getStatus() != null ? order.getStatus().name() : null;
+        order.setStatus(status);
+        orderRepository.save(order);
+
+        if (status == OrderStatus.CANCELLED && prev != null) {
+            restoreStockForOrder(order);
+        }
+    }
+
+    private void restoreStockForOrder(Order order) {
+        for (OrderItem item : order.getItems()) {
+            if (item.getVariantId() != null && !item.getVariantId().isBlank()) {
+                productServiceClient.restoreStock(item.getVariantId(), item.getQuantity());
+            }
+        }
     }
 
     @Transactional(readOnly = true)
@@ -230,6 +261,7 @@ public class OrderService {
         response.setUserId(order.getUserId());
         response.setStatus(order.getStatus());
         response.setTotalAmount(order.getTotalAmount());
+        response.setPaymentMethod(order.getPaymentMethod());
         response.setCreatedAt(order.getCreatedAt());
         response.setUpdatedAt(order.getUpdatedAt());
 

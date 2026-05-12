@@ -21,6 +21,8 @@ import OrderManagement from "./pages/admin/OrderManagement";
 import CartPage from "./pages/CartPage";
 import MyOrders from "./pages/MyOrders";
 import OrderDetail from "./pages/OrderDetail";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentPage from "./pages/PaymentPage";
 import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
@@ -31,6 +33,8 @@ export const router = createBrowserRouter([
       { path: "/products", element: <ProductsPage /> },
       { path: "/products/:productId", element: <ProductDetail /> },
       { path: "/cart", element: <CartPage /> },
+      { path: "/checkout", element: <CheckoutPage /> },
+      { path: "/payment/:paymentId", element: <PaymentPage /> },
       { path: "/profile", element: <Profile /> },
       { path: "/orders", element: <MyOrders /> },
       { path: "/orders/:orderId", element: <OrderDetail /> },

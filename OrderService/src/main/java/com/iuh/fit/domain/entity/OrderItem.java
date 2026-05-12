@@ -48,6 +48,9 @@ public class OrderItem {
     @Column(name = "snapshot_variant_sku", length = 128)
     private String snapshotVariantSku;
 
+    @Column(name = "variant_id", length = 128)
+    private String variantId;
+
     @Column(name = "snapshot_price_at_checkout", precision = 19, scale = 2)
     private BigDecimal snapshotPriceAtCheckout;
 
@@ -125,6 +128,14 @@ public class OrderItem {
 
     public void setSnapshotVariantSku(String snapshotVariantSku) {
         this.snapshotVariantSku = snapshotVariantSku;
+    }
+
+    public String getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(String variantId) {
+        this.variantId = variantId;
     }
 
     public BigDecimal getSnapshotPriceAtCheckout() {

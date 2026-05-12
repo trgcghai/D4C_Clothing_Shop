@@ -10,7 +10,7 @@ import {
   EmptyContent,
 } from "@/components/ui/empty";
 import { useUserOrders } from "@/src/hooks/useUserOrders";
-import type { OrderResponse } from "@/src/services/orderApi";
+import type { OrderResponse, PaymentMethod } from "@/src/services/orderApi";
 import { Loader2, Package } from "lucide-react";
 
 const formatCurrency = (value: number) =>
@@ -38,6 +38,14 @@ const getStatusLabel = (status: string) => {
   return status;
 };
 
+const getPaymentMethodLabel = (method: PaymentMethod) => {
+  return method === "QR" ? "QR" : "Tiền mặt";
+};
+
+const getPaymentMethodBadgeVariant = (method: PaymentMethod) => {
+  return method === "QR" ? "outline" : "secondary";
+};
+
 function OrderCard({ order }: { order: OrderResponse }) {
   const navigate = useNavigate();
 
@@ -47,14 +55,17 @@ function OrderCard({ order }: { order: OrderResponse }) {
       onClick={() => navigate(`/orders/${order.id}`)}
       title="Xem chi tiết"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">#{order.id}</span>
-            <Badge variant={getStatusBadgeVariant(order.status)}>
-              {getStatusLabel(order.status)}
-            </Badge>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">#{order.id}</span>
+              <Badge variant={getStatusBadgeVariant(order.status)}>
+                {getStatusLabel(order.status)}
+              </Badge>
+              <Badge variant={getPaymentMethodBadgeVariant(order.paymentMethod)}>
+                {getPaymentMethodLabel(order.paymentMethod)}
+              </Badge>
+            </div>
           <p className="text-xs text-muted-foreground">
             Mã đơn: {order.checkoutOrderId}
           </p>

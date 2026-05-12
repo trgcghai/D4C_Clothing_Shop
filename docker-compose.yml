@@ -176,6 +176,30 @@ services:
     networks:
       - d4c-net
 
+  paymentservice:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: paymentservice
+    hostname: paymentservice
+    env_file:
+      - ./PaymentService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8086/v3/api-docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
   cartservice:
     build:
       context: ./CartService
@@ -220,6 +244,8 @@ services:
       notificationservice:
         condition: service_healthy
       orderservice:
+        condition: service_healthy
+      paymentservice:
         condition: service_healthy
       cartservice:
         condition: service_healthy

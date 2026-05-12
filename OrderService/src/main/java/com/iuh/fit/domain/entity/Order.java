@@ -44,6 +44,9 @@ public class Order {
     @Column(name = "total_amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal totalAmount;
 
+    @Column(name = "payment_method", length = 32)
+    private String paymentMethod;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -109,6 +112,14 @@ public class Order {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public List<OrderItem> getItems() {

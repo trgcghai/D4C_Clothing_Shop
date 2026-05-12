@@ -227,3 +227,19 @@ export const deductStock = async (
     .post(`/api/products/variants/${variantId}/deduct-stock`, { quantity })
     .then((res) => res.data);
 };
+
+export interface RestoreStockResponse {
+  success: boolean;
+  variantId: string;
+  restored: number;
+  current: number;
+}
+
+export const restoreStock = async (
+  variantId: string,
+  quantity: number,
+): Promise<RestoreStockResponse> => {
+  return axiosInstance
+    .post(`/api/products/variants/${variantId}/restore-stock`, { quantity })
+    .then((res) => res.data);
+};

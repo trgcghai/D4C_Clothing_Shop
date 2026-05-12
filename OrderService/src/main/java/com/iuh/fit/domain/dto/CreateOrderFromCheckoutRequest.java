@@ -20,6 +20,8 @@ public class CreateOrderFromCheckoutRequest {
     @NotNull
     private BigDecimal totalAmount;
 
+    private String paymentMethod;
+
     public String getOrderId() {
         return orderId;
     }
@@ -44,6 +46,14 @@ public class CreateOrderFromCheckoutRequest {
         this.totalAmount = totalAmount;
     }
 
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
     public static class CheckoutItemDto {
         @NotBlank
         private String productName;
@@ -55,6 +65,7 @@ public class CreateOrderFromCheckoutRequest {
         @NotNull
         @Valid
         private SnapshotDto snapshot;
+        private String variantId;
 
         public String getProductName() {
             return productName;
@@ -102,6 +113,14 @@ public class CreateOrderFromCheckoutRequest {
 
         public void setSnapshot(SnapshotDto snapshot) {
             this.snapshot = snapshot;
+        }
+
+        public String getVariantId() {
+            return variantId;
+        }
+
+        public void setVariantId(String variantId) {
+            this.variantId = variantId;
         }
     }
 

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
 import { ArrowLeft, SquareArrowOutUpRight } from "lucide-react";
+import type { PaymentMethod } from "@/src/services/orderApi";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -36,6 +37,14 @@ const getStatusLabel = (status: string) => {
   if (status === "PAID") return "Đã thanh toán";
   if (status === "CANCELLED") return "Đã hủy";
   return status;
+};
+
+const getPaymentMethodLabel = (method: PaymentMethod) => {
+  return method === "QR" ? "QR Code" : "Tiền mặt";
+};
+
+const getPaymentMethodBadgeVariant = (method: PaymentMethod) => {
+  return method === "QR" ? "default" : "secondary";
 };
 
 export default function OrderDetail() {
@@ -98,7 +107,7 @@ export default function OrderDetail() {
           </Badge>
         </div>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <div className="mb-6 grid gap-4 md:grid-cols-5">
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground">Mã đơn</p>
             <p className="font-semibold">{order.checkoutOrderId}</p>
@@ -111,6 +120,12 @@ export default function OrderDetail() {
             <p className="text-xs text-muted-foreground">Trạng thái</p>
             <Badge variant={getStatusBadgeVariant(order.status)}>
               {getStatusLabel(order.status)}
+            </Badge>
+          </div>
+          <div className="rounded-md border p-3">
+            <p className="text-xs text-muted-foreground">Phương thức</p>
+            <Badge variant={getPaymentMethodBadgeVariant(order.paymentMethod)}>
+              {getPaymentMethodLabel(order.paymentMethod)}
             </Badge>
           </div>
           <div className="rounded-md border p-3">

@@ -12,6 +12,7 @@ public class OrderResponse {
     private Long userId;
     private OrderStatus status;
     private BigDecimal totalAmount;
+    private String paymentMethod;
     private List<OrderItemResponse> items;
     private Instant createdAt;
     private Instant updatedAt;
@@ -54,6 +55,14 @@ public class OrderResponse {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public List<OrderItemResponse> getItems() {

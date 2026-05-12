@@ -16,11 +16,7 @@ import {
   useUpdateCartItem,
   useRemoveCartItem,
   useClearCart,
-  useCheckout,
-  useClearCartAfterCheckout,
 } from "@/src/hooks/useCart";
-import { deductStock } from "@/src/services/productApi";
-import { createOrderFromCheckout } from "@/src/services/orderApi";
 import {
   ShoppingCart,
   Trash2,
@@ -29,8 +25,6 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
-import { isAxiosError } from "axios";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -38,11 +32,8 @@ const CartPage = () => {
   const updateMutation = useUpdateCartItem();
   const removeMutation = useRemoveCartItem();
   const clearMutation = useClearCart();
-  const checkoutMutation = useCheckout();
-  const clearAfterCheckoutMutation = useClearCartAfterCheckout();
 
   const [editingQty, setEditingQty] = useState<Record<number, string>>({});
-  const [isProcessing, setIsProcessing] = useState(false);
 
   if (isLoading) {
     return (
@@ -140,54 +131,8 @@ const CartPage = () => {
     }
   };
 
-  const handleCheckout = async () => {
-    setIsProcessing(true);
-    try {
-      // Step 1: Checkout từ CartService (validate stock)
-      const checkoutData = await checkoutMutation.mutateAsync();
-
-      // Step 2: Deduct stock cho từng item
-      for (const item of checkoutData.items) {
-        try {
-          await deductStock(item.variantId, item.quantity);
-        } catch (deductError) {
-          if (isAxiosError(deductError)) {
-            const msg =
-              deductError.response?.data?.message || "Không đủ tồn kho";
-            toast.error(msg);
-          } else {
-            toast.error("Không đủ tồn kho, vui lòng kiểm tra lại giỏ hàng");
-          }
-          setIsProcessing(false);
-          return;
-        }
-      }
-
-      // Step 3: Tạo order
-      const order = await createOrderFromCheckout({
-        orderId: checkoutData.orderId,
-        items: checkoutData.items,
-        totalAmount: checkoutData.totalAmount,
-      });
-
-      // Step 4: Clear cart
-      await clearAfterCheckoutMutation.mutateAsync();
-
-      // Step 5: Success
-      toast.success(
-        `Đơn hàng ${order.checkoutOrderId} đã được tạo thành công!`,
-      );
-      navigate("/orders");
-    } catch (error) {
-      if (isAxiosError(error)) {
-        const msg = error.response?.data?.message || "Thanh toán thất bại";
-        toast.error(msg);
-      } else {
-        toast.error("Thanh toán thất bại, vui lòng thử lại");
-      }
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleCheckout = () => {
+    navigate("/checkout");
   };
 
   return (
@@ -347,16 +292,9 @@ const CartPage = () => {
                 className="w-full"
                 size="lg"
                 onClick={handleCheckout}
-                disabled={isProcessing || cart.items.length === 0}
+                disabled={cart.items.length === 0}
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  "Thanh toán"
-                )}
+                Thanh toán
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
