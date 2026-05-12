@@ -41,16 +41,16 @@ import { toast } from "sonner";
 const PAGE_SIZE = 10;
 
 const STATUS_OPTIONS: Array<{ value: "ALL" | OrderStatus; label: string }> = [
-  { value: "ALL", label: "All status" },
-  { value: "PENDING_PAYMENT", label: "Pending payment" },
-  { value: "PAID", label: "Paid" },
-  { value: "CANCELLED", label: "Cancelled" },
+  { value: "ALL", label: "Tất cả trạng thái" },
+  { value: "PENDING_PAYMENT", label: "Chờ thanh toán" },
+  { value: "PAID", label: "Đã thanh toán" },
+  { value: "CANCELLED", label: "Đã hủy" },
 ];
 
 const STATUS_UPDATE_OPTIONS: Array<{ value: OrderStatus; label: string }> = [
-  { value: "PENDING_PAYMENT", label: "Pending payment" },
-  { value: "PAID", label: "Paid" },
-  { value: "CANCELLED", label: "Cancelled" },
+  { value: "PENDING_PAYMENT", label: "Chờ thanh toán" },
+  { value: "PAID", label: "Đã thanh toán" },
+  { value: "CANCELLED", label: "Đã hủy" },
 ];
 
 const formatCurrency = (value: number) =>
@@ -93,7 +93,7 @@ export default function OrderManagement() {
   const filters = useMemo(
     () => ({
       status: statusFilter === "ALL" ? undefined : statusFilter,
-      page: page - 1,
+      page: page,
       size: PAGE_SIZE,
     }),
     [statusFilter, page],
@@ -102,7 +102,8 @@ export default function OrderManagement() {
   const { data, isLoading } = useAdminOrders(filters);
   const { data: orderDetail, isLoading: isOrderDetailLoading } =
     useAdminOrderDetail(selectedOrderId);
-  const { data: audits, isLoading: isAuditLoading } = useOrderAudits(selectedOrderId);
+  const { data: audits, isLoading: isAuditLoading } =
+    useOrderAudits(selectedOrderId);
   const updateMutation = useUpdateAdminOrderStatus();
 
   const orders = data?.content ?? [];
@@ -153,15 +154,15 @@ export default function OrderManagement() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <ClipboardList className="size-6 text-primary" />
-            Order Management
+            Quản lý đơn hàng
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{total} orders</p>
+          <p className="mt-1 text-sm text-muted-foreground">{total} đơn hàng</p>
         </div>
       </div>
 
       <div className="mb-6 flex max-w-xs items-center gap-2">
         <Label htmlFor="status-filter" className="whitespace-nowrap">
-          Status
+          Trạng thái
         </Label>
         <Select
           value={statusFilter}
@@ -171,7 +172,7 @@ export default function OrderManagement() {
           }}
         >
           <SelectTrigger id="status-filter">
-            <SelectValue placeholder="Select status" />
+            <SelectValue placeholder="Chọn trạng thái" />
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((option) => (
@@ -190,10 +191,10 @@ export default function OrderManagement() {
               <TableHead>Order ID</TableHead>
               <TableHead>Checkout ID</TableHead>
               <TableHead>User ID</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="w-[100px]">Action</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead>Tổng tiền</TableHead>
+              <TableHead>Ngày tạo</TableHead>
+              <TableHead className="w-25">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -209,8 +210,11 @@ export default function OrderManagement() {
               ))
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                  No orders found
+                <TableCell
+                  colSpan={7}
+                  className="py-12 text-center text-muted-foreground"
+                >
+                  Không tìm thấy đơn hàng nào
                 </TableCell>
               </TableRow>
             ) : (
@@ -227,8 +231,12 @@ export default function OrderManagement() {
                   <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
                   <TableCell>{formatDateTime(order.createdAt)}</TableCell>
                   <TableCell>
-                    <Button size="sm" variant="outline" onClick={() => handleOpenDetail(order)}>
-                      Detail
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenDetail(order)}
+                    >
+                      Chi tiết
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -238,14 +246,21 @@ export default function OrderManagement() {
         </Table>
       </div>
 
-      <ProductPagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+      <ProductPagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
 
-      <Dialog open={selectedOrderId !== null} onOpenChange={(open) => !open && setSelectedOrderId(null)}>
+      <Dialog
+        open={selectedOrderId !== null}
+        onOpenChange={(open) => !open && setSelectedOrderId(null)}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Order Detail</DialogTitle>
+            <DialogTitle>Chi tiết đơn hàng</DialogTitle>
             <DialogDescription>
-              Review items, status history, and update current status.
+              Xem chi tiết và cập nhật trạng thái đơn hàng
             </DialogDescription>
           </DialogHeader>
 
@@ -267,14 +282,18 @@ export default function OrderManagement() {
                   <p className="font-semibold">{orderDetail.userId}</p>
                 </div>
                 <div className="rounded-md border p-3">
-                  <p className="text-xs text-muted-foreground">Current status</p>
+                  <p className="text-xs text-muted-foreground">
+                    Current status
+                  </p>
                   <Badge variant={getStatusBadgeVariant(orderDetail.status)}>
                     {getStatusLabel(orderDetail.status)}
                   </Badge>
                 </div>
                 <div className="rounded-md border p-3">
                   <p className="text-xs text-muted-foreground">Total amount</p>
-                  <p className="font-semibold">{formatCurrency(orderDetail.totalAmount)}</p>
+                  <p className="font-semibold">
+                    {formatCurrency(orderDetail.totalAmount)}
+                  </p>
                 </div>
               </div>
 
@@ -293,7 +312,9 @@ export default function OrderManagement() {
                   <TableBody>
                     {orderDetail.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.productName || item.snapshotProductName}</TableCell>
+                        <TableCell>
+                          {item.productName || item.snapshotProductName}
+                        </TableCell>
                         <TableCell>{item.color || "-"}</TableCell>
                         <TableCell>{item.size || "-"}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
@@ -312,14 +333,21 @@ export default function OrderManagement() {
                     <Label htmlFor="new-status">New status</Label>
                     <Select
                       value={newStatus}
-                      onValueChange={(value) => setNewStatus(value as OrderStatus)}
+                      onValueChange={(value) =>
+                        setNewStatus(value as OrderStatus)
+                      }
                       disabled={!canUpdateStatus}
                     >
                       <SelectTrigger id="new-status">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(canUpdateStatus ? STATUS_UPDATE_OPTIONS.filter((status) => allowedNextStatuses.includes(status.value)) : STATUS_UPDATE_OPTIONS).map((status) => (
+                        {(canUpdateStatus
+                          ? STATUS_UPDATE_OPTIONS.filter((status) =>
+                              allowedNextStatuses.includes(status.value),
+                            )
+                          : STATUS_UPDATE_OPTIONS
+                        ).map((status) => (
                           <SelectItem key={status.value} value={status.value}>
                             {status.label}
                           </SelectItem>
@@ -328,7 +356,8 @@ export default function OrderManagement() {
                     </Select>
                     {!canUpdateStatus ? (
                       <p className="text-xs text-muted-foreground">
-                        Cannot update status from {currentStatus ? getStatusLabel(currentStatus) : "-"}.
+                        Cannot update status from{" "}
+                        {currentStatus ? getStatusLabel(currentStatus) : "-"}.
                       </p>
                     ) : null}
                   </div>
@@ -345,25 +374,34 @@ export default function OrderManagement() {
               </div>
 
               <div className="space-y-2 rounded-md border p-4">
-                <h3 className="font-semibold">Audit logs</h3>
+                <h3 className="font-semibold">Lịch sử cập nhật</h3>
                 {isAuditLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                   </div>
                 ) : !audits || audits.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No audit logs yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Chưa có nhật ký kiểm toán nào.
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {audits.map((audit) => (
-                      <div key={audit.id} className="rounded-md border p-3 text-sm">
+                      <div
+                        key={audit.id}
+                        className="rounded-md border p-3 text-sm"
+                      >
                         <p className="font-medium">
-                          {getStatusLabel(audit.previousStatus)} to {getStatusLabel(audit.newStatus)}
+                          {getStatusLabel(audit.previousStatus)} to{" "}
+                          {getStatusLabel(audit.newStatus)}
                         </p>
                         <p className="text-muted-foreground">
-                          Admin #{audit.adminUserId} at {formatDateTime(audit.createdAt)}
+                          Admin #{audit.adminUserId} at{" "}
+                          {formatDateTime(audit.createdAt)}
                         </p>
-                        {audit.note ? <p className="mt-1">{audit.note}</p> : null}
+                        {audit.note ? (
+                          <p className="mt-1">{audit.note}</p>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -374,7 +412,7 @@ export default function OrderManagement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedOrderId(null)}>
-              Close
+              Đóng
             </Button>
             <Button
               onClick={handleUpdateStatus}
@@ -385,7 +423,7 @@ export default function OrderManagement() {
                 !allowedNextStatuses.includes(newStatus)
               }
             >
-              Update status
+              Cập nhật
             </Button>
           </DialogFooter>
         </DialogContent>

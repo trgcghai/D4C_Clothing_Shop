@@ -44,7 +44,7 @@ public class AdminOrderController {
             description = "Filter by status and createdAt range. Dates are ISO-8601 instants.",
             responses = {@ApiResponse(responseCode = "200", description = "Paged list of orders",
                 content = @Content(mediaType = "application/json",
-                    examples = @ExampleObject(value = "{\n  \"content\": [\n    {\n      \"id\": 123,\n      \"checkoutOrderId\": \"CHK-987\",\n      \"userId\": 45,\n      \"status\": \"PAID\",\n      \"totalAmount\": 199.99,\n      \"items\": [\n        {\n          \"id\": 1,\n          \"productName\": \"T-Shirt\",\n          \"color\": \"Blue\",\n          \"size\": \"M\",\n          \"quantity\": 2,\n          \"unitPrice\": 99.995,\n          \"lineTotal\": 199.99,\n          \"snapshotProductName\": \"T-Shirt\",\n          \"snapshotVariantSku\": \"TS-001-M\",\n          \"snapshotPriceAtCheckout\": 99.995\n        }\n      ],\n      \"createdAt\": \"2026-05-12T06:00:00Z\",\n      \"updatedAt\": \"2026-05-12T06:01:00Z\"\n    }\n  ],\n  \"page\": 0,\n  \"size\": 20,\n  \"totalElements\": 1,\n  \"totalPages\": 1,\n  \"first\": true,\n  \"last\": true\n}"
+                    examples = @ExampleObject(value = "{\n  \"content\": [\n    {\n      \"id\": 123,\n      \"checkoutOrderId\": \"CHK-987\",\n      \"userId\": 45,\n      \"status\": \"PAID\",\n      \"totalAmount\": 199.99,\n      \"items\": [\n        {\n          \"id\": 1,\n          \"productName\": \"T-Shirt\",\n          \"color\": \"Blue\",\n          \"size\": \"M\",\n          \"quantity\": 2,\n          \"unitPrice\": 99.995,\n          \"lineTotal\": 199.99,\n          \"snapshotProductName\": \"T-Shirt\",\n          \"snapshotVariantSku\": \"TS-001-M\",\n          \"snapshotPriceAtCheckout\": 99.995\n        }\n      ],\n      \"createdAt\": \"2026-05-12T06:00:00Z\",\n      \"updatedAt\": \"2026-05-12T06:01:00Z\"\n    }\n  ],\n  \"page\": 1,\n  \"size\": 20,\n  \"totalElements\": 1,\n  \"totalPages\": 1,\n  \"first\": true,\n  \"last\": true\n}"
                     )
                 )
             )}
@@ -53,7 +53,7 @@ public class AdminOrderController {
             @Parameter(description = "Order status to filter", example = "PAID") @RequestParam(required = false) String status,
             @Parameter(description = "From createdAt (ISO-8601 instant)", example = "2026-05-01T00:00:00Z") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) String from,
             @Parameter(description = "To createdAt (ISO-8601 instant)", example = "2026-05-12T23:59:59Z") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) String to,
-            @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page number (1-based)", example = "1") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size
         ) {
         com.iuh.fit.domain.enums.OrderStatus s = null;

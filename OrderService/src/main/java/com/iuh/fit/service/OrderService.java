@@ -88,21 +88,21 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> getMyOrders(Long userId, int page, int size) {
-        if (page < 0) {
-            throw new BadRequestException("Page must be >= 0");
+        if (page < 1) {
+            throw new BadRequestException("Page must be >= 1");
         }
         if (size <= 0 || size > 100) {
             throw new BadRequestException("Size must be between 1 and 100");
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
 
         PagedResponse<OrderResponse> response = new PagedResponse<>();
         response.setContent(orderPage.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList()));
-        response.setPage(orderPage.getNumber());
+        response.setPage(orderPage.getNumber() + 1);
         response.setSize(orderPage.getSize());
         response.setTotalElements(orderPage.getTotalElements());
         response.setTotalPages(orderPage.getTotalPages());
@@ -137,10 +137,10 @@ public class OrderService {
                                                          java.time.Instant to,
                                                          int page,
                                                          int size) {
-        if (page < 0) throw new BadRequestException("Page must be >= 0");
+        if (page < 1) throw new BadRequestException("Page must be >= 1");
         if (size <= 0 || size > 200) throw new BadRequestException("Size must be between 1 and 200");
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orderPage;
         if (status != null && from != null && to != null) {
             orderPage = orderRepository.findAllByStatusAndCreatedAtBetween(status, from, to, pageable);
@@ -154,7 +154,7 @@ public class OrderService {
 
         PagedResponse<OrderResponse> response = new PagedResponse<>();
         response.setContent(orderPage.getContent().stream().map(this::toResponse).collect(Collectors.toList()));
-        response.setPage(orderPage.getNumber());
+        response.setPage(orderPage.getNumber() + 1);
         response.setSize(orderPage.getSize());
         response.setTotalElements(orderPage.getTotalElements());
         response.setTotalPages(orderPage.getTotalPages());

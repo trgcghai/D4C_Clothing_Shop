@@ -48,7 +48,7 @@ public class OrderController {
     @Operation(summary = "List my orders with pagination")
     public ResponseEntity<PagedResponse<OrderResponse>> getMyOrders(
             Authentication authentication,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         Long userId = extractUserId(authentication);
         return ResponseEntity.ok(orderService.getMyOrders(userId, page, size));

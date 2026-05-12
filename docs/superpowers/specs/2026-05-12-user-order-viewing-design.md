@@ -87,13 +87,13 @@ Both routes live under `AppLayout` (public/authenticated layout).
 
 ### Backend Changes Required (ProductService — Node.js/Express)
 
-1. **`GET /api/orders/user/me?page=0&size=10`**
+1. **`GET /api/orders/user/me?page=1&size=10`**
    - Modify existing endpoint in ProductService to accept pagination params
    - Return paginated response matching `AdminOrderListResponse` shape:
      ```json
      {
        "content": [OrderResponse, ...],
-       "page": 0,
+       "page": 1,
        "size": 10,
        "totalElements": 42,
        "totalPages": 5,
@@ -168,7 +168,7 @@ User clicks checkout → CartPage creates order → navigate("/orders")
                                             MyOrders page
                                             (useInfiniteQuery)
                                                    ↓
-                                    GET /api/orders/user/me?page=0&size=10
+                                    GET /api/orders/user/me?page=1&size=10
                                                    ↓
                                     Card list sorted by createdAt DESC
                                                    ↓
