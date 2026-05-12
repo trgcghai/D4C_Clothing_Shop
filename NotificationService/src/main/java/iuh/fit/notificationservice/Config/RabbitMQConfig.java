@@ -19,6 +19,7 @@ public class RabbitMQConfig {
     public static final String EMAIL_QUEUE = "email.notifications";
     public static final String EMAIL_ROUTING_KEY = "email.verification";
     public static final String EMAIL_ACCOUNT_ROUTING_KEY = "email.account.locked";
+    public static final String EMAIL_UNLOCK_ROUTING_KEY = "email.account.unlocked";
     public static final String EMAIL_ACCOUNT_QUEUE = "email.account.events";
     public static final String DLX_EXCHANGE = "email.dlx";
     public static final String DLQ_QUEUE = "email.notifications.dlq";
@@ -82,6 +83,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(emailAccountQueue)
                 .to(emailExchange)
                 .with(EMAIL_ACCOUNT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding emailAccountUnlockBinding(Queue emailAccountQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailAccountQueue)
+                .to(emailExchange)
+                .with(EMAIL_UNLOCK_ROUTING_KEY);
     }
 
     @Bean
