@@ -27,9 +27,11 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final AuditService auditService;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, AuditService auditService) {
         this.orderRepository = orderRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -86,21 +88,21 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> getMyOrders(Long userId, int page, int size) {
-        if (page < 0) {
-            throw new BadRequestException("Page must be >= 0");
+        if (page < 1) {
+            throw new BadRequestException("Page must be >= 1");
         }
         if (size <= 0 || size > 100) {
             throw new BadRequestException("Size must be between 1 and 100");
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
 
         PagedResponse<OrderResponse> response = new PagedResponse<>();
         response.setContent(orderPage.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList()));
-        response.setPage(orderPage.getNumber());
+        response.setPage(orderPage.getNumber() + 1);
         response.setSize(orderPage.getSize());
         response.setTotalElements(orderPage.getTotalElements());
         response.setTotalPages(orderPage.getTotalPages());
@@ -120,8 +122,82 @@ public class OrderService {
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        validateStatusTransition(order.getStatus(), request.getStatus());
+        String prev = order.getStatus() != null ? order.getStatus().name() : null;
         order.setStatus(request.getStatus());
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        // record audit for user's own change with actor = userId
+        auditService.record(id, userId, prev, request.getStatus().name(), request.getNote());
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<OrderResponse> getOrdersForAdmin(com.iuh.fit.domain.enums.OrderStatus status,
+                                                         java.time.Instant from,
+                                                         java.time.Instant to,
+                                                         int page,
+                                                         int size) {
+        if (page < 1) throw new BadRequestException("Page must be >= 1");
+        if (size <= 0 || size > 200) throw new BadRequestException("Size must be between 1 and 200");
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Order> orderPage;
+        if (status != null && from != null && to != null) {
+            orderPage = orderRepository.findAllByStatusAndCreatedAtBetween(status, from, to, pageable);
+        } else if (status != null) {
+            orderPage = orderRepository.findAllByStatus(status, pageable);
+        } else if (from != null && to != null) {
+            orderPage = orderRepository.findAllByCreatedAtBetween(from, to, pageable);
+        } else {
+            orderPage = orderRepository.findAll(pageable);
+        }
+
+        PagedResponse<OrderResponse> response = new PagedResponse<>();
+        response.setContent(orderPage.getContent().stream().map(this::toResponse).collect(Collectors.toList()));
+        response.setPage(orderPage.getNumber() + 1);
+        response.setSize(orderPage.getSize());
+        response.setTotalElements(orderPage.getTotalElements());
+        response.setTotalPages(orderPage.getTotalPages());
+        response.setFirst(orderPage.isFirst());
+        response.setLast(orderPage.isLast());
+        return response;
+    }
+
+    @Transactional
+    public OrderResponse updateOrderStatusAsAdmin(Long adminUserId, Long orderId, UpdateOrderStatusRequest request) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        validateStatusTransition(order.getStatus(), request.getStatus());
+        String prev = order.getStatus() != null ? order.getStatus().name() : null;
+        order.setStatus(request.getStatus());
+        Order saved = orderRepository.save(order);
+        auditService.record(orderId, adminUserId, prev, request.getStatus().name(), request.getNote());
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderByIdForAdmin(Long id) {
+        Order order = orderRepository.findOneById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        return toResponse(order);
+    }
+
+    private void validateStatusTransition(com.iuh.fit.domain.enums.OrderStatus current, com.iuh.fit.domain.enums.OrderStatus requested) {
+        if (current == requested) return;
+        if (current == null) return; // no prior state
+
+        switch (current) {
+            case PENDING_PAYMENT -> {
+                if (requested != com.iuh.fit.domain.enums.OrderStatus.PAID && requested != com.iuh.fit.domain.enums.OrderStatus.CANCELLED) {
+                    throw new BadRequestException("Invalid status transition from PENDING_PAYMENT to " + requested);
+                }
+            }
+            case PAID -> {
+                if (requested != com.iuh.fit.domain.enums.OrderStatus.CANCELLED) {
+                    throw new BadRequestException("Invalid status transition from PAID to " + requested);
+                }
+            }
+            case CANCELLED -> throw new BadRequestException("Cannot change status of a CANCELLED order");
+            default -> throw new BadRequestException("Unsupported current order status: " + current);
+        }
     }
 
     @Transactional

@@ -3,15 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/src/store";
-import { useNavigate } from "react-router-dom";
-import { useSignOut } from "@/src/hooks/useAuth";
 import ProfileInfoForm from "@/src/components/profile/ProfileInfoForm";
 import ChangePasswordForm from "@/src/components/profile/ChangePasswordForm";
 
 const Profile = () => {
-  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const { mutate: signOut } = useSignOut();
 
   if (!isAuthenticated || !user) {
     return (
@@ -36,18 +32,9 @@ const Profile = () => {
         .join("")
         .toUpperCase()
     : user.username[0].toUpperCase();
-
-  const handleSignOut = () => {
-    signOut(undefined, {
-      onSuccess: () => {
-        navigate("/", { replace: true });
-      },
-    });
-  };
-
   return (
     <main className="page-wrap px-4 pb-10 pt-8">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-bold mb-8">Thông tin tài khoản</h1>
 
         <div className="flex flex-col sm:flex-row items-start gap-6 mb-8">
@@ -78,17 +65,6 @@ const Profile = () => {
             <ChangePasswordForm />
           </TabsContent>
         </Tabs>
-
-        <Separator className="my-8" />
-
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
-            <a href="/">Quay lại trang chủ</a>
-          </Button>
-          <Button variant="destructive" onClick={handleSignOut}>
-            Đăng xuất
-          </Button>
-        </div>
       </div>
     </main>
   );

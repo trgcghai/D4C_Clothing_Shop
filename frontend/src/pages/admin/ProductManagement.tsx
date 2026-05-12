@@ -38,6 +38,7 @@ import {
   Loader2,
   X,
   Image as ImageIcon,
+  Package,
 } from "lucide-react";
 import {
   useProducts,
@@ -232,10 +233,12 @@ export default function ProductManagement() {
 
   return (
     <div className="p-6">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý sản phẩm</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Package className="size-6 text-primary" />
+            Quản lý sản phẩm
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data?.total ?? 0} sản phẩm
           </p>
@@ -255,20 +258,14 @@ export default function ProductManagement() {
             </Button>
           </DialogTrigger>
 
-          {/* ═══════════════════ FORM DIALOG ═══════════════════════════════ */}
-          <DialogContent className="w-[96vw] max-w-[1100px] max-h-[92vh] overflow-y-auto p-0 gap-0">
-            {/* Header */}
+          <DialogContent className="w-[96vw] max-w-275 max-h-[92vh] overflow-y-auto p-0 gap-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
               <DialogTitle className="text-xl">
-                {editingProduct
-                  ? "✏️ Chỉnh sửa sản phẩm"
-                  : "➕ Thêm sản phẩm mới"}
+                {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
               </DialogTitle>
             </DialogHeader>
 
-            {/* 3-column body */}
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_300px] min-h-0">
-              {/* ── COL 1: Ảnh sản phẩm ──────────────────────────────── */}
               <div className="border-r p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Hình ảnh
@@ -336,7 +333,6 @@ export default function ProductManagement() {
                 )}
               </div>
 
-              {/* ── COL 2: Thông tin sản phẩm (d4c_products + d4c_categories) ── */}
               <div className="border-r p-5 space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Thông tin sản phẩm
@@ -481,15 +477,12 @@ export default function ProductManagement() {
                 </div>
               </div>
 
-              {/* ── COL 3: Biến thể (d4c_variants) + Tags ─────────────── */}
               <div className="p-5 space-y-5">
-                {/* Biến thể */}
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                     Biến thể <span className="text-destructive">*</span>
                   </h3>
 
-                  {/* Input thêm biến thể */}
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <div className="grid grid-cols-3 gap-2">
                       <div className="grid gap-1">
@@ -557,7 +550,6 @@ export default function ProductManagement() {
                     </Button>
                   </div>
 
-                  {/* Danh sách biến thể */}
                   {form.variants.length > 0 ? (
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       <Table>
@@ -625,7 +617,6 @@ export default function ProductManagement() {
                   )}
                 </div>
 
-                {/* Tags */}
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                     Tags
@@ -679,7 +670,6 @@ export default function ProductManagement() {
               </div>
             </div>
 
-            {/* Footer */}
             <DialogFooter className="px-6 py-4 border-t">
               <div className="flex items-center gap-3 mr-auto text-sm">
                 {form.variants.length === 0 && (
@@ -719,12 +709,11 @@ export default function ProductManagement() {
         </Dialog>
       </div>
 
-      {/* ── Product Table ──────────────────────────────────────────────── */}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[60px]">Ảnh</TableHead>
+              <TableHead className="w-15">Ảnh</TableHead>
               <TableHead>Tên sản phẩm</TableHead>
               <TableHead>Danh mục</TableHead>
               <TableHead>Thương hiệu</TableHead>
@@ -732,7 +721,7 @@ export default function ProductManagement() {
               <TableHead>Biến thể</TableHead>
               <TableHead>Tồn kho</TableHead>
               <TableHead>Nổi bật</TableHead>
-              <TableHead className="w-[90px]">Thao tác</TableHead>
+              <TableHead className="w-22.5">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -771,7 +760,7 @@ export default function ProductManagement() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium max-w-[180px] truncate">
+                  <TableCell className="font-medium max-w-45 truncate">
                     {p.name}
                   </TableCell>
                   <TableCell>

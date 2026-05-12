@@ -17,7 +17,10 @@ import ProductDetail from "./pages/ProductDetail";
 import ProductManagement from "./pages/admin/ProductManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import UserManagement from "./pages/admin/UserManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
 import CartPage from "./pages/CartPage";
+import MyOrders from "./pages/MyOrders";
+import OrderDetail from "./pages/OrderDetail";
 import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
@@ -29,6 +32,8 @@ export const router = createBrowserRouter([
       { path: "/products/:productId", element: <ProductDetail /> },
       { path: "/cart", element: <CartPage /> },
       { path: "/profile", element: <Profile /> },
+      { path: "/orders", element: <MyOrders /> },
+      { path: "/orders/:orderId", element: <OrderDetail /> },
     ],
   },
   {
@@ -46,6 +51,7 @@ export const router = createBrowserRouter([
       { path: "/admin/products", element: <ProductManagement /> },
       { path: "/admin/categories", element: <CategoryManagement /> },
       { path: "/admin/users", element: <UserManagement /> },
+      { path: "/admin/orders", element: <OrderManagement /> },
     ],
   },
   {

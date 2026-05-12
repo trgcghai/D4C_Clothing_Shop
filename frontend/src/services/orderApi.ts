@@ -58,3 +58,25 @@ export const getOrderById = async (id: number): Promise<OrderResponse> => {
 export const getOrdersByUser = async (): Promise<OrderResponse[]> => {
   return axiosInstance.get("/api/orders/user/me").then((res) => res.data);
 };
+
+export interface UserOrdersPaginatedResponse {
+  content: OrderResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export const getOrdersByUserPaginated = async (
+  params: { page: number; size: number },
+): Promise<UserOrdersPaginatedResponse> => {
+  return axiosInstance.get("/api/orders", { params }).then((res) => res.data);
+};
+
+export const getUserOrderDetail = async (
+  orderId: number,
+): Promise<OrderResponse> => {
+  return axiosInstance.get(`/api/orders/${orderId}`).then((res) => res.data);
+};

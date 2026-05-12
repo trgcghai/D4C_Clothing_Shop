@@ -247,7 +247,7 @@ services:
       productservice:
         condition: service_healthy
     ports:
-      - "5174:5173"
+      - "5173:5173"
     healthcheck:
       test:
         [

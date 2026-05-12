@@ -23,14 +23,15 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/actuator/health",
-                                "/api/public/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
+                    .requestMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/actuator/health",
+                        "/api/public/**"
+                    ).permitAll()
+                    .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
+                    .anyRequest().authenticated()
                 );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

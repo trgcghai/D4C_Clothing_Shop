@@ -21,4 +21,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = {"items"})
     Page<Order> findAllByUserId(Long userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<Order> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<Order> findAllByStatus(com.iuh.fit.domain.enums.OrderStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<Order> findAllByCreatedAtBetween(java.time.Instant start, java.time.Instant end, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    Page<Order> findAllByStatusAndCreatedAtBetween(com.iuh.fit.domain.enums.OrderStatus status, java.time.Instant start, java.time.Instant end, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    java.util.Optional<Order> findOneById(Long id);
 }
