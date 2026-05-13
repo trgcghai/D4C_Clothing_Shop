@@ -28,6 +28,15 @@ public class OrderEventConsumer {
             OrderStatusEvent event,
             Channel channel,
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+        if (event == null) {
+            log.error("Received null order event, nacking message");
+            try {
+                channel.basicNack(deliveryTag, false, false);
+            } catch (Exception e) {
+                log.error("Failed to nack null message: {}", e.getMessage());
+            }
+            return;
+        }
         String eventType = event.getType() != null ? event.getType() : "UNKNOWN";
         try {
             log.info("Received order {} event for order {}", eventType.toLowerCase(), event.getOrderId());

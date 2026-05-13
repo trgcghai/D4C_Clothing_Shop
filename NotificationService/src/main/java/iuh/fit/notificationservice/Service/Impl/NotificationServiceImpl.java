@@ -319,6 +319,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendOrderCreatedEmail(OrderStatusEvent event) {
+        if (event.getEmail() == null) {
+            log.warn("Order event has no email for orderId {}, skipping", event.getOrderId());
+            return;
+        }
         java.util.Map<String, String> templateVars = new java.util.HashMap<>();
         templateVars.put("orderId", event.getOrderId() != null ? event.getOrderId().toString() : "N/A");
 
