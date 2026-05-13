@@ -28,8 +28,8 @@ public class OrderEventConsumer {
             OrderStatusEvent event,
             Channel channel,
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+        String eventType = event.getType() != null ? event.getType() : "UNKNOWN";
         try {
-            String eventType = event.getType() != null ? event.getType() : "UNKNOWN";
             log.info("Received order {} event for order {}", eventType.toLowerCase(), event.getOrderId());
 
             if ("ORDER_CREATED".equals(event.getType())) {
