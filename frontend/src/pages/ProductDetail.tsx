@@ -338,9 +338,16 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     quantity: purchaseQty,
                   },
                   {
-                    onSuccess: () => {
+                    onSuccess: (cart) => {
                       setPurchaseQty(1);
-                      navigate("/cart");
+                      const addedItem = cart.items.find(
+                        (item) => item.variantId === selectedVariant.id,
+                      );
+                      if (addedItem) {
+                        navigate(`/checkout?buyNowItemId=${addedItem.id}`);
+                      } else {
+                        navigate("/checkout");
+                      }
                     },
                   },
                 );
