@@ -143,13 +143,8 @@ export function useClearCartAfterCheckout() {
 }
 
 export function usePartialCheckout() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: partialCheckout,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cartKeys.all });
-    },
     onError: (error) => {
       if (isAxiosError(error)) {
         const msg = error.response?.data?.message || "Checkout thất bại";

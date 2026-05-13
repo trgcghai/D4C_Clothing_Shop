@@ -39,11 +39,15 @@ export default function CheckoutPage() {
 
     if (buyNowItemId) {
       const id = Number(buyNowItemId);
+      if (isNaN(id)) return [];
       return cart.items.filter((item) => item.id === id);
     }
 
     if (selectedIdsParam) {
-      const ids = selectedIdsParam.split(",").map(Number);
+      const ids = selectedIdsParam
+        .split(",")
+        .map(Number)
+        .filter((n) => !isNaN(n) && n > 0);
       return cart.items.filter((item) => ids.includes(item.id));
     }
 
@@ -149,10 +153,6 @@ export default function CheckoutPage() {
       orderCreated = true;
       createdOrderId = order.id;
 
-      await removeItemsBulkMutation.mutateAsync({
-        itemIds: itemIdsForCheckout,
-      });
-
       if (method === "QR") {
         try {
           const payment = await createPaymentMutation.mutateAsync({
@@ -161,11 +161,14 @@ export default function CheckoutPage() {
             amount: checkoutData.totalAmount,
             method: "QR",
           });
+          await removeItemsBulkMutation.mutateAsync({
+            itemIds: itemIdsForCheckout,
+          });
           navigate(`/payment/${payment.paymentId}`);
         } catch (paymentError) {
-          for (const item of deductedItems) {
-            await restoreStock(item.variantId, item.quantity);
-          }
+          await Promise.allSettled(
+            deductedItems.map((item) => restoreStock(item.variantId, item.quantity)),
+          );
           await cancelOrderMutation.mutateAsync(order.id);
           toast.error(
             "Tạo thanh toán thất bại, đơn hàng đã được hủy và tồn kho đã hoàn",
@@ -173,14 +176,17 @@ export default function CheckoutPage() {
           return;
         }
       } else {
+        await removeItemsBulkMutation.mutateAsync({
+          itemIds: itemIdsForCheckout,
+        });
         toast.success(`Đơn hàng ${order.checkoutOrderId} đã được tạo!`);
         navigate(`/orders/${order.id}`);
       }
     } catch (error) {
       if (orderCreated && createdOrderId) {
-        for (const item of deductedItems) {
-          await restoreStock(item.variantId, item.quantity);
-        }
+        await Promise.allSettled(
+          deductedItems.map((item) => restoreStock(item.variantId, item.quantity)),
+        );
         await cancelOrderMutation.mutateAsync(createdOrderId);
       }
       if (isAxiosError(error)) {
@@ -273,7 +279,7 @@ export default function CheckoutPage() {
               className="w-full"
               size="lg"
               onClick={handleConfirm}
-              disabled={createOrderFromCheckoutMutation.isPending || filteredItems.length === 0}
+              disabled={partialCheckoutMutation.isPending || createOrderFromCheckoutMutation.isPending || filteredItems.length === 0}
             >
               {createOrderFromCheckoutMutation.isPending ? (
                 <>
