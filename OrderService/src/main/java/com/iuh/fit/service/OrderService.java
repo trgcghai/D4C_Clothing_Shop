@@ -139,7 +139,7 @@ public class OrderService {
         // record audit for user's own change with actor = userId
         auditService.record(id, userId, prev, requestedStatus.name(), request.getNote());
 
-        if (request.getStatus() == OrderStatus.CANCELLED && prev != null) {
+        if (OrderStatus.valueOf(request.getStatus()) == OrderStatus.CANCELLED && prev != null) {
             restoreStockForOrder(saved);
         }
 
