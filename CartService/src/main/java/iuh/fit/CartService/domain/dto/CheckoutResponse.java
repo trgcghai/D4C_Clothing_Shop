@@ -24,6 +24,7 @@ public class CheckoutResponse {
     @AllArgsConstructor
     public static class CheckoutItem {
         private String variantId;
+        private String productId;
         private String productName;
         private String color;
         private String size;

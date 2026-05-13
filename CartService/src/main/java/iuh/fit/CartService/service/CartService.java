@@ -336,6 +336,7 @@ public class CartService {
         List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
                 .map(item -> CheckoutResponse.CheckoutItem.builder()
                         .variantId(item.getVariantId())
+                        .productId(item.getProductId())
                         .productName(item.getProductName())
                         .color(item.getColor())
                         .size(item.getSize())

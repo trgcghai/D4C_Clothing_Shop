@@ -35,6 +35,7 @@ public class CreateOrderFromCheckoutRequest {
     public static class CheckoutItemDto {
         @NotBlank
         private String productName;
+        private String productId;
         private String color;
         private String size;
         private BigDecimal price;

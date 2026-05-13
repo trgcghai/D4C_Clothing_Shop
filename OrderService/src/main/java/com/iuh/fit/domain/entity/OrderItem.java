@@ -25,6 +25,9 @@ public class OrderItem {
     @Column(name = "product_name", nullable = false, length = 255)
     private String productName;
 
+    @Column(name = "product_id", length = 36)
+    private String productId;
+
     @Column(name = "color", length = 64)
     private String color;
 

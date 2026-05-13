@@ -64,6 +64,7 @@ public class OrderService {
 
             OrderItem item = new OrderItem();
             item.setProductName(itemDto.getProductName());
+            item.setProductId(itemDto.getProductId());
             item.setColor(itemDto.getColor());
             item.setSize(itemDto.getSize());
             item.setQuantity(itemDto.getQuantity());
@@ -239,6 +240,7 @@ public class OrderService {
                 .map(item -> {
                     OrderResponse.OrderItemResponse r = new OrderResponse.OrderItemResponse();
                     r.setId(item.getId());
+                    r.setProductId(item.getProductId());
                     r.setProductName(item.getProductName());
                     r.setColor(item.getColor());
                     r.setSize(item.getSize());

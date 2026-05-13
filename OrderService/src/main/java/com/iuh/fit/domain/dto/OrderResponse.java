@@ -30,6 +30,7 @@ public class OrderResponse {
     @AllArgsConstructor
     public static class OrderItemResponse {
         private Long id;
+        private String productId;
         private String productName;
         private String color;
         private String size;
