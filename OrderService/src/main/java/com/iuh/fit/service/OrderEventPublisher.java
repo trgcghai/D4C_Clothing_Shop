@@ -4,6 +4,7 @@ import com.iuh.fit.config.RabbitMQConfig;
 import com.iuh.fit.domain.dto.OrderStatusEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -37,8 +38,8 @@ public class OrderEventPublisher {
         try {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EMAIL_EXCHANGE, routingKey, event);
             log.info("Published order event: type={}, orderId={}, routingKey={}", event.getType(), event.getOrderId(), routingKey);
-        } catch (Exception e) {
-            log.error("Failed to publish order event: type={}, orderId={}: {}", event.getType(), event.getOrderId(), e.getMessage());
+        } catch (AmqpException e) {
+            log.warn("Failed to publish order event: type={}, orderId={}: {}", event.getType(), event.getOrderId(), e.getMessage());
         }
     }
 }
