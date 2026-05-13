@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Empty,
   EmptyMedia,
@@ -17,6 +18,7 @@ import {
   useRemoveCartItem,
   useClearCart,
 } from "@/src/hooks/useCart";
+import { useCartSelection } from "@/src/hooks/useCartSelection";
 import {
   ShoppingCart,
   Trash2,
@@ -32,6 +34,26 @@ const CartPage = () => {
   const updateMutation = useUpdateCartItem();
   const removeMutation = useRemoveCartItem();
   const clearMutation = useClearCart();
+
+  const cartItemIds = cart.items.map((item) => item.id);
+  const {
+    selectedIds,
+    toggleItem,
+    selectAll,
+    deselectAll,
+    isAllSelected,
+    isSomeSelected,
+  } = useCartSelection(cartItemIds);
+
+  const selectedItems = cart.items.filter((item) => selectedIds.includes(item.id));
+  const selectedTotal = selectedItems.reduce(
+    (sum, item) => sum + item.subtotal,
+    0,
+  );
+  const selectedItemCount = selectedItems.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
 
   const [editingQty, setEditingQty] = useState<Record<number, string>>({});
 
@@ -132,7 +154,9 @@ const CartPage = () => {
   };
 
   const handleCheckout = () => {
-    navigate("/checkout");
+    if (selectedIds.length === 0) return;
+    const idsParam = selectedIds.join(",");
+    navigate(`/checkout?selectedIds=${idsParam}`);
   };
 
   return (
@@ -151,6 +175,13 @@ const CartPage = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Tiếp tục mua sắm
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isAllSelected ? deselectAll : selectAll}
+            >
+              {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
             </Button>
             <Button
               variant="destructive"
@@ -175,6 +206,12 @@ const CartPage = () => {
                 key={item.id}
                 className="flex gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
               >
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={selectedIds.includes(item.id)}
+                    onCheckedChange={() => toggleItem(item.id)}
+                  />
+                </div>
                 <Link to={`/products/${item.productId}`} className="flex h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
@@ -276,8 +313,8 @@ const CartPage = () => {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Tạm tính ({cart.totalItems} sản phẩm)</span>
-                  <span>{cart.totalAmount.toLocaleString("vi-VN")}₫</span>
+                  <span>Tạm tính ({selectedItemCount} sản phẩm)</span>
+                  <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Phí vận chuyển</span>
@@ -290,7 +327,7 @@ const CartPage = () => {
               <div className="flex justify-between text-lg font-bold">
                 <span>Tổng cộng</span>
                 <span className="tabular-nums">
-                  {cart.totalAmount.toLocaleString("vi-VN")}₫
+                  {selectedTotal.toLocaleString("vi-VN")}₫
                 </span>
               </div>
 
@@ -298,10 +335,16 @@ const CartPage = () => {
                 className="w-full"
                 size="lg"
                 onClick={handleCheckout}
-                disabled={cart.items.length === 0}
+                disabled={selectedIds.length === 0}
               >
                 Thanh toán
               </Button>
+
+              {selectedIds.length === 0 && (
+                <p className="text-xs text-destructive text-center">
+                  Vui lòng chọn ít nhất một sản phẩm để thanh toán.
+                </p>
+              )}
 
               <p className="text-xs text-muted-foreground text-center">
                 Giá đã bao gồm VAT (nếu có).
