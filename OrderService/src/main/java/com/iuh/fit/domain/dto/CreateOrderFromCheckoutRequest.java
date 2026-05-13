@@ -30,6 +30,8 @@ public class CreateOrderFromCheckoutRequest {
 
     private String paymentMethod;
 
+    private String email;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -38,6 +40,7 @@ public class CreateOrderFromCheckoutRequest {
         @NotBlank
         private String productName;
         private String productId;
+        private String variantId;
         private String color;
         private String size;
         private BigDecimal price;

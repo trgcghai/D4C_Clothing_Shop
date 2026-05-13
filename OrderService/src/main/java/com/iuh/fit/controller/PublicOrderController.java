@@ -1,6 +1,7 @@
 package com.iuh.fit.controller;
 
 import com.iuh.fit.domain.dto.UpdateOrderStatusRequest;
+import com.iuh.fit.domain.enums.OrderStatus;
 import com.iuh.fit.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +25,7 @@ public class PublicOrderController {
     public ResponseEntity<Void> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
-        orderService.updateOrderStatusByPaymentService(id, request.getStatus());
+        orderService.updateOrderStatusByPaymentService(id, OrderStatus.valueOf(request.getStatus()));
         return ResponseEntity.ok().build();
     }
 }

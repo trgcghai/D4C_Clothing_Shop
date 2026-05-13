@@ -11,20 +11,27 @@ import {
 } from "@/src/hooks/useCart";
 import { useCreatePayment } from "@/src/hooks/usePayment";
 import { deductStock, restoreStock } from "@/src/services/productApi";
-import { createOrderFromCheckout, cancelOrder } from "@/src/services/orderApi";
 import type { PaymentMethod } from "@/src/services/orderApi";
 import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
+import {
+  useCancelOrder,
+  useCreateOrderFromCheckout,
+} from "@/src/hooks/useUserOrders";
+import { useStore } from "@/src/store";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { data: cart, isLoading, isError } = useCart();
   const checkoutMutation = useCheckout();
   const clearAfterCheckoutMutation = useClearCartAfterCheckout();
+  const createOrderFromCheckoutMutation = useCreateOrderFromCheckout();
+  const cancelOrderMutation = useCancelOrder();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  const { user } = useStore((state) => state);
 
   if (isLoading) {
     return (
@@ -58,10 +65,11 @@ export default function CheckoutPage() {
   }
 
   const handleConfirm = async () => {
-    setIsProcessing(true);
     const deductedItems: { variantId: string; quantity: number }[] = [];
     let orderCreated = false;
     let createdOrderId: number | null = null;
+
+    if (!user || !user.email) return;
 
     try {
       const checkoutData = await checkoutMutation.mutateAsync();
@@ -69,7 +77,10 @@ export default function CheckoutPage() {
       for (const item of checkoutData.items) {
         try {
           await deductStock(item.variantId, item.quantity);
-          deductedItems.push({ variantId: item.variantId, quantity: item.quantity });
+          deductedItems.push({
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
         } catch (deductError) {
           if (isAxiosError(deductError)) {
             const msg =
@@ -78,16 +89,16 @@ export default function CheckoutPage() {
           } else {
             toast.error("Không đủ tồn kho");
           }
-          setIsProcessing(false);
           return;
         }
       }
 
-      const order = await createOrderFromCheckout({
+      const order = await createOrderFromCheckoutMutation.mutateAsync({
         orderId: checkoutData.orderId,
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
         paymentMethod: method,
+        email: user.email,
       });
       orderCreated = true;
       createdOrderId = order.id;
@@ -105,10 +116,12 @@ export default function CheckoutPage() {
           navigate(`/payment/${payment.paymentId}`);
         } catch (paymentError) {
           for (const item of deductedItems) {
-            await restoreStock(item.variantId, item.quantity).catch(() => {});
+            await restoreStock(item.variantId, item.quantity);
           }
-          await cancelOrder(order.id);
-          toast.error("Tạo thanh toán thất bại, đơn hàng đã được hủy và tồn kho đã hoàn");
+          await cancelOrderMutation.mutateAsync(order.id);
+          toast.error(
+            "Tạo thanh toán thất bại, đơn hàng đã được hủy và tồn kho đã hoàn",
+          );
           return;
         }
       } else {
@@ -118,9 +131,9 @@ export default function CheckoutPage() {
     } catch (error) {
       if (orderCreated && createdOrderId) {
         for (const item of deductedItems) {
-          await restoreStock(item.variantId, item.quantity).catch(() => {});
+          await restoreStock(item.variantId, item.quantity);
         }
-        await cancelOrder(createdOrderId).catch(() => {});
+        await cancelOrderMutation.mutateAsync(createdOrderId);
       }
       if (isAxiosError(error)) {
         const msg = error.response?.data?.message || "Thanh toán thất bại";
@@ -128,8 +141,6 @@ export default function CheckoutPage() {
       } else {
         toast.error("Thanh toán thất bại, vui lòng thử lại");
       }
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -154,7 +165,7 @@ export default function CheckoutPage() {
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
-              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-[[data-state=checked]]:border-primary">
+              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-data-[state=checked]:border-primary">
                 <RadioGroupItem value="QR" id="qr" />
                 <Label
                   htmlFor="qr"
@@ -169,7 +180,7 @@ export default function CheckoutPage() {
                   </div>
                 </Label>
               </div>
-              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-[[data-state=checked]]:border-primary">
+              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-data-[state=checked]:border-primary">
                 <RadioGroupItem value="CASH" id="cash" />
                 <Label
                   htmlFor="cash"
@@ -214,9 +225,9 @@ export default function CheckoutPage() {
               className="w-full"
               size="lg"
               onClick={handleConfirm}
-              disabled={isProcessing}
+              disabled={createOrderFromCheckoutMutation.isPending}
             >
-              {isProcessing ? (
+              {createOrderFromCheckoutMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Đang xử lý...

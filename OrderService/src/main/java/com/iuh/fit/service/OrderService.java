@@ -10,6 +10,9 @@ import com.iuh.fit.domain.enums.OrderStatus;
 import com.iuh.fit.exception.BadRequestException;
 import com.iuh.fit.exception.ResourceNotFoundException;
 import com.iuh.fit.repository.OrderRepository;
+import com.iuh.fit.service.OrderEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,12 +34,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final AuditService auditService;
     private final ProductServiceClient productServiceClient;
+    private final OrderEventPublisher orderEventPublisher;
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     public OrderService(OrderRepository orderRepository, AuditService auditService,
-            ProductServiceClient productServiceClient) {
+            ProductServiceClient productServiceClient,
+            OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
         this.productServiceClient = productServiceClient;
+        this.orderEventPublisher = orderEventPublisher;
     }
 
     @Transactional
@@ -59,6 +68,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setTotalAmount(calculatedTotal);
         order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH");
+        order.setEmail(request.getEmail());
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {
             if (itemDto.getQuantity() == null || itemDto.getQuantity() <= 0) {
@@ -85,6 +95,7 @@ public class OrderService {
 
         try {
             Order saved = orderRepository.save(order);
+            publishOrderCreatedEvent(saved);
             return toResponse(saved);
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
@@ -139,7 +150,7 @@ public class OrderService {
         // record audit for user's own change with actor = userId
         auditService.record(id, userId, prev, requestedStatus.name(), request.getNote());
 
-        if (request.getStatus() == OrderStatus.CANCELLED && prev != null) {
+        if (OrderStatus.valueOf(request.getStatus()) == OrderStatus.CANCELLED && prev != null) {
             restoreStockForOrder(saved);
         }
 
@@ -254,6 +265,24 @@ public class OrderService {
         orderRepository.delete(order);
     }
 
+    private void publishOrderCreatedEvent(Order saved) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    String userEmail = saved.getEmail();
+                    if (userEmail != null && !userEmail.isBlank()) {
+                        orderEventPublisher.publishOrderCreated(saved.getId(), saved.getUserId(), userEmail);
+                    } else {
+                        log.warn("Order {} has no email, skipping order created event", saved.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage(), e);
+                }
+            }
+        });
+    }
+
     private BigDecimal calculateTotal(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
         return items.stream()
                 .map(i -> normalizeMoney(i.getSnapshot().getPriceAtCheckout())
@@ -278,6 +307,7 @@ public class OrderService {
         response.setStatus(order.getStatus());
         response.setTotalAmount(order.getTotalAmount());
         response.setPaymentMethod(order.getPaymentMethod());
+        response.setEmail(order.getEmail());
         response.setCreatedAt(order.getCreatedAt());
         response.setUpdatedAt(order.getUpdatedAt());
 

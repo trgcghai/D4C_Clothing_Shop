@@ -21,6 +21,7 @@ public class OrderResponse {
     private OrderStatus status;
     private BigDecimal totalAmount;
     private String paymentMethod;
+    private String email;
     private List<OrderItemResponse> items;
     private Instant createdAt;
     private Instant updatedAt;
