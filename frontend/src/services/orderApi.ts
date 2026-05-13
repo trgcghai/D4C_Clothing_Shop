@@ -23,6 +23,7 @@ export interface CreateOrderPayload {
   items: CheckoutItem[];
   totalAmount: number;
   paymentMethod: PaymentMethod;
+  email: string;
 }
 
 export interface OrderItemResponse {
