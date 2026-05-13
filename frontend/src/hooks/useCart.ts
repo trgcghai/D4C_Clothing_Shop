@@ -12,7 +12,6 @@ import {
   removeCartItemsBulk,
   type AddCartItemPayload,
   type UpdateCartItemPayload,
-  type CheckoutRequest,
 } from "@/src/services/cartApi";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -147,7 +146,7 @@ export function usePartialCheckout() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CheckoutRequest) => partialCheckout(payload),
+    mutationFn: partialCheckout,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
     },
@@ -166,7 +165,7 @@ export function useRemoveCartItemsBulk() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CheckoutRequest) => removeCartItemsBulk(payload),
+    mutationFn: removeCartItemsBulk,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
     },
