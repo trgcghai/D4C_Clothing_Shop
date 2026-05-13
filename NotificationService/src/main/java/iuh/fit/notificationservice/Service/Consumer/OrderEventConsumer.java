@@ -47,7 +47,7 @@ public class OrderEventConsumer {
             channel.basicAck(deliveryTag, false);
             log.info("Successfully processed order {} event for order {}", eventType.toLowerCase(), event.getOrderId());
         } catch (Exception e) {
-            log.error("Failed to process order {} event for order {}", event.getType(), event.getOrderId(), e);
+            log.error("Failed to process order {} event for order {}", eventType.toLowerCase(), event.getOrderId(), e);
             try {
                 channel.basicNack(deliveryTag, false, false);
             } catch (Exception nackException) {
