@@ -1,35 +1,4 @@
-import axios from "axios";
-import { useStore } from "@/src/store";
-
-function getToken(): string | null {
-  const token = useStore.getState().token;
-  if (token) return token;
-  try {
-    const raw = localStorage.getItem("d4c-auth-storage");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return parsed?.state?.token || null;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-const paymentApi = axios.create({
-  baseURL: import.meta.env.VITE_PAYMENT_SERVICE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-paymentApi.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import axiosInstance from "@/src/services/_axios";
 
 export type PaymentMethod = "QR" | "CASH";
 
@@ -60,13 +29,21 @@ export interface PaymentStatusResponse {
 }
 
 export const createPayment = (payload: CreatePaymentPayload) =>
-  paymentApi.post<PaymentResponse>("/api/payments", payload).then((res) => res.data);
+  axiosInstance
+    .post<PaymentResponse>("/api/payments", payload)
+    .then((res) => res.data);
 
 export const getPaymentStatus = (paymentId: number) =>
-  paymentApi.get<PaymentStatusResponse>(`/api/payments/${paymentId}/status`).then((res) => res.data);
+  axiosInstance
+    .get<PaymentStatusResponse>(`/api/payments/${paymentId}/status`)
+    .then((res) => res.data);
 
 export const getPaymentById = (paymentId: number) =>
-  paymentApi.get<PaymentResponse>(`/api/payments/${paymentId}`).then((res) => res.data);
+  axiosInstance
+    .get<PaymentResponse>(`/api/payments/${paymentId}`)
+    .then((res) => res.data);
 
 export const cancelPayment = (paymentId: number) =>
-  paymentApi.post<PaymentStatusResponse>(`/api/payments/${paymentId}/cancel`).then((res) => res.data);
+  axiosInstance
+    .post<PaymentStatusResponse>(`/api/payments/${paymentId}/cancel`)
+    .then((res) => res.data);
