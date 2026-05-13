@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/src/store";
 
 const STORAGE_KEY = "d4c-cart-selection";
@@ -7,15 +7,16 @@ function getStorageKey(userId: number): string {
   return `${STORAGE_KEY}-${userId}`;
 }
 
-function loadSelectedIds(userId: number | undefined): number[] {
-  if (!userId) return [];
+// Returns null if nothing was ever stored, or the stored array (possibly empty)
+function loadSelectedIds(userId: number | undefined): number[] | null {
+  if (!userId) return null;
   try {
     const raw = localStorage.getItem(getStorageKey(userId));
-    if (!raw) return [];
+    if (raw === null) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -31,33 +32,51 @@ function saveSelectedIds(userId: number | undefined, ids: number[]) {
 export function useCartSelection(cartItemIds: number[]) {
   const { user } = useAuth();
   const userId = user?.id;
+  const initializedRef = useRef(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>(() => {
-    // Load stored IDs directly — don't filter against cartItemIds yet
-    // because cart may not be loaded on first render
-    return loadSelectedIds(userId);
+    const stored = loadSelectedIds(userId);
+    // null = never stored → will be initialized when cart loads
+    // [] = explicitly deselected all → preserve
+    // [ids] = some selection → preserve
+    return stored ?? [];
   });
 
   // When cart items change, sync selection and persist
   useEffect(() => {
     if (cartItemIds.length === 0) {
-      // Don't clear selection when cart is empty/loading — preserve stored state
       return;
     }
 
-    setSelectedIds((prev) => {
-      // Keep only IDs that still exist in cart
-      const synced = prev.filter((id) => cartItemIds.includes(id));
-
-      // If nothing is selected (stored was empty or all items removed from cart), select all
-      if (synced.length === 0) {
-        const all = [...cartItemIds];
-        saveSelectedIds(userId, all);
-        return all;
+    if (!initializedRef.current) {
+      // First time cart loads: if nothing was stored, default to select all
+      const stored = loadSelectedIds(userId);
+      if (stored === null) {
+        // Never stored before → select all and persist
+        setSelectedIds([...cartItemIds]);
+        saveSelectedIds(userId, cartItemIds);
+        initializedRef.current = true;
+        return;
       }
+      // Was stored before (possibly []) → filter stale IDs
+      const synced = stored.filter((id) => cartItemIds.includes(id));
+      // If synced is empty AND stored was empty, user explicitly deselected all → keep empty
+      // If synced is empty but stored had items, those items are gone from cart → select all
+      if (synced.length === 0 && stored.length > 0) {
+        // All stored items are gone → select all fresh items
+        setSelectedIds([...cartItemIds]);
+        saveSelectedIds(userId, cartItemIds);
+      } else {
+        setSelectedIds(synced);
+        saveSelectedIds(userId, synced);
+      }
+      initializedRef.current = true;
+      return;
+    }
 
-      // Preserve the filtered selection — don't auto-add new items
-      // This respects deliberate deselections across navigation
+    // Subsequent cart changes: only prune stale IDs, preserve deselections
+    setSelectedIds((prev) => {
+      const synced = prev.filter((id) => cartItemIds.includes(id));
       saveSelectedIds(userId, synced);
       return synced;
     });
