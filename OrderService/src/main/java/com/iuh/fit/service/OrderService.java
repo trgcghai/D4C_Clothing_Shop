@@ -130,7 +130,7 @@ public class OrderService {
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        com.iuh.fit.domain.enums.OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus
+        OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus
                 .valueOf(request.getStatus());
         validateStatusTransition(order.getStatus(), requestedStatus);
         String prev = order.getStatus() != null ? order.getStatus().name() : null;
