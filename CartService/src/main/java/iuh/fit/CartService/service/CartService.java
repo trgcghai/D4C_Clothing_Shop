@@ -286,6 +286,11 @@ public class CartService {
                 .build();
     }
 
+    /**
+     * Creates an order draft for selected cart items only.
+     * Does NOT remove items from cart — caller must call removeItemsBulk
+     * after successful order creation.
+     */
     @Transactional
     public CheckoutResponse partialCheckout(Long userId, List<Long> itemIds) {
         Cart cart = cartRepository.findByUserId(userId)
@@ -300,36 +305,7 @@ public class CartService {
             throw new RuntimeException("Some items do not belong to your cart");
         }
 
-        List<String> validationErrors = new ArrayList<>();
-        for (CartItem item : items) {
-            try {
-                ProductDto product = productServiceClient.getProductById(item.getProductId());
-                if (product == null) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
-                    continue;
-                }
-                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
-                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
-                    continue;
-                }
-                VariantDto variant = product.getVariants().stream()
-                        .filter(v -> v.getId().equals(item.getVariantId()))
-                        .findFirst()
-                        .orElse(null);
-                if (variant == null) {
-                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
-                    continue;
-                }
-                if (variant.getQuantity() < item.getQuantity()) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName()
-                            + "' (" + item.getColor() + ", " + item.getSize()
-                            + ") chỉ còn " + variant.getQuantity()
-                            + ", bạn cần " + item.getQuantity());
-                }
-            } catch (Exception e) {
-                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
-            }
-        }
+        List<String> validationErrors = validateCartItems(items);
 
         if (!validationErrors.isEmpty()) {
             throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
@@ -386,36 +362,7 @@ public class CartService {
             throw new RuntimeException("Cart is empty");
         }
 
-        List<String> validationErrors = new ArrayList<>();
-        for (CartItem item : items) {
-            try {
-                ProductDto product = productServiceClient.getProductById(item.getProductId());
-                if (product == null) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
-                    continue;
-                }
-                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
-                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
-                    continue;
-                }
-                VariantDto variant = product.getVariants().stream()
-                        .filter(v -> v.getId().equals(item.getVariantId()))
-                        .findFirst()
-                        .orElse(null);
-                if (variant == null) {
-                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
-                    continue;
-                }
-                if (variant.getQuantity() < item.getQuantity()) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName()
-                            + "' (" + item.getColor() + ", " + item.getSize()
-                            + ") chỉ còn " + variant.getQuantity()
-                            + ", bạn cần " + item.getQuantity());
-                }
-            } catch (Exception e) {
-                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
-            }
-        }
+        List<String> validationErrors = validateCartItems(items);
 
         if (!validationErrors.isEmpty()) {
             throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
@@ -450,6 +397,40 @@ public class CartService {
                 .items(checkoutItems)
                 .totalAmount(totalAmount)
                 .build();
+    }
+
+    private List<String> validateCartItems(List<CartItem> items) {
+        List<String> validationErrors = new ArrayList<>();
+        for (CartItem item : items) {
+            try {
+                ProductDto product = productServiceClient.getProductById(item.getProductId());
+                if (product == null) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
+                    continue;
+                }
+                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
+                    continue;
+                }
+                VariantDto variant = product.getVariants().stream()
+                        .filter(v -> v.getId().equals(item.getVariantId()))
+                        .findFirst()
+                        .orElse(null);
+                if (variant == null) {
+                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
+                    continue;
+                }
+                if (variant.getQuantity() < item.getQuantity()) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName()
+                            + "' (" + item.getColor() + ", " + item.getSize()
+                            + ") chỉ còn " + variant.getQuantity()
+                            + ", bạn cần " + item.getQuantity());
+                }
+            } catch (Exception e) {
+                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
+            }
+        }
+        return validationErrors;
     }
 
     private CartResponse buildCartResponse(Cart cart) {
