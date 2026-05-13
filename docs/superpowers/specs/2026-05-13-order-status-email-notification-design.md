@@ -27,7 +27,8 @@ Add event-driven email notifications for order lifecycle events. OrderService pu
 - `OrderStatusEvent` DTO — `{ type: String, orderId: Long, userId: Long, email: String }`
 - `OrderEventPublisher` — publishes events to `email.exchange`
 - `RabbitMQConfig` — exchange reference, message converter, publisher config
-- Integration point: `OrderService` (business logic) calls `OrderEventPublisher` after order creation
+- `UserServiceClient` — lightweight REST client to fetch user email by userId (OrderService JWT only contains userId, not email)
+- Integration point: `OrderService` (business logic) fetches email from UserService, then calls `OrderEventPublisher` after order creation
 
 **NotificationService (Consumer)**
 - `OrderStatusEvent` DTO — mirrors producer DTO
@@ -50,7 +51,8 @@ Add event-driven email notifications for order lifecycle events. OrderService pu
 
 ```
 User → POST /api/orders → OrderController
-  → OrderService.createOrder()
+  → OrderService.createOrderFromCheckout()
+    → Fetch user email from UserService (UserServiceClient)
     → Persist order (status: PENDING_PAYMENT)
     → OrderEventPublisher.publish(event)
       → email.exchange + routing key: email.order.created
@@ -120,6 +122,7 @@ Bindings (to email.exchange):
 | Scenario | Behavior |
 |----------|----------|
 | RabbitMQ down during publish | Log warning, order creation succeeds (fire-and-forget) |
+| UserService down when fetching email | Log warning, skip event publish, order creation succeeds |
 | Email send fails | NACK with requeue=false → DLQ |
 | Malformed event message | NACK with requeue=false → DLQ, log error |
 | Notification record save fails | NACK with requeue=false → DLQ |
