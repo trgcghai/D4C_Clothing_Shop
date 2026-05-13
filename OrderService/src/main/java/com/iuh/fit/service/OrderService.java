@@ -30,7 +30,8 @@ public class OrderService {
     private final AuditService auditService;
     private final ProductServiceClient productServiceClient;
 
-    public OrderService(OrderRepository orderRepository, AuditService auditService, ProductServiceClient productServiceClient) {
+    public OrderService(OrderRepository orderRepository, AuditService auditService,
+            ProductServiceClient productServiceClient) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
         this.productServiceClient = productServiceClient;
@@ -48,7 +49,8 @@ public class OrderService {
         BigDecimal calculatedTotal = calculateTotal(request.getItems());
         BigDecimal requestTotal = normalizeMoney(request.getTotalAmount());
         if (calculatedTotal.compareTo(requestTotal) != 0) {
-            throw new BadRequestException("Total amount mismatch. expected=" + calculatedTotal + ", actual=" + requestTotal);
+            throw new BadRequestException(
+                    "Total amount mismatch. expected=" + calculatedTotal + ", actual=" + requestTotal);
         }
 
         Order order = new Order();
@@ -63,10 +65,12 @@ public class OrderService {
                 throw new BadRequestException("Item quantity must be greater than 0");
             }
             BigDecimal unitPrice = normalizeMoney(itemDto.getSnapshot().getPriceAtCheckout());
-            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemDto.getQuantity())).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemDto.getQuantity())).setScale(2,
+                    RoundingMode.HALF_UP);
 
             OrderItem item = new OrderItem();
             item.setProductName(itemDto.getProductName());
+            item.setProductId(itemDto.getProductId());
             item.setColor(itemDto.getColor());
             item.setSize(itemDto.getSize());
             item.setQuantity(itemDto.getQuantity());
@@ -126,12 +130,14 @@ public class OrderService {
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        validateStatusTransition(order.getStatus(), request.getStatus());
+        com.iuh.fit.domain.enums.OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus
+                .valueOf(request.getStatus());
+        validateStatusTransition(order.getStatus(), requestedStatus);
         String prev = order.getStatus() != null ? order.getStatus().name() : null;
-        order.setStatus(request.getStatus());
+        order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
         // record audit for user's own change with actor = userId
-        auditService.record(id, userId, prev, request.getStatus().name(), request.getNote());
+        auditService.record(id, userId, prev, requestedStatus.name(), request.getNote());
 
         if (request.getStatus() == OrderStatus.CANCELLED && prev != null) {
             restoreStockForOrder(saved);
@@ -164,12 +170,14 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> getOrdersForAdmin(com.iuh.fit.domain.enums.OrderStatus status,
-                                                         java.time.Instant from,
-                                                         java.time.Instant to,
-                                                         int page,
-                                                         int size) {
-        if (page < 1) throw new BadRequestException("Page must be >= 1");
-        if (size <= 0 || size > 200) throw new BadRequestException("Size must be between 1 and 200");
+            java.time.Instant from,
+            java.time.Instant to,
+            int page,
+            int size) {
+        if (page < 1)
+            throw new BadRequestException("Page must be >= 1");
+        if (size <= 0 || size > 200)
+            throw new BadRequestException("Size must be between 1 and 200");
 
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Order> orderPage;
@@ -196,28 +204,36 @@ public class OrderService {
 
     @Transactional
     public OrderResponse updateOrderStatusAsAdmin(Long adminUserId, Long orderId, UpdateOrderStatusRequest request) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        validateStatusTransition(order.getStatus(), request.getStatus());
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        com.iuh.fit.domain.enums.OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus
+                .valueOf(request.getStatus());
+        validateStatusTransition(order.getStatus(), requestedStatus);
         String prev = order.getStatus() != null ? order.getStatus().name() : null;
-        order.setStatus(request.getStatus());
+        order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
-        auditService.record(orderId, adminUserId, prev, request.getStatus().name(), request.getNote());
+        auditService.record(orderId, adminUserId, prev, requestedStatus.name(), request.getNote());
         return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public OrderResponse getOrderByIdForAdmin(Long id) {
-        Order order = orderRepository.findOneById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        Order order = orderRepository.findOneById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         return toResponse(order);
     }
 
-    private void validateStatusTransition(com.iuh.fit.domain.enums.OrderStatus current, com.iuh.fit.domain.enums.OrderStatus requested) {
-        if (current == requested) return;
-        if (current == null) return; // no prior state
+    private void validateStatusTransition(com.iuh.fit.domain.enums.OrderStatus current,
+            com.iuh.fit.domain.enums.OrderStatus requested) {
+        if (current == requested)
+            return;
+        if (current == null)
+            return; // no prior state
 
         switch (current) {
             case PENDING_PAYMENT -> {
-                if (requested != com.iuh.fit.domain.enums.OrderStatus.PAID && requested != com.iuh.fit.domain.enums.OrderStatus.CANCELLED) {
+                if (requested != com.iuh.fit.domain.enums.OrderStatus.PAID
+                        && requested != com.iuh.fit.domain.enums.OrderStatus.CANCELLED) {
                     throw new BadRequestException("Invalid status transition from PENDING_PAYMENT to " + requested);
                 }
             }
@@ -269,6 +285,7 @@ public class OrderService {
                 .map(item -> {
                     OrderResponse.OrderItemResponse r = new OrderResponse.OrderItemResponse();
                     r.setId(item.getId());
+                    r.setProductId(item.getProductId());
                     r.setProductName(item.getProductName());
                     r.setColor(item.getColor());
                     r.setSize(item.getSize());

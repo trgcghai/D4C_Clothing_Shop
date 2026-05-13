@@ -175,15 +175,21 @@ const CartPage = () => {
                 key={item.id}
                 className="flex gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
               >
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <ShoppingCart className="h-8 w-8" />
-                </div>
+                <Link to={`/products/${item.productId}`} className="flex h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                      <ShoppingCart className="h-8 w-8" />
+                    </div>
+                  )}
+                </Link>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <Link
-                        to={`/products/${item.variantId}`}
+                        to={`/products/${item.productId}`}
                         className="font-normal hover:text-primary transition-colors truncate block"
                       >
                         {item.productName}

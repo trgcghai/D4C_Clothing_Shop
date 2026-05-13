@@ -27,6 +27,7 @@ export interface CreateOrderPayload {
 
 export interface OrderItemResponse {
   id: number;
+  productId: number;
   productName: string;
   color: string;
   size: string;
@@ -74,9 +75,10 @@ export interface UserOrdersPaginatedResponse {
   last: boolean;
 }
 
-export const getOrdersByUserPaginated = async (
-  params: { page: number; size: number },
-): Promise<UserOrdersPaginatedResponse> => {
+export const getOrdersByUserPaginated = async (params: {
+  page: number;
+  size: number;
+}): Promise<UserOrdersPaginatedResponse> => {
   return axiosInstance.get("/api/orders", { params }).then((res) => res.data);
 };
 

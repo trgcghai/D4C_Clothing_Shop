@@ -161,7 +161,7 @@ export default function OrderDetail() {
                     <Button
                       size="sm"
                       variant="link"
-                      onClick={() => navigate(`/products/${item.id}`)}
+                      onClick={() => navigate(`/products/${item.productId}`)}
                     >
                       <SquareArrowOutUpRight />
                     </Button>

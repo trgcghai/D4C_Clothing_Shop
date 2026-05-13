@@ -3,6 +3,7 @@ import axiosInstance from "./_axios";
 export interface CartItem {
   id: number;
   variantId: string;
+  productId: string;
   productName: string;
   color: string;
   size: string;
@@ -10,6 +11,7 @@ export interface CartItem {
   quantity: number;
   subtotal: number;
   sku?: string;
+  imageUrl?: string;
 }
 
 export interface Cart {
