@@ -21,7 +21,11 @@ function loadSelectedIds(userId: number | undefined): number[] {
 
 function saveSelectedIds(userId: number | undefined, ids: number[]) {
   if (!userId) return;
-  localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
+  try {
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
+  } catch {
+    // Silently fail — localStorage may be unavailable
+  }
 }
 
 export function useCartSelection(cartItemIds: number[]) {
@@ -88,12 +92,18 @@ export function useCartSelection(cartItemIds: number[]) {
   const isAllSelected = cartItemIds.length > 0 && selectedIds.length === cartItemIds.length;
   const isSomeSelected = selectedIds.length > 0 && selectedIds.length < cartItemIds.length;
 
+  const setSelectedIdsCallback = useCallback(
+    (ids: number[] | ((prev: number[]) => number[])) => {
+      const resolved = typeof ids === "function" ? ids(selectedIds) : ids;
+      setSelectedIds(resolved);
+      saveSelectedIds(userId, resolved);
+    },
+    [userId, selectedIds],
+  );
+
   return {
     selectedIds,
-    setSelectedIds: (ids: number[]) => {
-      setSelectedIds(ids);
-      saveSelectedIds(userId, ids);
-    },
+    setSelectedIds: setSelectedIdsCallback,
     toggleItem,
     selectAll,
     deselectAll,
