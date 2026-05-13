@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -267,16 +269,21 @@ public class OrderService {
     }
 
     private void publishOrderCreatedEvent(Order saved, Long userId) {
-        try {
-            String userEmail = userServiceClient.getUserEmail(userId);
-            if (userEmail != null) {
-                orderEventPublisher.publishOrderCreated(saved.getId(), userId, userEmail);
-            } else {
-                log.warn("Could not resolve email for userId {}, skipping order created event", userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    String userEmail = userServiceClient.getUserEmail(userId);
+                    if (userEmail != null) {
+                        orderEventPublisher.publishOrderCreated(saved.getId(), userId, userEmail);
+                    } else {
+                        log.warn("Could not resolve email for userId {}, skipping order created event", userId);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage(), e);
+                }
             }
-        } catch (Exception e) {
-            log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage());
-        }
+        });
     }
 
     private BigDecimal calculateTotal(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
