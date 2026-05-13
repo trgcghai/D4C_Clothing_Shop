@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ const CartPage = () => {
   const removeMutation = useRemoveCartItem();
   const clearMutation = useClearCart();
 
-  const cartItemIds = cart.items.map((item) => item.id);
+  const cartItemIds = useMemo(() => cart.items.map((item) => item.id), [cart.items]);
   const {
     selectedIds,
     toggleItem,
@@ -127,7 +127,11 @@ const CartPage = () => {
   const handleQtySubmit = (itemId: number) => {
     const qty = parseInt(editingQty[itemId] || "0", 10);
     if (isNaN(qty) || qty < 0) return;
-    updateMutation.mutate({ itemId, payload: { quantity: qty } });
+    if (qty === 0) {
+      removeMutation.mutate(itemId);
+    } else {
+      updateMutation.mutate({ itemId, payload: { quantity: qty } });
+    }
     setEditingQty((prev) => {
       const next = { ...prev };
       delete next[itemId];
@@ -204,7 +208,9 @@ const CartPage = () => {
             {cart.items.map((item) => (
               <div
                 key={item.id}
-                className="flex gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
+                className={`flex gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30 ${
+                  selectedIds.includes(item.id) ? "bg-muted/20" : ""
+                }`}
               >
                 <div className="flex items-center">
                   <Checkbox
@@ -254,15 +260,15 @@ const CartPage = () => {
                   <div className="flex items-center justify-between mt-auto">
                     <p className="text-sm text-muted-foreground flex items-center">
                       Đơn giá:
-                      <p className="font-semibold tabular-nums text-base inline-block ml-1">
+                      <span className="font-semibold tabular-nums text-base inline-block ml-1">
                         {item.price.toLocaleString("vi-VN")}₫
-                      </p>
+                      </span>
                     </p>
 
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground flex items-center">
+                      <span className="text-sm text-muted-foreground flex items-center">
                         Số lượng
-                      </p>
+                      </span>
                       <div className="flex items-center rounded-md border overflow-hidden">
                         <button
                           onClick={() => handleDecrement(item)}
@@ -273,7 +279,7 @@ const CartPage = () => {
                         </button>
                         <Input
                           type="number"
-                          min={0}
+                          min={1}
                           value={editingQty[item.id] ?? item.quantity}
                           onChange={(e) =>
                             handleQtyChange(item.id, e.target.value)
@@ -296,9 +302,9 @@ const CartPage = () => {
 
                     <p className="text-sm text-muted-foreground flex items-center min-w-20 text-right">
                       Tổng cộng:
-                      <p className="font-semibold tabular-nums inline-block ml-1 text-base">
+                      <span className="font-semibold tabular-nums inline-block ml-1 text-base">
                         {item.subtotal.toLocaleString("vi-VN")}₫
-                      </p>
+                      </span>
                     </p>
                   </div>
                 </div>
