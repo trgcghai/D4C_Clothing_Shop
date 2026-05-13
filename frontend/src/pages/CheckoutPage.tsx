@@ -1,14 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import {
-  useCart,
-  useClearCartAfterCheckout,
-  useCheckout,
-} from "@/src/hooks/useCart";
+import { useCart, usePartialCheckout, useRemoveCartItemsBulk } from "@/src/hooks/useCart";
+import type { CartItemsPayload } from "@/src/services/cartApi";
 import { useCreatePayment } from "@/src/hooks/usePayment";
 import { deductStock, restoreStock } from "@/src/services/productApi";
 import type { PaymentMethod } from "@/src/services/orderApi";
@@ -24,14 +21,41 @@ import { useStore } from "@/src/store";
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { data: cart, isLoading, isError } = useCart();
-  const checkoutMutation = useCheckout();
-  const clearAfterCheckoutMutation = useClearCartAfterCheckout();
+  const partialCheckoutMutation = usePartialCheckout();
+  const removeItemsBulkMutation = useRemoveCartItemsBulk();
   const createOrderFromCheckoutMutation = useCreateOrderFromCheckout();
   const cancelOrderMutation = useCancelOrder();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
 
   const { user } = useStore((state) => state);
+
+  const [searchParams] = useSearchParams();
+  const buyNowItemId = searchParams.get("buyNowItemId");
+  const selectedIdsParam = searchParams.get("selectedIds");
+
+  const filteredItems = useMemo(() => {
+    if (!cart) return [];
+
+    if (buyNowItemId) {
+      const id = Number(buyNowItemId);
+      return cart.items.filter((item) => item.id === id);
+    }
+
+    if (selectedIdsParam) {
+      const ids = selectedIdsParam.split(",").map(Number);
+      return cart.items.filter((item) => ids.includes(item.id));
+    }
+
+    return cart.items;
+  }, [cart, buyNowItemId, selectedIdsParam]);
+
+  const filteredTotal = filteredItems.reduce(
+    (sum, item) => sum + item.subtotal,
+    0,
+  );
+
+  const itemIdsForCheckout = filteredItems.map((item) => item.id);
 
   if (isLoading) {
     return (
@@ -64,15 +88,37 @@ export default function CheckoutPage() {
     );
   }
 
+  if (filteredItems.length === 0) {
+    return (
+      <main className="page-wrap px-4 py-20">
+        <div className="mx-auto max-w-md text-center">
+          <p className="text-lg text-muted-foreground">
+            Không tìm thấy sản phẩm được chọn
+          </p>
+          <Button
+            variant="link"
+            onClick={() => navigate("/cart")}
+            className="mt-2"
+          >
+            Quay lại giỏ hàng
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   const handleConfirm = async () => {
     const deductedItems: { variantId: string; quantity: number }[] = [];
     let orderCreated = false;
     let createdOrderId: number | null = null;
 
     if (!user || !user.email) return;
+    if (itemIdsForCheckout.length === 0) return;
 
     try {
-      const checkoutData = await checkoutMutation.mutateAsync();
+      const checkoutData = await partialCheckoutMutation.mutateAsync({
+        itemIds: itemIdsForCheckout,
+      });
 
       for (const item of checkoutData.items) {
         try {
@@ -103,7 +149,9 @@ export default function CheckoutPage() {
       orderCreated = true;
       createdOrderId = order.id;
 
-      await clearAfterCheckoutMutation.mutateAsync();
+      await removeItemsBulkMutation.mutateAsync({
+        itemIds: itemIdsForCheckout,
+      });
 
       if (method === "QR") {
         try {
@@ -202,7 +250,7 @@ export default function CheckoutPage() {
             <h2 className="text-lg font-semibold">Đơn hàng</h2>
             <Separator />
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {cart.items.map((item) => (
+              {filteredItems.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="truncate mr-2">
                     {item.productName} ({item.color}, {item.size}) x
@@ -218,14 +266,14 @@ export default function CheckoutPage() {
             <div className="flex justify-between font-bold">
               <span>Tổng cộng</span>
               <span className="tabular-nums">
-                {cart.totalAmount.toLocaleString("vi-VN")}₫
+                {filteredTotal.toLocaleString("vi-VN")}₫
               </span>
             </div>
             <Button
               className="w-full"
               size="lg"
               onClick={handleConfirm}
-              disabled={createOrderFromCheckoutMutation.isPending}
+              disabled={createOrderFromCheckoutMutation.isPending || filteredItems.length === 0}
             >
               {createOrderFromCheckoutMutation.isPending ? (
                 <>
