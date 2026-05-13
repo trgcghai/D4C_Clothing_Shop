@@ -160,10 +160,9 @@ export default function CheckoutPage() {
             amount: checkoutData.totalAmount,
             method: "QR",
           });
-          await removeItemsBulkMutation.mutateAsync({
-            itemIds: itemIdsForCheckout,
-          });
-          navigate(`/payment/${payment.paymentId}`);
+          // Pass item IDs to PaymentPage so it can remove them on success
+          const idsParam = itemIdsForCheckout.join(",");
+          navigate(`/payment/${payment.paymentId}?removeItemIds=${idsParam}`);
         } catch (paymentError) {
           await Promise.allSettled(
             deductedItems.map((item) => restoreStock(item.variantId, item.quantity)),

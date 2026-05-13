@@ -33,15 +33,15 @@ export function useCartSelection(cartItemIds: number[]) {
   const userId = user?.id;
 
   const [selectedIds, setSelectedIds] = useState<number[]>(() => {
-    const stored = loadSelectedIds(userId);
-    // Filter out stale IDs that are no longer in the cart
-    return stored.filter((id) => cartItemIds.includes(id));
+    // Load stored IDs directly — don't filter against cartItemIds yet
+    // because cart may not be loaded on first render
+    return loadSelectedIds(userId);
   });
 
   // When cart items change, sync selection and persist
   useEffect(() => {
     if (cartItemIds.length === 0) {
-      setSelectedIds([]);
+      // Don't clear selection when cart is empty/loading — preserve stored state
       return;
     }
 

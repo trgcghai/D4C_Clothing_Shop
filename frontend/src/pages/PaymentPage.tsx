@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePaymentById, usePaymentStatus, useCancelPayment } from "@/src/hooks/usePayment";
+import { useRemoveCartItemsBulk } from "@/src/hooks/useCart";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
 import { cancelOrder } from "@/src/services/orderApi";
 import { ArrowLeft, Loader2, QrCode, XCircle, Clock, Copy, Check } from "lucide-react";
@@ -48,11 +49,18 @@ function formatTime(ms: number) {
 export default function PaymentPage() {
   const { paymentId } = useParams<{ paymentId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const removeItemIdsParam = searchParams.get("removeItemIds");
+  const removeItemIds = removeItemIdsParam
+    ? removeItemIdsParam.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
+    : [];
+
   const id = paymentId ? parseInt(paymentId, 10) : null;
 
   const { data: payment, isLoading: paymentLoading, isError: paymentError } = usePaymentById(id);
   const { data: paymentStatus } = usePaymentStatus(id, !!id);
   const cancelPaymentMutation = useCancelPayment();
+  const removeItemsBulkMutation = useRemoveCartItemsBulk();
   const { data: order } = useUserOrderDetail(payment?.orderId ?? null);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -82,6 +90,10 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (paymentStatus?.status === "PAID") {
+      // Remove items from cart only after successful payment
+      if (removeItemIds.length > 0) {
+        removeItemsBulkMutation.mutate({ itemIds: removeItemIds });
+      }
       toast.success("Thanh toán thành công!");
       navigate(`/orders/${payment?.orderId}`);
     } else if (paymentStatus?.status === "CANCELLED") {
