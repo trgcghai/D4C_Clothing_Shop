@@ -10,6 +10,10 @@ import com.iuh.fit.domain.enums.OrderStatus;
 import com.iuh.fit.exception.BadRequestException;
 import com.iuh.fit.exception.ResourceNotFoundException;
 import com.iuh.fit.repository.OrderRepository;
+import com.iuh.fit.service.OrderEventPublisher;
+import com.iuh.fit.service.UserServiceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,12 +33,19 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final AuditService auditService;
     private final ProductServiceClient productServiceClient;
+    private final OrderEventPublisher orderEventPublisher;
+    private final UserServiceClient userServiceClient;
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     public OrderService(OrderRepository orderRepository, AuditService auditService,
-            ProductServiceClient productServiceClient) {
+            ProductServiceClient productServiceClient,
+            OrderEventPublisher orderEventPublisher,
+            UserServiceClient userServiceClient) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
         this.productServiceClient = productServiceClient;
+        this.orderEventPublisher = orderEventPublisher;
+        this.userServiceClient = userServiceClient;
     }
 
     @Transactional
@@ -85,6 +96,7 @@ public class OrderService {
 
         try {
             Order saved = orderRepository.save(order);
+            publishOrderCreatedEvent(saved, userId);
             return toResponse(saved);
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
@@ -252,6 +264,19 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         orderRepository.delete(order);
+    }
+
+    private void publishOrderCreatedEvent(Order saved, Long userId) {
+        try {
+            String userEmail = userServiceClient.getUserEmail(userId);
+            if (userEmail != null) {
+                orderEventPublisher.publishOrderCreated(saved.getId(), userId, userEmail);
+            } else {
+                log.warn("Could not resolve email for userId {}, skipping order created event", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage());
+        }
     }
 
     private BigDecimal calculateTotal(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
