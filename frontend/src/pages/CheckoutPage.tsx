@@ -5,7 +5,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useCart, usePartialCheckout, useRemoveCartItemsBulk } from "@/src/hooks/useCart";
-import type { CartItemsPayload } from "@/src/services/cartApi";
 import { useCreatePayment } from "@/src/hooks/usePayment";
 import { deductStock, restoreStock } from "@/src/services/productApi";
 import type { PaymentMethod } from "@/src/services/orderApi";
