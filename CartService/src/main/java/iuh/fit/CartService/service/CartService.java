@@ -121,6 +121,7 @@ public class CartService {
                     .price(product.getPrice())
                     .quantity(request.getQuantity())
                     .sku(variant.getSku())
+                    .imageUrl(product.getImageUrl())
                     .build();
             cartItemRepository.save(newItem);
         }
@@ -333,23 +334,19 @@ public class CartService {
         String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
 
         List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
-                .map(item -> {
-                    CheckoutResponse.CheckoutItem ci = new CheckoutResponse.CheckoutItem();
-                    ci.setVariantId(item.getVariantId());
-                    ci.setProductName(item.getProductName());
-                    ci.setColor(item.getColor());
-                    ci.setSize(item.getSize());
-                    ci.setPrice(item.getPrice());
-                    ci.setQuantity(item.getQuantity());
-
-                    CheckoutResponse.Snapshot snap = new CheckoutResponse.Snapshot();
-                    snap.setPriceAtCheckout(item.getPrice());
-                    snap.setProductName(item.getProductName());
-                    snap.setVariantSku(item.getSku());
-                    ci.setSnapshot(snap);
-
-                    return ci;
-                })
+                .map(item -> CheckoutResponse.CheckoutItem.builder()
+                        .variantId(item.getVariantId())
+                        .productName(item.getProductName())
+                        .color(item.getColor())
+                        .size(item.getSize())
+                        .price(item.getPrice())
+                        .quantity(item.getQuantity())
+                        .snapshot(CheckoutResponse.Snapshot.builder()
+                                .priceAtCheckout(item.getPrice())
+                                .productName(item.getProductName())
+                                .variantSku(item.getSku())
+                                .build())
+                        .build())
                 .collect(Collectors.toList());
 
         BigDecimal totalAmount = checkoutItems.stream()
@@ -371,6 +368,7 @@ public class CartService {
                 .map(item -> CartResponse.CartItemDto.builder()
                         .id(item.getId())
                         .variantId(item.getVariantId())
+                        .productId(item.getProductId())
                         .productName(item.getProductName())
                         .color(item.getColor())
                         .size(item.getSize())
@@ -378,6 +376,7 @@ public class CartService {
                         .quantity(item.getQuantity())
                         .subtotal(item.getSubtotal())
                         .sku(item.getSku())
+                        .imageUrl(item.getImageUrl())
                         .build())
                 .collect(Collectors.toList());
 

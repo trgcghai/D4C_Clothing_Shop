@@ -3,7 +3,15 @@ package iuh.fit.CartService.domain.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddCartItemRequest {
 
     @NotBlank(message = "Product ID is required")
@@ -15,13 +23,4 @@ public class AddCartItemRequest {
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
-
-    public AddCartItemRequest() {}
-
-    public String getProductId() { return productId; }
-    public void setProductId(String productId) { this.productId = productId; }
-    public String getVariantId() { return variantId; }
-    public void setVariantId(String variantId) { this.variantId = variantId; }
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }

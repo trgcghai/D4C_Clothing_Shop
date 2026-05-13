@@ -4,10 +4,18 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateOrderFromCheckoutRequest {
 
     @NotBlank
@@ -20,30 +28,10 @@ public class CreateOrderFromCheckoutRequest {
     @NotNull
     private BigDecimal totalAmount;
 
-    public String getOrderId() {
-        return orderId;
-    }
-
-    public void setOrderId(String orderId) {
-        this.orderId = orderId;
-    }
-
-    public List<CheckoutItemDto> getItems() {
-        return items;
-    }
-
-    public void setItems(List<CheckoutItemDto> items) {
-        this.items = items;
-    }
-
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CheckoutItemDto {
         @NotBlank
         private String productName;
@@ -55,84 +43,16 @@ public class CreateOrderFromCheckoutRequest {
         @NotNull
         @Valid
         private SnapshotDto snapshot;
-
-        public String getProductName() {
-            return productName;
-        }
-
-        public void setProductName(String productName) {
-            this.productName = productName;
-        }
-
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
-        public String getSize() {
-            return size;
-        }
-
-        public void setSize(String size) {
-            this.size = size;
-        }
-
-        public BigDecimal getPrice() {
-            return price;
-        }
-
-        public void setPrice(BigDecimal price) {
-            this.price = price;
-        }
-
-        public Integer getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(Integer quantity) {
-            this.quantity = quantity;
-        }
-
-        public SnapshotDto getSnapshot() {
-            return snapshot;
-        }
-
-        public void setSnapshot(SnapshotDto snapshot) {
-            this.snapshot = snapshot;
-        }
     }
 
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class SnapshotDto {
         @NotNull
         private BigDecimal priceAtCheckout;
         private String productName;
         private String variantSku;
-
-        public BigDecimal getPriceAtCheckout() {
-            return priceAtCheckout;
-        }
-
-        public void setPriceAtCheckout(BigDecimal priceAtCheckout) {
-            this.priceAtCheckout = priceAtCheckout;
-        }
-
-        public String getProductName() {
-            return productName;
-        }
-
-        public void setProductName(String productName) {
-            this.productName = productName;
-        }
-
-        public String getVariantSku() {
-            return variantSku;
-        }
-
-        public void setVariantSku(String variantSku) {
-            this.variantSku = variantSku;
-        }
     }
 }
