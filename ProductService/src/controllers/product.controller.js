@@ -168,3 +168,27 @@ export const deductStock = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi trừ tồn kho", error: error.message });
   }
 };
+
+/**
+ * POST /api/products/variants/:variantId/restore-stock
+ * Body: { quantity: number }
+ */
+export const restoreStock = async (req, res) => {
+  try {
+    const { variantId } = req.params;
+    const { quantity } = req.body;
+
+    if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
+      return res.status(400).json({ message: "Số lượng phải là số nguyên dương" });
+    }
+
+    const result = await productService.restoreVariantStock(variantId, quantity);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.includes("không tồn tại")) {
+      return res.status(404).json({ message: error.message });
+    }
+    console.error("Lỗi hoàn tồn kho:", error);
+    res.status(500).json({ message: "Lỗi khi hoàn tồn kho", error: error.message });
+  }
+};

@@ -13,7 +13,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_orders_user_checkout_order_id", columnNames = {"user_id", "checkout_order_id"})
+        @UniqueConstraint(name = "uk_orders_user_checkout_order_id", columnNames = { "user_id", "checkout_order_id" })
 })
 @Getter
 @Setter
@@ -36,6 +36,9 @@ public class Order {
 
     @Column(name = "total_amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal totalAmount;
+
+    @Column(name = "payment_method", length = 32)
+    private String paymentMethod;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();

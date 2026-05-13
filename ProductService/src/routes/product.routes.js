@@ -11,6 +11,7 @@ import {
   getNewArrivals,
   getRelatedProducts,
   deductStock,
+  restoreStock,
 } from "../controllers/product.controller.js";
 
 const router = express.Router();
@@ -276,6 +277,45 @@ router.get("/:id/related", getRelatedProducts);
  *         description: Server error
  */
 router.post("/variants/:variantId/deduct-stock", deductStock);
+
+/**
+ * @swagger
+ * /api/products/variants/{variantId}/restore-stock:
+ *   post:
+ *     tags: [products]
+ *     summary: Restore variant stock atomically
+ *     parameters:
+ *       - in: path
+ *         name: variantId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [quantity]
+ *             properties:
+ *               quantity: { type: integer, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Stock restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 variantId: { type: string }
+ *                 restored: { type: integer }
+ *                 current: { type: integer }
+ *       404:
+ *         description: Variant not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/variants/:variantId/restore-stock", restoreStock);
 
 // ─── Admin CRUD ─────────────────────────────────────────────────────────────────
 /**

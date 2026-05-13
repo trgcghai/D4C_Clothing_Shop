@@ -10,4 +10,8 @@ CREATE DATABASE
 IF NOT EXISTS order_db;
 GRANT ALL PRIVILEGES ON order_db.* TO 'user'@'%';
 
+CREATE DATABASE
+IF NOT EXISTS payment_db;
+GRANT ALL PRIVILEGES ON payment_db.* TO 'user'@'%';
+
 FLUSH PRIVILEGES;

@@ -1,0 +1,233 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  useCart,
+  useClearCartAfterCheckout,
+  useCheckout,
+} from "@/src/hooks/useCart";
+import { useCreatePayment } from "@/src/hooks/usePayment";
+import { deductStock, restoreStock } from "@/src/services/productApi";
+import { createOrderFromCheckout, cancelOrder } from "@/src/services/orderApi";
+import type { PaymentMethod } from "@/src/services/orderApi";
+import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
+import { toast } from "sonner";
+import { isAxiosError } from "axios";
+
+export default function CheckoutPage() {
+  const navigate = useNavigate();
+  const { data: cart, isLoading, isError } = useCart();
+  const checkoutMutation = useCheckout();
+  const clearAfterCheckoutMutation = useClearCartAfterCheckout();
+  const createPaymentMutation = useCreatePayment();
+  const [method, setMethod] = useState<PaymentMethod>("QR");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  if (isLoading) {
+    return (
+      <main className="page-wrap px-4 py-10">
+        <div className="mx-auto max-w-4xl animate-pulse space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-20 rounded-lg bg-muted" />
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  if (isError || !cart || cart.items.length === 0) {
+    return (
+      <main className="page-wrap px-4 py-20">
+        <div className="mx-auto max-w-md text-center">
+          <p className="text-lg text-muted-foreground">
+            Giỏ hàng trống hoặc không thể tải
+          </p>
+          <Button
+            variant="link"
+            onClick={() => navigate("/cart")}
+            className="mt-2"
+          >
+            Quay lại giỏ hàng
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  const handleConfirm = async () => {
+    setIsProcessing(true);
+    const deductedItems: { variantId: string; quantity: number }[] = [];
+    let orderCreated = false;
+    let createdOrderId: number | null = null;
+
+    try {
+      const checkoutData = await checkoutMutation.mutateAsync();
+
+      for (const item of checkoutData.items) {
+        try {
+          await deductStock(item.variantId, item.quantity);
+          deductedItems.push({ variantId: item.variantId, quantity: item.quantity });
+        } catch (deductError) {
+          if (isAxiosError(deductError)) {
+            const msg =
+              deductError.response?.data?.message || "Không đủ tồn kho";
+            toast.error(msg);
+          } else {
+            toast.error("Không đủ tồn kho");
+          }
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      const order = await createOrderFromCheckout({
+        orderId: checkoutData.orderId,
+        items: checkoutData.items,
+        totalAmount: checkoutData.totalAmount,
+        paymentMethod: method,
+      });
+      orderCreated = true;
+      createdOrderId = order.id;
+
+      await clearAfterCheckoutMutation.mutateAsync();
+
+      if (method === "QR") {
+        try {
+          const payment = await createPaymentMutation.mutateAsync({
+            orderId: order.id,
+            checkoutOrderId: order.checkoutOrderId,
+            amount: checkoutData.totalAmount,
+            method: "QR",
+          });
+          navigate(`/payment/${payment.paymentId}`);
+        } catch (paymentError) {
+          for (const item of deductedItems) {
+            await restoreStock(item.variantId, item.quantity).catch(() => {});
+          }
+          await cancelOrder(order.id);
+          toast.error("Tạo thanh toán thất bại, đơn hàng đã được hủy và tồn kho đã hoàn");
+          return;
+        }
+      } else {
+        toast.success(`Đơn hàng ${order.checkoutOrderId} đã được tạo!`);
+        navigate(`/orders/${order.id}`);
+      }
+    } catch (error) {
+      if (orderCreated && createdOrderId) {
+        for (const item of deductedItems) {
+          await restoreStock(item.variantId, item.quantity).catch(() => {});
+        }
+        await cancelOrder(createdOrderId).catch(() => {});
+      }
+      if (isAxiosError(error)) {
+        const msg = error.response?.data?.message || "Thanh toán thất bại";
+        toast.error(msg);
+      } else {
+        toast.error("Thanh toán thất bại, vui lòng thử lại");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <main className="page-wrap px-4 py-10">
+      <div className="mx-auto max-w-4xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/cart")}
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Quay lại giỏ hàng
+        </Button>
+
+        <h1 className="text-2xl font-bold mb-6">Thanh toán</h1>
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-lg font-semibold">Phương thức thanh toán</h2>
+            <RadioGroup
+              value={method}
+              onValueChange={(v) => setMethod(v as PaymentMethod)}
+            >
+              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-[[data-state=checked]]:border-primary">
+                <RadioGroupItem value="QR" id="qr" />
+                <Label
+                  htmlFor="qr"
+                  className="flex items-center gap-3 cursor-pointer flex-1"
+                >
+                  <QrCode className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">QR Code (SePay)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Quét mã QR để thanh toán
+                    </p>
+                  </div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer has-[[data-state=checked]]:border-primary">
+                <RadioGroupItem value="CASH" id="cash" />
+                <Label
+                  htmlFor="cash"
+                  className="flex items-center gap-3 cursor-pointer flex-1"
+                >
+                  <Banknote className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Tiền mặt</p>
+                    <p className="text-sm text-muted-foreground">
+                      Thanh toán khi nhận hàng
+                    </p>
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="rounded-lg border p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Đơn hàng</h2>
+            <Separator />
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {cart.items.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="truncate mr-2">
+                    {item.productName} ({item.color}, {item.size}) x
+                    {item.quantity}
+                  </span>
+                  <span className="tabular-nums whitespace-nowrap">
+                    {item.subtotal.toLocaleString("vi-VN")}₫
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Separator />
+            <div className="flex justify-between font-bold">
+              <span>Tổng cộng</span>
+              <span className="tabular-nums">
+                {cart.totalAmount.toLocaleString("vi-VN")}₫
+              </span>
+            </div>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleConfirm}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                "Xác nhận thanh toán"
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

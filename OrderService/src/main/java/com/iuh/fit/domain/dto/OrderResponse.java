@@ -20,6 +20,7 @@ public class OrderResponse {
     private Long userId;
     private OrderStatus status;
     private BigDecimal totalAmount;
+    private String paymentMethod;
     private List<OrderItemResponse> items;
     private Instant createdAt;
     private Instant updatedAt;

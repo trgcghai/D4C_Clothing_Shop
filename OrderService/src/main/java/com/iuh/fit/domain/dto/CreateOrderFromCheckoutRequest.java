@@ -28,6 +28,8 @@ public class CreateOrderFromCheckoutRequest {
     @NotNull
     private BigDecimal totalAmount;
 
+    private String paymentMethod;
+
     @Data
     @Builder
     @NoArgsConstructor

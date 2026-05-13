@@ -136,6 +136,35 @@ class VariantModel {
       throw error;
     }
   }
+
+  async restoreStock(id, quantity) {
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id },
+      UpdateExpression: "SET quantity = quantity + :qty",
+      ExpressionAttributeValues: {
+        ":qty": quantity,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    };
+
+    const command = new UpdateCommand(params);
+    try {
+      const response = await dynamoClient.send(command);
+      return {
+        success: true,
+        variantId: id,
+        restored: quantity,
+        current: response.Attributes.quantity,
+      };
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) {
+        throw new Error(`Variant ${id} không tồn tại`);
+      }
+      throw error;
+    }
+  }
 }
 
 export const variantModel = new VariantModel();

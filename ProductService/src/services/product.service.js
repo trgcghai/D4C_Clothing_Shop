@@ -347,6 +347,13 @@ class ProductService {
     }
     return await variantModel.deductStock(variantId, quantity);
   }
+
+  async restoreVariantStock(variantId, quantity) {
+    if (!variantId || quantity <= 0) {
+      throw new Error("Variant ID và số lượng hợp lệ là bắt buộc");
+    }
+    return await variantModel.restoreStock(variantId, quantity);
+  }
 }
 
 export const productService = new ProductService();
