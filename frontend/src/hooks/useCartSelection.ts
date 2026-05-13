@@ -47,19 +47,17 @@ export function useCartSelection(cartItemIds: number[]) {
 
     setSelectedIds((prev) => {
       // Keep only IDs that still exist in cart
-      let synced = prev.filter((id) => cartItemIds.includes(id));
+      const synced = prev.filter((id) => cartItemIds.includes(id));
 
-      // If nothing was selected (or all were stale), select all items
+      // If nothing is selected (stored was empty or all items removed from cart), select all
       if (synced.length === 0) {
-        synced = [...cartItemIds];
+        const all = [...cartItemIds];
+        saveSelectedIds(userId, all);
+        return all;
       }
 
-      // If there are new items not in selection, add them (default to selected)
-      const newItems = cartItemIds.filter((id) => !synced.includes(id));
-      if (newItems.length > 0) {
-        synced = [...synced, ...newItems];
-      }
-
+      // Preserve the filtered selection — don't auto-add new items
+      // This respects deliberate deselections across navigation
       saveSelectedIds(userId, synced);
       return synced;
     });
