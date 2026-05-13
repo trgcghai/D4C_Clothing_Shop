@@ -11,7 +11,7 @@ RUN npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 20000 \
  && npm config set fetch-retry-maxtimeout 120000 \
  && npm config set fetch-timeout 300000 \
- && npm ci --ignore-scripts
+ && npm install --ignore-scripts
 
 # Copy source and build
 COPY . .
@@ -28,7 +28,7 @@ RUN npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 20000 \
  && npm config set fetch-retry-maxtimeout 120000 \
  && npm config set fetch-timeout 300000 \
- && npm ci --omit=dev --ignore-scripts
+ && npm install --omit=dev --ignore-scripts
 
 # Copy built assets from builder
 COPY --from=builder /app/dist ./dist

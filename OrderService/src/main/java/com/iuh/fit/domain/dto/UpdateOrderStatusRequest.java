@@ -1,26 +1,17 @@
 package com.iuh.fit.domain.dto;
 
-import com.iuh.fit.domain.enums.OrderStatus;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UpdateOrderStatusRequest {
-    @NotNull
-    private OrderStatus status;
+    @NotBlank
+    private String status;
     private String note;
-
-    public OrderStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(OrderStatus status) {
-        this.status = status;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public void setNote(String note) {
-        this.note = note;
-    }
 }

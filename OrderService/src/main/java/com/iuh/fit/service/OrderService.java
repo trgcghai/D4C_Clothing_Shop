@@ -64,6 +64,7 @@ public class OrderService {
 
             OrderItem item = new OrderItem();
             item.setProductName(itemDto.getProductName());
+            item.setProductId(itemDto.getProductId());
             item.setColor(itemDto.getColor());
             item.setSize(itemDto.getSize());
             item.setQuantity(itemDto.getQuantity());
@@ -122,12 +123,13 @@ public class OrderService {
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        validateStatusTransition(order.getStatus(), request.getStatus());
+        com.iuh.fit.domain.enums.OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus.valueOf(request.getStatus());
+        validateStatusTransition(order.getStatus(), requestedStatus);
         String prev = order.getStatus() != null ? order.getStatus().name() : null;
-        order.setStatus(request.getStatus());
+        order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
         // record audit for user's own change with actor = userId
-        auditService.record(id, userId, prev, request.getStatus().name(), request.getNote());
+        auditService.record(id, userId, prev, requestedStatus.name(), request.getNote());
         return toResponse(saved);
     }
 
@@ -166,11 +168,12 @@ public class OrderService {
     @Transactional
     public OrderResponse updateOrderStatusAsAdmin(Long adminUserId, Long orderId, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        validateStatusTransition(order.getStatus(), request.getStatus());
+        com.iuh.fit.domain.enums.OrderStatus requestedStatus = com.iuh.fit.domain.enums.OrderStatus.valueOf(request.getStatus());
+        validateStatusTransition(order.getStatus(), requestedStatus);
         String prev = order.getStatus() != null ? order.getStatus().name() : null;
-        order.setStatus(request.getStatus());
+        order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
-        auditService.record(orderId, adminUserId, prev, request.getStatus().name(), request.getNote());
+        auditService.record(orderId, adminUserId, prev, requestedStatus.name(), request.getNote());
         return toResponse(saved);
     }
 
@@ -237,6 +240,7 @@ public class OrderService {
                 .map(item -> {
                     OrderResponse.OrderItemResponse r = new OrderResponse.OrderItemResponse();
                     r.setId(item.getId());
+                    r.setProductId(item.getProductId());
                     r.setProductName(item.getProductName());
                     r.setColor(item.getColor());
                     r.setSize(item.getSize());
