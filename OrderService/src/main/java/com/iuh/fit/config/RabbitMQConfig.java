@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,11 @@ public class RabbitMQConfig {
     public static final String ORDER_CREATED_ROUTING_KEY = "email.order.created";
     public static final String ORDER_PAID_ROUTING_KEY = "email.order.paid";
     public static final String ORDER_CANCELLED_ROUTING_KEY = "email.order.cancelled";
+
+    @Bean
+    public TopicExchange emailExchange() {
+        return new TopicExchange(EMAIL_EXCHANGE);
+    }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
