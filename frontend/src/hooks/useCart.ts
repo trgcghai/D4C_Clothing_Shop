@@ -8,8 +8,11 @@ import {
   validateCart,
   checkout,
   clearCartAfterCheckout,
+  partialCheckout,
+  removeCartItemsBulk,
   type AddCartItemPayload,
   type UpdateCartItemPayload,
+  type CheckoutRequest,
 } from "@/src/services/cartApi";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -136,6 +139,44 @@ export function useClearCartAfterCheckout() {
     mutationFn: () => clearCartAfterCheckout(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    },
+  });
+}
+
+export function usePartialCheckout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CheckoutRequest) => partialCheckout(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const msg = error.response?.data?.message || "Checkout thất bại";
+        toast.error(msg);
+      } else {
+        toast.error("Checkout thất bại");
+      }
+    },
+  });
+}
+
+export function useRemoveCartItemsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CheckoutRequest) => removeCartItemsBulk(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const msg = error.response?.data?.message || "Không thể xóa sản phẩm";
+        toast.error(msg);
+      } else {
+        toast.error("Không thể xóa sản phẩm");
+      }
     },
   });
 }

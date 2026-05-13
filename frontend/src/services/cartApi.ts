@@ -85,5 +85,15 @@ export const validateCart = () =>
 export const checkout = () =>
   axiosInstance.post<CheckoutResponse>("/api/cart/checkout").then((res) => res.data);
 
+export interface CheckoutRequest {
+  itemIds: number[];
+}
+
+export const partialCheckout = (payload: CheckoutRequest) =>
+  axiosInstance.post<CheckoutResponse>("/api/cart/checkout/partial", payload).then((res) => res.data);
+
+export const removeCartItemsBulk = (payload: CheckoutRequest) =>
+  axiosInstance.delete<Cart>("/api/cart/items/bulk", { data: payload }).then((res) => res.data);
+
 export const clearCartAfterCheckout = () =>
   axiosInstance.post<void>("/api/cart/checkout/clear").then((res) => res.data);
