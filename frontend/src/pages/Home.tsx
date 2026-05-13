@@ -8,11 +8,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
-import { useFeaturedProducts, useNewArrivals } from "../hooks/useProducts";
+import { useFeaturedProducts, useNewArrivals, useRecommendations } from "../hooks/useProducts";
+import { useAuth } from "../store";
 
 const Home = () => {
   const { data: featured, isLoading: loadingFeatured } = useFeaturedProducts();
   const { data: newArrivals, isLoading: loadingNew } = useNewArrivals(8);
+  const { user, isAuthenticated } = useAuth();
+  const { data: recommendations, isLoading: loadingRecs } = useRecommendations(
+    isAuthenticated && user?.id != null ? String(user.id) : null,
+    4
+  );
 
   return (
     <main className="page-wrap px-4 pb-10 pt-12">
@@ -46,6 +52,33 @@ const Home = () => {
                   <ProductCardSkeleton key={i} />
                 ))
               : newArrivals
+                  .slice(0, 4)
+                  .map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+          </div>
+        </section>
+      )}
+
+      {isAuthenticated && (recommendations || loadingRecs) && (
+        <section className="mt-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">Đề xuất cho bạn</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Dựa trên lịch sử duyệt và mua hàng của bạn
+              </p>
+            </div>
+            <Button variant="link" asChild>
+              <Link to="/recommendations">Xem tất cả →</Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {loadingRecs
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))
+              : (recommendations ?? [])
                   .slice(0, 4)
                   .map((product) => (
                     <ProductCard key={product.id} product={product} />

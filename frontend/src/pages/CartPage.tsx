@@ -19,7 +19,7 @@ import {
   useCheckout,
   useClearCartAfterCheckout,
 } from "@/src/hooks/useCart";
-import { deductStock } from "@/src/services/productApi";
+import { deductStock, recordBehavior } from "@/src/services/productApi";
 import { createOrderFromCheckout } from "@/src/services/orderApi";
 import {
   ShoppingCart,
@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
+import { useAuth } from "@/src/store";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ const CartPage = () => {
   const checkoutMutation = useCheckout();
   const clearAfterCheckoutMutation = useClearCartAfterCheckout();
 
+  const { user } = useAuth();
   const [editingQty, setEditingQty] = useState<Record<number, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -173,7 +175,14 @@ const CartPage = () => {
       // Step 4: Clear cart
       await clearAfterCheckoutMutation.mutateAsync();
 
-      // Step 5: Success
+      // Step 5: Ghi behavior "purchased" cho từng sản phẩm
+      if (user?.id) {
+        for (const item of checkoutData.items) {
+          recordBehavior(String(user.id), item.productId, "purchased");
+        }
+      }
+
+      // Step 6: Success
       toast.success(
         `Đơn hàng ${order.checkoutOrderId} đã được tạo thành công!`,
       );

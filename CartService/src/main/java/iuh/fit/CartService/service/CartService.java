@@ -336,6 +336,7 @@ public class CartService {
                 .map(item -> {
                     CheckoutResponse.CheckoutItem ci = new CheckoutResponse.CheckoutItem();
                     ci.setVariantId(item.getVariantId());
+                    ci.setProductId(item.getProductId());
                     ci.setProductName(item.getProductName());
                     ci.setColor(item.getColor());
                     ci.setSize(item.getSize());

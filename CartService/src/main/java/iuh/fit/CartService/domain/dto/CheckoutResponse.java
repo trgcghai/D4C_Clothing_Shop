@@ -44,6 +44,7 @@ public class CheckoutResponse {
 
     public static class CheckoutItem {
         private String variantId;
+        private String productId;
         private String productName; private String color; private String size;
         private BigDecimal price; private Integer quantity; private Snapshot snapshot;
 
@@ -51,6 +52,8 @@ public class CheckoutResponse {
 
         public String getVariantId() { return variantId; }
         public void setVariantId(String variantId) { this.variantId = variantId; }
+        public String getProductId() { return productId; }
+        public void setProductId(String productId) { this.productId = productId; }
         public String getProductName() { return productName; }
         public void setProductName(String productName) { this.productName = productName; }
         public String getColor() { return color; }
@@ -68,12 +71,14 @@ public class CheckoutResponse {
 
         public static class CheckoutItemBuilder {
             private String variantId;
+            private String productId;
             private String productName; private String color; private String size;
             private BigDecimal price; private Integer quantity; private Snapshot snapshot;
 
             CheckoutItemBuilder() {}
 
             public CheckoutItemBuilder variantId(String variantId) { this.variantId = variantId; return this; }
+            public CheckoutItemBuilder productId(String productId) { this.productId = productId; return this; }
             public CheckoutItemBuilder productName(String productName) { this.productName = productName; return this; }
             public CheckoutItemBuilder color(String color) { this.color = color; return this; }
             public CheckoutItemBuilder size(String size) { this.size = size; return this; }
@@ -83,6 +88,7 @@ public class CheckoutResponse {
             public CheckoutItem build() {
                 CheckoutItem i = new CheckoutItem();
                 i.variantId = variantId;
+                i.productId = productId;
                 i.productName = productName; i.color = color; i.size = size;
                 i.price = price; i.quantity = quantity; i.snapshot = snapshot;
                 return i;
