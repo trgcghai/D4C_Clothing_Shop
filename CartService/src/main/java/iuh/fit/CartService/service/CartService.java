@@ -287,6 +287,96 @@ public class CartService {
     }
 
     @Transactional
+    public CheckoutResponse partialCheckout(Long userId, List<Long> itemIds) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        List<CartItem> items = cartItemRepository.findAllByIdInAndCartId(itemIds, cart.getId());
+        if (items.isEmpty()) {
+            throw new RuntimeException("No valid items found in cart");
+        }
+
+        if (items.size() != itemIds.size()) {
+            throw new RuntimeException("Some items do not belong to your cart");
+        }
+
+        List<String> validationErrors = new ArrayList<>();
+        for (CartItem item : items) {
+            try {
+                ProductDto product = productServiceClient.getProductById(item.getProductId());
+                if (product == null) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
+                    continue;
+                }
+                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
+                    continue;
+                }
+                VariantDto variant = product.getVariants().stream()
+                        .filter(v -> v.getId().equals(item.getVariantId()))
+                        .findFirst()
+                        .orElse(null);
+                if (variant == null) {
+                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
+                    continue;
+                }
+                if (variant.getQuantity() < item.getQuantity()) {
+                    validationErrors.add("Sản phẩm '" + item.getProductName()
+                            + "' (" + item.getColor() + ", " + item.getSize()
+                            + ") chỉ còn " + variant.getQuantity()
+                            + ", bạn cần " + item.getQuantity());
+                }
+            } catch (Exception e) {
+                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
+            }
+        }
+
+        if (!validationErrors.isEmpty()) {
+            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
+        }
+
+        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
+
+        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
+                .map(item -> CheckoutResponse.CheckoutItem.builder()
+                        .variantId(item.getVariantId())
+                        .productId(item.getProductId())
+                        .productName(item.getProductName())
+                        .color(item.getColor())
+                        .size(item.getSize())
+                        .price(item.getPrice())
+                        .quantity(item.getQuantity())
+                        .snapshot(CheckoutResponse.Snapshot.builder()
+                                .priceAtCheckout(item.getPrice())
+                                .productName(item.getProductName())
+                                .variantSku(item.getSku())
+                                .build())
+                        .build())
+                .collect(Collectors.toList());
+
+        BigDecimal totalAmount = checkoutItems.stream()
+                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return CheckoutResponse.builder()
+                .orderId(orderId)
+                .status("PENDING")
+                .items(checkoutItems)
+                .totalAmount(totalAmount)
+                .build();
+    }
+
+    @Transactional
+    public CartResponse removeItemsBulk(Long userId, List<Long> itemIds) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        cartItemRepository.deleteAllByIdInAndCartId(itemIds, cart.getId());
+        invalidateCache(userId);
+        return buildCartResponse(cart);
+    }
+
+    @Transactional
     public CheckoutResponse checkout(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
