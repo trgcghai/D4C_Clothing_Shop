@@ -4,11 +4,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,11 +20,14 @@ class JwtUtilsTest {
     private RsaKeyManager rsaKeyManager;
     private JwtUtils jwtUtils;
 
+    @TempDir
+    Path tempDir;
+
     @BeforeEach
     void setUp() throws Exception {
         rsaKeyManager = new RsaKeyManager();
-        ReflectionTestUtils.setField(rsaKeyManager, "privateKeyFile", "config/test-rsa-private.pem");
-        ReflectionTestUtils.setField(rsaKeyManager, "publicKeyFile", "config/test-rsa-public.pem");
+        ReflectionTestUtils.setField(rsaKeyManager, "privateKeyFile", tempDir.resolve("test-private.pem").toString());
+        ReflectionTestUtils.setField(rsaKeyManager, "publicKeyFile", tempDir.resolve("test-public.pem").toString());
         ReflectionTestUtils.setField(rsaKeyManager, "privateKeyEnv", "");
         ReflectionTestUtils.setField(rsaKeyManager, "publicKeyEnv", "");
         rsaKeyManager.init();

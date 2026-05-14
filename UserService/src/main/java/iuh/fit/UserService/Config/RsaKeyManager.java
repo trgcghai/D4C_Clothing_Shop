@@ -34,13 +34,17 @@ public class RsaKeyManager {
     private PublicKey publicKey;
 
     @PostConstruct
-    public void init() throws Exception {
-        if (!privateKeyEnv.isBlank() && !publicKeyEnv.isBlank()) {
-            loadFromEnv();
-        } else if (Files.exists(Path.of(privateKeyFile)) && Files.exists(Path.of(publicKeyFile))) {
-            loadFromFiles();
-        } else {
-            generateAndPersist();
+    public void init() {
+        try {
+            if (!privateKeyEnv.isBlank() && !publicKeyEnv.isBlank()) {
+                loadFromEnv();
+            } else if (Files.exists(Path.of(privateKeyFile)) && Files.exists(Path.of(publicKeyFile))) {
+                loadFromFiles();
+            } else {
+                generateAndPersist();
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to initialize RSA key pair: " + e.getMessage(), e);
         }
     }
 
@@ -67,6 +71,7 @@ public class RsaKeyManager {
         Path pubPath = Path.of(publicKeyFile);
 
         Files.createDirectories(privPath.getParent());
+        Files.createDirectories(pubPath.getParent());
 
         String privPem = "-----BEGIN PRIVATE KEY-----\n"
                 + Base64.getMimeEncoder(64, "\n".getBytes())

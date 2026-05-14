@@ -1,16 +1,19 @@
 package iuh.fit.UserService.Config;
 
 import io.jsonwebtoken.Jwts;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class JwtUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtUtils.class);
 
     private final RsaKeyManager rsaKeyManager;
     private final long jwtExpirationMs;
@@ -80,7 +83,7 @@ public class JwtUtils {
         return userDetails.getAuthorities()
                 .stream()
                 .map(grantedAuthority -> grantedAuthority.getAuthority())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public Long getUserIdFromToken(String token) {
@@ -110,13 +113,13 @@ public class JwtUtils {
             Jwts.parser().verifyWith(rsaKeyManager.getPublicKey()).build().parseSignedClaims(authToken);
             return true;
         } catch (io.jsonwebtoken.MalformedJwtException e) {
-            System.err.println("Invalid JWT token: " + e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getMessage());
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            System.err.println("JWT token is expired: " + e.getMessage());
+            log.warn("JWT token is expired: {}", e.getMessage());
         } catch (io.jsonwebtoken.UnsupportedJwtException e) {
-            System.err.println("JWT token is unsupported: " + e.getMessage());
+            log.warn("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            System.err.println("JWT claims string is empty: " + e.getMessage());
+            log.warn("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
     }

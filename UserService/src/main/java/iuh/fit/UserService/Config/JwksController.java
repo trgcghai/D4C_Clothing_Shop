@@ -20,15 +20,24 @@ public class JwksController {
     }
 
     @GetMapping("/.well-known/jwks.json")
-    public Map<String, Object> getJwks() throws Exception {
+    public Map<String, Object> getJwks() {
         RSAPublicKey publicKey = (RSAPublicKey) rsaKeyManager.getPublicKey();
 
         RSAKey jwk = new RSAKey.Builder(publicKey)
-                .keyID("d4c-key-1")
+                .keyID(computeKeyId(publicKey))
                 .algorithm(JWSAlgorithm.RS256)
                 .keyUse(KeyUse.SIGNATURE)
                 .build();
 
         return Map.of("keys", List.of(jwk.toJSONObject()));
+    }
+
+    private String computeKeyId(RSAPublicKey publicKey) {
+        try {
+            RSAKey jwk = new RSAKey.Builder(publicKey).build();
+            return jwk.computeThumbprint().toString();
+        } catch (Exception e) {
+            return "d4c-key-1";
+        }
     }
 }
