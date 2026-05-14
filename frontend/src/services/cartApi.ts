@@ -45,6 +45,7 @@ export interface ValidationResponse {
 
 export interface CheckoutItem {
   variantId: string;
+  productId: string;
   productName: string;
   color: string;
   size: string;
@@ -84,6 +85,22 @@ export const validateCart = () =>
 
 export const checkout = () =>
   axiosInstance.post<CheckoutResponse>("/api/cart/checkout").then((res) => res.data);
+
+export interface CartItemsPayload {
+  itemIds: number[];
+}
+
+export const partialCheckout = async (
+  payload: CartItemsPayload,
+): Promise<CheckoutResponse> => {
+  return axiosInstance.post<CheckoutResponse>("/api/cart/checkout/partial", payload).then((res) => res.data);
+};
+
+export const removeCartItemsBulk = async (
+  payload: CartItemsPayload,
+): Promise<Cart> => {
+  return axiosInstance.delete<Cart>("/api/cart/items/bulk", { data: payload }).then((res) => res.data);
+};
 
 export const clearCartAfterCheckout = () =>
   axiosInstance.post<void>("/api/cart/checkout/clear").then((res) => res.data);

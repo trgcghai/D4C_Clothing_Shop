@@ -25,6 +25,12 @@
       "skillPath": "skills/find-skills/SKILL.md",
       "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
     },
+    "gitnexus-impact-analysis": {
+      "source": "abhigyanpatwari/gitnexus",
+      "sourceType": "github",
+      "skillPath": "gitnexus-claude-plugin/skills/gitnexus-impact-analysis/SKILL.md",
+      "computedHash": "15c7f2f6c04e8c1c2687bd4c08635162499f64b1bf257e87866c233504b1e67c"
+    },
     "microservices-architect": {
       "source": "jeffallan/claude-skills",
       "sourceType": "github",

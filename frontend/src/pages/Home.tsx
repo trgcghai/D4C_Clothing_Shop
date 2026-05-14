@@ -8,11 +8,22 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
-import { useFeaturedProducts, useNewArrivals } from "../hooks/useProducts";
+import {
+  useFeaturedProducts,
+  useNewArrivals,
+  useRecommendations,
+} from "../hooks/useProducts";
+import { useAuth } from "../store";
+import { AlignRight, ArrowRight } from "lucide-react";
 
 const Home = () => {
   const { data: featured, isLoading: loadingFeatured } = useFeaturedProducts();
   const { data: newArrivals, isLoading: loadingNew } = useNewArrivals(8);
+  const { user, isAuthenticated } = useAuth();
+  const { data: recommendations, isLoading: loadingRecs } = useRecommendations(
+    isAuthenticated && user?.id != null ? String(user.id) : null,
+    4,
+  );
 
   return (
     <main className="page-wrap px-4 pb-10 pt-12">
@@ -22,8 +33,8 @@ const Home = () => {
           Bắt đầu từ danh mục, chạm đến từng chi tiết.
         </h1>
         <p className="mb-8 max-w-2xl text-base leading-8 text-(--sea-ink-soft) sm:text-lg">
-          Khám phá bộ sưu tập, lọc theo nhu cầu và xem trước sản phẩm bằng
-          prefetch nhẹ nhàng khi bạn có ý định mở trang chi tiết.
+          Trang chủ mới của D4C được thiết kế để bạn dễ dàng khám phá sản phẩm
+          ngay.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button variant="default" size="lg">
@@ -35,9 +46,17 @@ const Home = () => {
       {newArrivals && newArrivals.length > 0 && (
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Sản phẩm mới</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Sản phẩm mới</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Những sản phẩm vừa được thêm vào cửa hàng
+              </p>
+            </div>
             <Button variant="link" asChild>
-              <Link to="/products">Xem tất cả →</Link>
+              <Link to="/products">
+                Xem tất cả
+                <ArrowRight className="inline-block ml-1" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -54,12 +73,50 @@ const Home = () => {
         </section>
       )}
 
+      {isAuthenticated && recommendations && recommendations.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">Đề xuất cho bạn</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Dựa trên lịch sử duyệt và mua hàng của bạn
+              </p>
+            </div>
+            <Button variant="link" asChild>
+              <Link to="/recommendations">
+                Xem tất cả
+                <ArrowRight className="inline-block ml-1" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {loadingRecs
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))
+              : recommendations
+                  .slice(0, 4)
+                  .map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+          </div>
+        </section>
+      )}
+
       {featured && featured.length > 0 && (
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Nổi bật</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Sản phẩm nổi bật</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Những sản phẩm được yêu thích và đánh giá cao nhất từ khách hàng
+              </p>
+            </div>
             <Button variant="link" asChild>
-              <Link to="/products">Xem tất cả →</Link>
+              <Link to="/products">
+                Xem tất cả
+                <ArrowRight className="inline-block ml-1" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -85,7 +142,7 @@ const Home = () => {
             </CardHeader>
             <CardContent className="text-sm text-(--sea-ink-soft)">
               <Link to="/products" className="font-medium text-(--lagoon-deep)">
-                Khám phá ngay →
+                Khám phá ngay <AlignRight className="inline-block ml-1" />
               </Link>
             </CardContent>
           </Card>
