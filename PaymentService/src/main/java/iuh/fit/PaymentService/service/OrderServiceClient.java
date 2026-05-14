@@ -18,8 +18,13 @@ public class OrderServiceClient {
     @Value("${order.service.url}")
     private String orderServiceUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public OrderServiceClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = new ObjectMapper();
+    }
 
     public void updateOrderStatus(Long orderId, String status) {
         String url = orderServiceUrl + "/api/public/orders/" + orderId + "/status";
@@ -64,7 +69,11 @@ public class OrderServiceClient {
                 throw new PaymentException("Failed to fetch order: " + orderId);
             }
 
-            return response.getBody().get("userId").asLong();
+            JsonNode userIdNode = response.getBody().path("userId");
+            if (userIdNode.isMissingNode() || userIdNode.isNull()) {
+                throw new PaymentException("Order response missing userId for order: " + orderId);
+            }
+            return userIdNode.asLong();
         } catch (PaymentException e) {
             throw e;
         } catch (Exception e) {

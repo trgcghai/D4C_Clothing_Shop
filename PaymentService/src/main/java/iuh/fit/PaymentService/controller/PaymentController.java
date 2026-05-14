@@ -39,7 +39,11 @@ public class PaymentController {
     @GetMapping
     @Operation(summary = "Get payment by orderId query param", description = "Get payment details by orderId query parameter")
     public ResponseEntity<PaymentResponse> getPaymentByOrderId(@RequestParam Long orderId) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Object principal = authentication.getPrincipal();
         Long requestingUserId = principal instanceof Long ? (Long) principal : null;
         if (requestingUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
