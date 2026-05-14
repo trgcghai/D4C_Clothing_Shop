@@ -157,6 +157,9 @@ public class PaymentService {
         response.setStatus(payment.getStatus());
         response.setExpiresAt(payment.getExpiresAt());
         response.setCreatedAt(payment.getCreatedAt());
+        response.setSepayTransactionId(payment.getSepayTransactionId());
+        response.setSepayGateway(payment.getSepayGateway());
+        response.setPaidAt(payment.getPaidAt());
 
         if (payment.getMethod() == PaymentMethod.QR && payment.getStatus() == PaymentStatus.PENDING) {
             response.setQrUrl(sePayConfig.generateQrUrl(payment.getAmount(), payment.getPaymentCode()));
