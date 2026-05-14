@@ -48,4 +48,28 @@ public class OrderServiceClient {
             throw new PaymentException("Failed to communicate with OrderService: " + e.getMessage());
         }
     }
+
+    public Long getOrderUserId(Long orderId) {
+        String url = orderServiceUrl + "/api/orders/" + orderId;
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    url, HttpMethod.GET, request, JsonNode.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new PaymentException("Failed to fetch order: " + orderId);
+            }
+
+            return response.getBody().get("userId").asLong();
+        } catch (PaymentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error calling OrderService to get order {} userId: {}", orderId, e.getMessage());
+            throw new PaymentException("Failed to communicate with OrderService: " + e.getMessage());
+        }
+    }
 }

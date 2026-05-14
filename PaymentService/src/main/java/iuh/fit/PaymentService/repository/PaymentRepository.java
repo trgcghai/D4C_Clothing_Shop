@@ -20,6 +20,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByCheckoutOrderId(String checkoutOrderId);
 
+    Optional<Payment> findByOrderId(Long orderId);
+
     Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);
 
     @Modifying

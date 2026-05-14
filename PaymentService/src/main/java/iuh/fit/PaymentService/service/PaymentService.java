@@ -27,6 +27,9 @@ public class PaymentService {
     @Autowired
     private SePayConfig sePayConfig;
 
+    @Autowired
+    private OrderServiceClient orderServiceClient;
+
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
         Payment existing = paymentRepository.findByCheckoutOrderId(request.getCheckoutOrderId())
@@ -73,6 +76,19 @@ public class PaymentService {
     public PaymentResponse getPaymentByPaymentCode(String paymentCode) {
         Payment payment = paymentRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new PaymentException("Payment not found for code: " + paymentCode));
+        return toResponse(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse getPaymentByOrderId(Long orderId, Long requestingUserId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new PaymentException("Payment not found for orderId: " + orderId));
+
+        Long orderUserId = orderServiceClient.getOrderUserId(orderId);
+        if (!orderUserId.equals(requestingUserId)) {
+            throw new PaymentException("Access denied: you do not own this order");
+        }
+
         return toResponse(payment);
     }
 
