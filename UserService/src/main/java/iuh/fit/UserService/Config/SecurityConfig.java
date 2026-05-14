@@ -20,12 +20,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
-    private final GatewayAuthHeaderFilter gatewayAuthHeaderFilter;
+    private final GatewayIdentityFilter gatewayIdentityFilter;
 
     public SecurityConfig(UserDetailsService userDetailsService,
-                          GatewayAuthHeaderFilter gatewayAuthHeaderFilter) {
+                          GatewayIdentityFilter gatewayIdentityFilter) {
         this.userDetailsService = userDetailsService;
-        this.gatewayAuthHeaderFilter = gatewayAuthHeaderFilter;
+        this.gatewayIdentityFilter = gatewayIdentityFilter;
     }
 
     @Bean
@@ -51,7 +51,7 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authenticationProvider(authenticationProvider())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(gatewayAuthHeaderFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(gatewayIdentityFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers("/api/auth/**").permitAll()
                                 .requestMatchers("/.well-known/jwks.json").permitAll()
