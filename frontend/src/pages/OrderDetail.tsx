@@ -53,7 +53,7 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const id = orderId ? parseInt(orderId, 10) : null;
   const { data: order, isLoading, isError } = useUserOrderDetail(id);
-  const { data: payment, isLoading: paymentLoading } = usePaymentByOrderId(
+  const { data: payment } = usePaymentByOrderId(
     order?.id ?? null,
     order?.paymentMethod === "QR" && order?.status !== "CANCELLED"
   );
