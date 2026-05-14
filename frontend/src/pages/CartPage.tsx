@@ -39,15 +39,11 @@ const CartPage = () => {
     () => cart?.items.map((item) => item.id) ?? [],
     [cart?.items],
   );
-  const {
-    selectedIds,
-    toggleItem,
-    selectAll,
-    deselectAll,
-    isAllSelected,
-  } = useCartSelection(cartItemIds);
+  const { selectedIds, toggleItem, selectAll, deselectAll, isAllSelected } =
+    useCartSelection(cartItemIds);
 
-  const selectedItems = cart?.items.filter((item) => selectedIds.includes(item.id)) ?? [];
+  const selectedItems =
+    cart?.items.filter((item) => selectedIds.includes(item.id)) ?? [];
   const selectedTotal = selectedItems.reduce(
     (sum, item) => sum + item.subtotal,
     0,
@@ -221,9 +217,16 @@ const CartPage = () => {
                     aria-label={`Select ${item.productName}, color ${item.color}, size ${item.size}`}
                   />
                 </div>
-                <Link to={`/products/${item.productId}`} className="flex h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+                <Link
+                  to={`/products/${item.productId}`}
+                  className="flex h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted"
+                >
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                    <img
+                      src={item.imageUrl}
+                      alt={item.productName}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                       <ShoppingCart className="h-8 w-8" />

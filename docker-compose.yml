@@ -152,6 +152,28 @@ services:
     networks:
       - d4c-net
 
+  recommendationservice:
+    build:
+      context: ./RecommendationService
+      dockerfile: Dockerfile
+    container_name: recommendationservice
+    hostname: recommendationservice
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    env_file:
+      - ./RecommendationService/.env
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - d4c-net
+
   orderservice:
     build:
       context: ./OrderService
@@ -248,6 +270,8 @@ services:
       paymentservice:
         condition: service_healthy
       cartservice:
+        condition: service_healthy
+      recommendationservice:
         condition: service_healthy
     ports:
       - "8080:8080"
