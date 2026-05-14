@@ -233,7 +233,7 @@ export const deductStock = async (
 export type BehaviorEventType = "view" | "add_to_cart" | "buy_now" | "purchased";
 
 /**
- * POST /api/behaviors
+ * POST /api/recommendations/behaviors
  * Record a user behavior event for recommendation scoring.
  */
 export const recordBehavior = async (
@@ -242,7 +242,7 @@ export const recordBehavior = async (
   eventType: BehaviorEventType,
 ): Promise<void> => {
   return axiosInstance
-    .post("/api/behaviors", { userId, productId, eventType })
+    .post("/api/recommendations/behaviors", { userId, productId, eventType })
     .then(() => undefined)
     .catch(() => undefined); // fire-and-forget, never block UI
 };

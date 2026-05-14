@@ -11,30 +11,9 @@ dotenv.config();
 
 const TABLE_NAME = process.env.SCORE_TABLE_NAME || "d4c_user_scores";
 
-/**
- * Model for user-product score aggregation (DynamoDB)
- *
- * Table schema (to be created in AWS):
- *   PK: userId (String)
- *   SK: productId (String)
- *   GSI: userId-score-index  (userId → sort by score DESC)
- *
- * Item shape:
- * {
- *   userId:    string
- *   productId: string
- *   score:     number  (accumulated)
- *   updatedAt: string  (ISO)
- * }
- */
 class RecommendationModel {
-  /**
-   * Add delta score for a (userId, productId) pair.
-   * Creates the item if not exists (upsert).
-   */
   async upsertScore(userId, productId, delta) {
     try {
-      // Try UpdateItem to increment existing score
       const command = new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { userId, productId },
@@ -54,7 +33,6 @@ class RecommendationModel {
       const response = await dynamoClient.send(command);
       return response.Attributes;
     } catch {
-      // Fallback: put new item
       const item = {
         userId,
         productId,
@@ -66,10 +44,6 @@ class RecommendationModel {
     }
   }
 
-  /**
-   * Get top-scored products for a user.
-   * Uses GSI if available, otherwise scan + filter.
-   */
   async findTopByUserId(userId, limit = 20) {
     try {
       const command = new QueryCommand({
@@ -78,13 +52,12 @@ class RecommendationModel {
         KeyConditionExpression: "#uid = :uid",
         ExpressionAttributeNames: { "#uid": "userId" },
         ExpressionAttributeValues: { ":uid": userId },
-        ScanIndexForward: false, // highest score first
+        ScanIndexForward: false,
         Limit: limit,
       });
       const response = await dynamoClient.send(command);
       return response.Items || [];
     } catch {
-      // GSI not ready – scan fallback
       const command = new ScanCommand({
         TableName: TABLE_NAME,
         FilterExpression: "#uid = :uid",

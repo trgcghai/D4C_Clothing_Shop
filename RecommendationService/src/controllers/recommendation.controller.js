@@ -1,9 +1,5 @@
 import { recommendationService } from "../services/recommendation.service.js";
 
-/**
- * POST /api/behaviors
- * Body: { userId, productId, eventType }
- */
 export const recordBehavior = async (req, res) => {
   try {
     const { userId, productId, eventType } = req.body;
@@ -29,9 +25,6 @@ export const recordBehavior = async (req, res) => {
   }
 };
 
-/**
- * GET /api/recommendations?userId=&limit=
- */
 export const getRecommendations = async (req, res) => {
   try {
     const { userId, limit } = req.query;

@@ -11,26 +11,7 @@ dotenv.config();
 
 const TABLE_NAME = process.env.BEHAVIOR_TABLE_NAME || "d4c_user_behaviors";
 
-/**
- * Model for user behavior events table (DynamoDB)
- *
- * Table schema (to be created in AWS):
- *   PK: id (String)
- *   GSI: userId-createdAt-index  (userId → sort by createdAt)
- *
- * Item shape:
- * {
- *   id:          string   (UUID)
- *   userId:      string
- *   productId:   string
- *   eventType:   "view" | "add_to_cart" | "buy_now" | "purchased"
- *   createdAt:   string   (ISO)
- * }
- */
 class BehaviorModel {
-  /**
-   * Record a single behavior event.
-   */
   async putEvent({ userId, productId, eventType }) {
     const item = {
       id: uuidv4(),
@@ -49,11 +30,7 @@ class BehaviorModel {
     return item;
   }
 
-  /**
-   * Get all behavior events for a user (scan fallback – use GSI in prod).
-   */
   async findByUserId(userId) {
-    // Try QueryCommand with GSI first; fall back to Scan if GSI not yet created
     try {
       const command = new QueryCommand({
         TableName: TABLE_NAME,
@@ -61,12 +38,11 @@ class BehaviorModel {
         KeyConditionExpression: "#uid = :uid",
         ExpressionAttributeNames: { "#uid": "userId" },
         ExpressionAttributeValues: { ":uid": userId },
-        ScanIndexForward: false, // newest first
+        ScanIndexForward: false,
       });
       const response = await dynamoClient.send(command);
       return response.Items || [];
     } catch {
-      // GSI not available – scan and filter
       const command = new ScanCommand({
         TableName: TABLE_NAME,
         FilterExpression: "#uid = :uid",
