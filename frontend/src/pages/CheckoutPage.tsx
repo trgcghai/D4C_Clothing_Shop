@@ -26,11 +26,13 @@ export default function CheckoutPage() {
   const cancelOrderMutation = useCancelOrder();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { user } = useStore((state) => state);
 
   const [searchParams] = useSearchParams();
   const buyNowItemId = searchParams.get("buyNowItemId");
+  const buyNowQty = searchParams.get("buyNowQty");
   const selectedIdsParam = searchParams.get("selectedIds");
 
   const filteredItems = useMemo(() => {
@@ -39,19 +41,23 @@ export default function CheckoutPage() {
     if (buyNowItemId) {
       const id = Number(buyNowItemId);
       if (isNaN(id)) return [];
-      return cart.items.filter((item) => item.id === id);
+      const item = cart.items.find((i) => i.id === id);
+      if (!item) return [];
+      const qty = buyNowQty ? Math.min(Number(buyNowQty), item.quantity) : item.quantity;
+      return [{ ...item, quantity: qty, subtotal: item.price * qty }];
     }
 
-    if (selectedIdsParam) {
+    if (selectedIdsParam?.trim()) {
       const ids = selectedIdsParam
         .split(",")
         .map(Number)
         .filter((n) => !isNaN(n) && n > 0);
+      if (ids.length === 0) return [];
       return cart.items.filter((item) => ids.includes(item.id));
     }
 
     return cart.items;
-  }, [cart, buyNowItemId, selectedIdsParam]);
+  }, [cart, buyNowItemId, buyNowQty, selectedIdsParam]);
 
   const filteredTotal = filteredItems.reduce(
     (sum, item) => sum + item.subtotal,
@@ -111,6 +117,8 @@ export default function CheckoutPage() {
   }
 
   const handleConfirm = async () => {
+    if (isProcessing) return;
+
     const deductedItems: { variantId: string; quantity: number }[] = [];
     let orderCreated = false;
     let createdOrderId: number | null = null;
@@ -118,6 +126,7 @@ export default function CheckoutPage() {
     if (!user || !user.email) return;
     if (itemIdsForCheckout.length === 0) return;
 
+    setIsProcessing(true);
     try {
       const checkoutData = await partialCheckoutMutation.mutateAsync({
         itemIds: itemIdsForCheckout,
@@ -193,6 +202,8 @@ export default function CheckoutPage() {
       } else {
         toast.error("Thanh toán thất bại, vui lòng thử lại");
       }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -277,9 +288,9 @@ export default function CheckoutPage() {
               className="w-full"
               size="lg"
               onClick={handleConfirm}
-              disabled={partialCheckoutMutation.isPending || createOrderFromCheckoutMutation.isPending || filteredItems.length === 0}
+              disabled={isProcessing || filteredItems.length === 0}
             >
-              {createOrderFromCheckoutMutation.isPending ? (
+              {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Đang xử lý...

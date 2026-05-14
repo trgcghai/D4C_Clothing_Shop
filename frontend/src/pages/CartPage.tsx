@@ -35,7 +35,10 @@ const CartPage = () => {
   const removeMutation = useRemoveCartItem();
   const clearMutation = useClearCart();
 
-  const cartItemIds = useMemo(() => cart!.items.map((item) => item.id), [cart!.items]);
+  const cartItemIds = useMemo(
+    () => cart?.items.map((item) => item.id) ?? [],
+    [cart?.items],
+  );
   const {
     selectedIds,
     toggleItem,
@@ -44,7 +47,7 @@ const CartPage = () => {
     isAllSelected,
   } = useCartSelection(cartItemIds);
 
-  const selectedItems = cart!.items.filter((item) => selectedIds.includes(item.id));
+  const selectedItems = cart?.items.filter((item) => selectedIds.includes(item.id)) ?? [];
   const selectedTotal = selectedItems.reduce(
     (sum, item) => sum + item.subtotal,
     0,

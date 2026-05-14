@@ -344,7 +344,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                         (item) => item.variantId === selectedVariant.id,
                       );
                       if (addedItem) {
-                        navigate(`/checkout?buyNowItemId=${addedItem.id}`);
+                        navigate(`/checkout?buyNowItemId=${addedItem.id}&buyNowQty=${purchaseQty}`);
                       } else {
                         navigate("/checkout");
                       }

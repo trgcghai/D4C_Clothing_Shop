@@ -90,12 +90,18 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (paymentStatus?.status === "PAID") {
-      // Remove items from cart only after successful payment
-      if (removeItemIds.length > 0) {
-        removeItemsBulkMutation.mutate({ itemIds: removeItemIds });
-      }
-      toast.success("Thanh toán thành công!");
-      navigate(`/orders/${payment?.orderId}`);
+      const cleanupAndNavigate = async () => {
+        if (removeItemIds.length > 0) {
+          try {
+            await removeItemsBulkMutation.mutateAsync({ itemIds: removeItemIds });
+          } catch {
+            toast.warning("Không thể xóa giỏ hàng, vui lòng thử lại");
+          }
+        }
+        toast.success("Thanh toán thành công!");
+        navigate(`/orders/${payment?.orderId}`);
+      };
+      cleanupAndNavigate();
     } else if (paymentStatus?.status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
