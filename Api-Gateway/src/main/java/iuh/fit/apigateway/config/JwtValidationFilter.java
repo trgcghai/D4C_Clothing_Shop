@@ -35,8 +35,10 @@ public class JwtValidationFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        RouteProtectionConfig.AccessLevel accessLevel = routeProtectionConfig.getAccessLevel(
+                path, exchange.getRequest().getMethod());
 
-        if (!routeProtectionConfig.requiresAuth(path)) {
+        if (accessLevel == RouteProtectionConfig.AccessLevel.PUBLIC) {
             return chain.filter(exchange);
         }
 

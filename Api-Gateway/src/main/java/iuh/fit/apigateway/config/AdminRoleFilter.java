@@ -6,6 +6,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -23,8 +24,9 @@ public class AdminRoleFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        HttpMethod method = exchange.getRequest().getMethod();
 
-        if (!path.startsWith("/api/admin/")) {
+        if (!requiresAdmin(path, method)) {
             return chain.filter(exchange);
         }
 
@@ -40,6 +42,16 @@ public class AdminRoleFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return 0;
+    }
+
+    private boolean requiresAdmin(String path, HttpMethod method) {
+        if (path.startsWith("/api/admin/")) {
+            return true;
+        }
+        if (path.startsWith("/api/products/") && method != HttpMethod.GET) {
+            return true;
+        }
+        return false;
     }
 
     private Mono<Void> forbidden(ServerWebExchange exchange, String message) {

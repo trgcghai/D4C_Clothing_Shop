@@ -1,5 +1,6 @@
 package iuh.fit.apigateway.config;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -9,7 +10,6 @@ public class RouteProtectionConfig {
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/",
-            "/api/products/",
             "/api/categories/",
             "/api/webhooks/",
             "/v3/api-docs/",
@@ -17,8 +17,37 @@ public class RouteProtectionConfig {
             "/actuator/"
     );
 
-    public boolean requiresAuth(String path) {
-        if (path == null) return false;
-        return PUBLIC_PATHS.stream().noneMatch(p -> path.startsWith(p) || (path + "/").startsWith(p));
+    public AccessLevel getAccessLevel(String path, HttpMethod method) {
+        if (path == null) return AccessLevel.PUBLIC;
+
+        // Normalize: ensure trailing slash for prefix matching
+        String normalized = path.endsWith("/") ? path : path + "/";
+
+        // Explicitly public paths
+        if (PUBLIC_PATHS.stream().anyMatch(normalized::startsWith)) {
+            return AccessLevel.PUBLIC;
+        }
+
+        // Product routes: GET is public, POST/PUT/DELETE/PATCH require admin
+        if (path.startsWith("/api/products")) {
+            if (method == HttpMethod.GET) {
+                return AccessLevel.PUBLIC;
+            }
+            return AccessLevel.ADMIN;
+        }
+
+        // Admin routes always require admin role
+        if (path.startsWith("/api/admin")) {
+            return AccessLevel.ADMIN;
+        }
+
+        // Everything else requires authentication
+        return AccessLevel.AUTHENTICATED;
+    }
+
+    public enum AccessLevel {
+        PUBLIC,
+        AUTHENTICATED,
+        ADMIN
     }
 }
