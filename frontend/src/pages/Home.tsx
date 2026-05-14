@@ -14,7 +14,7 @@ import {
   useRecommendations,
 } from "../hooks/useProducts";
 import { useAuth } from "../store";
-import { AlignRight } from "lucide-react";
+import { AlignRight, ArrowRight } from "lucide-react";
 
 const Home = () => {
   const { data: featured, isLoading: loadingFeatured } = useFeaturedProducts();
@@ -46,11 +46,16 @@ const Home = () => {
       {newArrivals && newArrivals.length > 0 && (
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Sản phẩm mới</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Sản phẩm mới</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Những sản phẩm vừa được thêm vào cửa hàng
+              </p>
+            </div>
             <Button variant="link" asChild>
               <Link to="/products">
                 Xem tất cả
-                <AlignRight className="inline-block ml-1" />
+                <ArrowRight className="inline-block ml-1" />
               </Link>
             </Button>
           </div>
@@ -80,7 +85,7 @@ const Home = () => {
             <Button variant="link" asChild>
               <Link to="/recommendations">
                 Xem tất cả
-                <AlignRight className="inline-block ml-1" />
+                <ArrowRight className="inline-block ml-1" />
               </Link>
             </Button>
           </div>
@@ -101,11 +106,16 @@ const Home = () => {
       {featured && featured.length > 0 && (
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Nổi bật</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Sản phẩm nổi bật</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Những sản phẩm được yêu thích và đánh giá cao nhất từ khách hàng
+              </p>
+            </div>
             <Button variant="link" asChild>
               <Link to="/products">
                 Xem tất cả
-                <AlignRight className="inline-block ml-1" />
+                <ArrowRight className="inline-block ml-1" />
               </Link>
             </Button>
           </div>

@@ -164,9 +164,9 @@ services:
     env_file:
       - ./RecommendationService/.env
     ports:
-      - "8086:8086"
+      - "8087:8087"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8086/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/health"]
       interval: 30s
       timeout: 5s
       retries: 5

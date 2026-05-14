@@ -431,43 +431,7 @@ public class CartService {
             }
         }
 
-        if (!validationErrors.isEmpty()) {
-            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
-        }
-
-        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
-
-        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
-                .map(item -> {
-                    CheckoutResponse.CheckoutItem ci = new CheckoutResponse.CheckoutItem();
-                    ci.setVariantId(item.getVariantId());
-                    ci.setProductId(item.getProductId());
-                    ci.setProductName(item.getProductName());
-                    ci.setColor(item.getColor());
-                    ci.setSize(item.getSize());
-                    ci.setPrice(item.getPrice());
-                    ci.setQuantity(item.getQuantity());
-
-                    CheckoutResponse.Snapshot snap = new CheckoutResponse.Snapshot();
-                    snap.setPriceAtCheckout(item.getPrice());
-                    snap.setProductName(item.getProductName());
-                    snap.setVariantSku(item.getSku());
-                    ci.setSnapshot(snap);
-
-                    return ci;
-                })
-                .collect(Collectors.toList());
-
-        BigDecimal totalAmount = checkoutItems.stream()
-                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return CheckoutResponse.builder()
-                .orderId(orderId)
-                .status("PENDING")
-                .items(checkoutItems)
-                .totalAmount(totalAmount)
-                .build();
+        return validationErrors;
     }
 
     private CartResponse buildCartResponse(Cart cart) {
