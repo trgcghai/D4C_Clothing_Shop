@@ -156,7 +156,6 @@ export default function CheckoutPage() {
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
         paymentMethod: method,
-        email: user.email,
       });
       orderCreated = true;
       createdOrderId = order.id;
