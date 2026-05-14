@@ -1,48 +1,83 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-This repository is a small monorepo with three services:
-- `frontend/`: React + Vite UI. Main code is in `frontend/src/` (`components/`, `pages/`, `hooks/`, `assets/`).
-- `ProductService/`: Node.js/Express product API. Source is in `ProductService/src/` (`controllers/`, `routes/`, `services/`, `models/`, `middlewares/`, `config/`, `scripts/`).
-- `UserService/`: Spring Boot user/auth API. Java code is in `UserService/src/main/java/...`; tests are in `UserService/src/test/java/...`; config is in `UserService/src/main/resources/`.
+## Architecture
 
-## Build, Test, and Development Commands
-Run commands from each service directory.
+This is a microservices monorepo with 8 application services, 1 API gateway, 1 service registry, and 3 infrastructure components, all orchestrated via Docker Compose.
 
-Frontend (`frontend/`):
-- `npm install`: install dependencies.
-- `npm run dev`: start Vite dev server.
-- `npm run build`: create production build.
-- `npm run lint`: run ESLint.
-- `npm run preview`: preview production build locally.
+| Service | Tech | Port | Build |
+|---|---|---|---|
+| DiscoveryServer | Spring Boot (Eureka) | 8761 | Gradle |
+| Api-Gateway | Spring Cloud Gateway | 8080 | Gradle |
+| UserService | Spring Boot (auth/users) | 8081 | Maven |
+| ProductService | Node.js/Express + AWS DynamoDB/S3 | 8082 | npm |
+| NotificationService | Spring Boot | 8083 | Gradle |
+| CartService | Spring Boot + Redis | 8084 | Maven |
+| OrderService | Spring Boot | 8085 | Maven |
+| PaymentService | Spring Boot | 8086 | Maven |
+| frontend | React 19 + TS + Vite + Tailwind v4 | 5173 | npm |
 
-Product service (`ProductService/`):
-- `npm install`
-- `npm run dev`: start API (`src/index.js`).
-- `npm start`: same runtime entry as `dev`.
+Infrastructure: MariaDB (3308→3306), Redis (6379), RabbitMQ (5672, 15672 mgmt UI).
 
-User service (`UserService/`):
-- `./mvnw spring-boot:run` (Windows: `mvnw.cmd spring-boot:run`): run service.
-- `./mvnw test`: run JUnit tests.
-- `docker compose up --build`: run with containerized dependencies.
+All services register with Eureka. The API Gateway routes `/api/auth/**`, `/api/users/**`, `/api/products/**`, etc. via `lb://SERVICE_NAME` lookups. Frontend calls `VITE_API_BASE_URL` (default `http://localhost:8080`).
 
-## Coding Style & Naming Conventions
-- JavaScript/React: 2-space indentation, semicolons, `camelCase` for variables/functions, `PascalCase` for React components (for example `ProductSkeleton.jsx`).
-- Java/Spring: standard Java conventions (`PascalCase` classes, `camelCase` methods/fields, lowercase package names).
-- Keep file names consistent with existing patterns: component names in `PascalCase` or kebab-case where already used (for example `product-card.jsx`).
-- Run `npm run lint` in `frontend/` before opening a PR.
+## Developer Commands
 
-## Testing Guidelines
-- `UserService` uses Spring Boot + JUnit (`*Tests.java` naming, e.g., `UserServiceApplicationTests.java`).
-- Add/update tests for new controller, service, and security logic.
-- `frontend` and `ProductService` currently have no formal test scripts; at minimum, verify critical flows manually and document what was tested in the PR.
+**Full stack (prod-like):**
+```bash
+docker compose up --build -d
+docker compose down
+```
 
-## Commit & Pull Request Guidelines
-Git history currently uses short, direct messages (for example `Initial commit`, `update readme & init`). Follow this style with imperative summaries, and prefer scope prefixes when useful (example: `frontend: fix admin login redirect`).
+**Dev mode (hot reload for frontend + ProductService, JDWP debug ports for Java services):**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+Debug ports: UserService 5005, Api-Gateway 5006, DiscoveryServer 5007, NotificationService 5008, CartService 5009.
 
-For PRs, include:
-- clear problem/solution description,
-- affected module(s) (`frontend`, `ProductService`, `UserService`),
-- setup or migration notes,
-- screenshots/GIFs for UI changes,
-- linked issue/task when available.
+**Individual service dev (outside Docker):**
+- Frontend: `cd frontend && npm install && npm run dev`
+- ProductService: `cd ProductService && npm install && npm run dev`
+- Java services: `./mvnw spring-boot:run` (Maven) or `./gradlew bootRun` (Gradle)
+
+**Frontend:**
+- `npm run build` runs `tsc -b && vite build`
+- `npm run lint` runs ESLint
+- `npm run preview` previews production build
+
+**Java services tests:** `./mvnw test` (Maven) or `./gradlew test` (Gradle)
+
+## Environment Files
+
+Each service has its own `.env` (copied from `.env.example`). Root `.env` holds MariaDB and RabbitMQ credentials.
+
+Critical env gotchas:
+- `JWT_SECRET` in `UserService/.env` must be ≥32 bytes.
+- `ProductService/.env` needs AWS credentials, `TABLE_NAME`, `BUCKET_NAME`, `CATEGORY_TABLE_NAME`, `VARIANT_TABLE_NAME`.
+- `VITE_API_BASE_URL` in `frontend/.env` must be reachable from the browser (rebuild frontend image after changing).
+- Eureka registration: set `EUREKA_SERVER_URL` in each Java/Node service `.env`. Use `http://host.docker.internal:8761/eureka` if Eureka runs on host, or `http://discovery-server:8761/eureka` inside Docker network.
+
+## Key Conventions
+
+- **Frontend**: React 19, TypeScript, Tailwind v4, Radix UI + shadcn, Zustand for state, TanStack Query for server state, React Router v7, Axios for HTTP. 2-space indent, semicolons, `PascalCase` components, `camelCase` variables.
+- **Java services**: Spring Boot 3.x, standard conventions. Maven services (UserService, CartService, OrderService, PaymentService); Gradle services (DiscoveryServer, Api-Gateway, NotificationService).
+- **ProductService**: ES modules (`"type": "module"`), Express, AWS SDK v3, Eureka JS client, Swagger/OpenAPI docs at `/api-docs`.
+- **API paths**: All client-facing APIs go through Gateway at `http://localhost:8080/api/**`. Direct service ports are for debugging only.
+- **Git**: `.env` files are gitignored; commit `.env.example` templates only.
+
+## Troubleshooting
+
+- Service not in Eureka: check `EUREKA_SERVER_URL` in service `.env`, confirm `discovery-server` is healthy at `http://localhost:8761`.
+- Gateway 404: verify route uses `lb://USERSERVICE` / `lb://PRODUCTSERVICE` etc. and service names match Eureka registrations.
+- Frontend API failures: ensure `VITE_API_BASE_URL` is correct; rebuild frontend image after env changes (`docker compose build frontend`).
+- ProductService AWS errors: verify credentials and table/bucket names in `ProductService/.env`.
+- Env changes not picked up: `docker compose down && docker compose up --build -d`.
+- Root `docker-compose.yml` is the source of truth; ignore any per-service `docker-compose.yaml` files (e.g., `UserService/docker-compose.yaml` is legacy).
+
+## Verify After `up`
+
+```bash
+docker compose ps
+curl http://localhost:8761                    # Eureka dashboard
+curl http://localhost:8080/actuator/health    # Gateway health
+curl http://localhost:8080/api/products       # Products via gateway
+```

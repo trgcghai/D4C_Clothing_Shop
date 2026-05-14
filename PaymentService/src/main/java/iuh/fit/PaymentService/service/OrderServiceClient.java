@@ -55,25 +55,21 @@ public class OrderServiceClient {
     }
 
     public Long getOrderUserId(Long orderId) {
-        String url = orderServiceUrl + "/api/orders/" + orderId;
+        String url = orderServiceUrl + "/api/public/orders/" + orderId + "/owner";
 
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            ResponseEntity<JsonNode> response = restTemplate.exchange(
-                    url, HttpMethod.GET, request, JsonNode.class);
+            ResponseEntity<Long> response = restTemplate.exchange(
+                    url, HttpMethod.GET, request, Long.class);
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new PaymentException("Failed to fetch order: " + orderId);
+                throw new PaymentException("Failed to fetch order owner: " + orderId);
             }
 
-            JsonNode userIdNode = response.getBody().path("userId");
-            if (userIdNode.isMissingNode() || userIdNode.isNull()) {
-                throw new PaymentException("Order response missing userId for order: " + orderId);
-            }
-            return userIdNode.asLong();
+            return response.getBody();
         } catch (PaymentException e) {
             throw e;
         } catch (Exception e) {
