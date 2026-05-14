@@ -31,8 +31,11 @@ public class GatewayIdentityFilter extends OncePerRequestFilter {
             "/api/auth",
             "/.well-known/jwks.json",
             "/v3/api-docs/",
+            "/v3/api-docs",
             "/swagger-ui/",
-            "/actuator/"
+            "/swagger-ui.html",
+            "/actuator/",
+            "/actuator"
     );
 
     @Override

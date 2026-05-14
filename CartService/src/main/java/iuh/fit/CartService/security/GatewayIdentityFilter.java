@@ -21,9 +21,11 @@ public class GatewayIdentityFilter extends OncePerRequestFilter {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/v3/api-docs/",
+            "/v3/api-docs",
             "/swagger-ui/",
             "/swagger-ui.html",
-            "/actuator/"
+            "/actuator/",
+            "/actuator"
     );
 
     @Override
