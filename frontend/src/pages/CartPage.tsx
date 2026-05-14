@@ -215,6 +215,7 @@ const CartPage = () => {
                   <Checkbox
                     checked={selectedIds.includes(item.id)}
                     onCheckedChange={() => toggleItem(item.id)}
+                    aria-label={`Select ${item.productName}, color ${item.color}, size ${item.size}`}
                   />
                 </div>
                 <Link to={`/products/${item.productId}`} className="flex h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
