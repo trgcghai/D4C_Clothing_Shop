@@ -1,7 +1,5 @@
 package iuh.fit.apigateway.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -18,8 +16,6 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 public class AdminRoleFilter implements GlobalFilter, Ordered {
-
-    private static final Logger log = LoggerFactory.getLogger(AdminRoleFilter.class);
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -46,9 +42,6 @@ public class AdminRoleFilter implements GlobalFilter, Ordered {
 
     private boolean requiresAdmin(String path, HttpMethod method) {
         if (path.startsWith("/api/admin")) {
-            return true;
-        }
-        if (path.startsWith("/api/products") && method != HttpMethod.GET) {
             return true;
         }
         return false;

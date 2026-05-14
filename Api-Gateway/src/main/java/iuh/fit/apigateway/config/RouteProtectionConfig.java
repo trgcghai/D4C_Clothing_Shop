@@ -14,11 +14,11 @@ public class RouteProtectionConfig {
             "/api/webhooks/",
             "/v3/api-docs/",
             "/swagger-ui/",
-            "/actuator/"
-    );
+            "/actuator/");
 
     public AccessLevel getAccessLevel(String path, HttpMethod method) {
-        if (path == null) return AccessLevel.PUBLIC;
+        if (path == null)
+            return AccessLevel.PUBLIC;
 
         // Normalize: ensure trailing slash for prefix matching
         String normalized = path.endsWith("/") ? path : path + "/";
@@ -28,12 +28,13 @@ public class RouteProtectionConfig {
             return AccessLevel.PUBLIC;
         }
 
-        // Product routes: GET is public, POST/PUT/DELETE/PATCH require admin
+        // Product routes: GET is public, POST / PUT / DELETE / PATCH require
+        // authentication
         if (path.startsWith("/api/products")) {
             if (method == HttpMethod.GET) {
                 return AccessLevel.PUBLIC;
             }
-            return AccessLevel.ADMIN;
+            return AccessLevel.AUTHENTICATED;
         }
 
         // Admin routes always require admin role
