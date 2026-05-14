@@ -28,4 +28,10 @@ public class PublicOrderController {
         orderService.updateOrderStatusByPaymentService(id, OrderStatus.valueOf(request.getStatus()));
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/{id}/owner")
+    @Operation(summary = "Get order owner userId (internal service call)")
+    public ResponseEntity<Long> getOrderOwner(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getOrderUserId(id));
+    }
 }

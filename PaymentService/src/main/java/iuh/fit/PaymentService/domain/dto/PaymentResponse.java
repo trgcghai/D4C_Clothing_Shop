@@ -17,6 +17,9 @@ public class PaymentResponse {
     private String qrUrl;
     private Instant expiresAt;
     private Instant createdAt;
+    private Long sepayTransactionId;
+    private String sepayGateway;
+    private Instant paidAt;
 
     public PaymentResponse() {}
 
@@ -40,4 +43,10 @@ public class PaymentResponse {
     public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Long getSepayTransactionId() { return sepayTransactionId; }
+    public void setSepayTransactionId(Long sepayTransactionId) { this.sepayTransactionId = sepayTransactionId; }
+    public String getSepayGateway() { return sepayGateway; }
+    public void setSepayGateway(String sepayGateway) { this.sepayGateway = sepayGateway; }
+    public Instant getPaidAt() { return paidAt; }
+    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
 }

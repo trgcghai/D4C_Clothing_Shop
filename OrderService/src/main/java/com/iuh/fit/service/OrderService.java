@@ -137,6 +137,13 @@ public class OrderService {
         return toResponse(order);
     }
 
+    @Transactional(readOnly = true)
+    public Long getOrderUserId(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        return order.getUserId();
+    }
+
     @Transactional
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)

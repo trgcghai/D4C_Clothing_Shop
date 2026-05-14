@@ -18,8 +18,13 @@ public class OrderServiceClient {
     @Value("${order.service.url}")
     private String orderServiceUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public OrderServiceClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = new ObjectMapper();
+    }
 
     public void updateOrderStatus(Long orderId, String status) {
         String url = orderServiceUrl + "/api/public/orders/" + orderId + "/status";
@@ -45,6 +50,30 @@ public class OrderServiceClient {
             throw e;
         } catch (Exception e) {
             log.error("Error calling OrderService to update order {}: {}", orderId, e.getMessage());
+            throw new PaymentException("Failed to communicate with OrderService: " + e.getMessage());
+        }
+    }
+
+    public Long getOrderUserId(Long orderId) {
+        String url = orderServiceUrl + "/api/public/orders/" + orderId + "/owner";
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<Long> response = restTemplate.exchange(
+                    url, HttpMethod.GET, request, Long.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new PaymentException("Failed to fetch order owner: " + orderId);
+            }
+
+            return response.getBody();
+        } catch (PaymentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error calling OrderService to get order {} userId: {}", orderId, e.getMessage());
             throw new PaymentException("Failed to communicate with OrderService: " + e.getMessage());
         }
     }
