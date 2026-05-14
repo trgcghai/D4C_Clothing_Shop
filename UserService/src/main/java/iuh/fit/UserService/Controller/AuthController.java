@@ -16,8 +16,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -34,8 +32,6 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @Tag(name = "auth", description = "Authentication APIs")
 public class AuthController {
-
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final UserRepository userRepository;
@@ -71,50 +67,27 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Refresh token invalid or expired")
     })
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-        log.info("[refreshToken] Incoming request from {}", request.getRemoteAddr());
-
-        // Log all incoming headers for debugging
-        java.util.Enumeration<String> headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements()) {
-            String name = headerNames.nextElement();
-            log.info("[refreshToken] Header: {} = {}", name, request.getHeader(name));
-        }
-
         String refreshToken = extractRefreshTokenFromCookie(request);
-        log.info("[refreshToken] Extracted refresh token: {}", refreshToken != null ? "PRESENT (len=" + refreshToken.length() + ")" : "NULL");
 
         if (refreshToken == null || !jwtUtils.validateJwtToken(refreshToken)) {
-            log.warn("[refreshToken] Token validation failed. Token is null: {}, Valid: {}",
-                    refreshToken == null, refreshToken != null && jwtUtils.validateJwtToken(refreshToken));
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Refresh token is invalid or expired"));
         }
 
         String username = jwtUtils.getUserNameFromJwtToken(refreshToken);
-        log.info("[refreshToken] Token valid, username={}", username);
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        log.info("[refreshToken] User found: id={}, refreshTokenInDb={}, expiryDate={}",
-                user.getId(), user.getRefreshToken() != null ? "PRESENT" : "NULL", user.getRefreshTokenExpiryDate());
-
         if (user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)) {
-            log.warn("[refreshToken] Token mismatch. DB token: {}, provided token matches: {}",
-                    user.getRefreshToken() != null ? "PRESENT" : "NULL",
-                    user.getRefreshToken() != null && user.getRefreshToken().equals(refreshToken));
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Refresh token is no longer valid"));
         }
 
         if (user.getRefreshTokenExpiryDate() != null && user.getRefreshTokenExpiryDate().isBefore(Instant.now())) {
-            log.warn("[refreshToken] Token expired. Expiry: {}, Now: {}",
-                    user.getRefreshTokenExpiryDate(), Instant.now());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Refresh token has expired"));
         }
-
-        log.info("[refreshToken] All checks passed, issuing new tokens for user={}", username);
 
         org.springframework.security.core.userdetails.UserDetails userDetails =
                 org.springframework.security.core.userdetails.User.withUsername(username)

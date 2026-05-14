@@ -1,7 +1,5 @@
 package iuh.fit.apigateway.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -13,18 +11,22 @@ import reactor.core.publisher.Mono;
 
 import java.util.stream.Collectors;
 
+/**
+ * Reconstructs the Cookie header from parsed cookies before forwarding to downstream services.
+ *
+ * Spring Cloud Gateway (WebFlux/Netty) parses the Cookie header into a MultiValueMap
+ * and removes the raw header. Downstream servlet-based services (e.g., UserService)
+ * expect the raw Cookie header to read cookies via HttpServletRequest.getCookies().
+ *
+ * This filter bridges the gap by re-serializing parsed cookies back into the standard
+ * "Cookie: name1=value1; name2=value2" header format.
+ */
 @Component
 public class CookieForwardFilter implements GlobalFilter, Ordered {
 
-    private static final Logger log = LoggerFactory.getLogger(CookieForwardFilter.class);
-
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
         var cookies = exchange.getRequest().getCookies();
-
-        log.info("[CookieForwardFilter] path={}, cookieCount={}, cookieNames={}",
-                path, cookies.size(), cookies.keySet());
 
         if (!cookies.isEmpty()) {
             String cookieHeader = cookies.keySet().stream()
@@ -33,8 +35,6 @@ public class CookieForwardFilter implements GlobalFilter, Ordered {
                             .collect(Collectors.joining("; ")))
                     .collect(Collectors.joining("; "));
 
-            log.info("[CookieForwardFilter] Reconstructed Cookie header: {}", cookieHeader);
-
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                     .header(HttpHeaders.COOKIE, cookieHeader)
                     .build();
@@ -42,7 +42,6 @@ public class CookieForwardFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
         }
 
-        log.info("[CookieForwardFilter] No cookies found, passing through unchanged");
         return chain.filter(exchange);
     }
 

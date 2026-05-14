@@ -36,8 +36,9 @@ public class OrderController {
     @Operation(summary = "Create order from checkout snapshot", description = "Idempotent by checkout orderId, status starts at PENDING_PAYMENT.")
     public ResponseEntity<OrderResponse> createFromCheckout(
             @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Email") String email,
             @Valid @RequestBody CreateOrderFromCheckoutRequest request) {
-        OrderResponse response = orderService.createOrderFromCheckout(userId, request);
+        OrderResponse response = orderService.createOrderFromCheckout(userId, email, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

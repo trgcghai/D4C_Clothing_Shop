@@ -47,7 +47,7 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse createOrderFromCheckout(Long userId, CreateOrderFromCheckoutRequest request) {
+    public OrderResponse createOrderFromCheckout(Long userId, String email, CreateOrderFromCheckoutRequest request) {
         Order existing = orderRepository
                 .findByUserIdAndCheckoutOrderId(userId, request.getOrderId())
                 .orElse(null);
@@ -68,7 +68,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setTotalAmount(calculatedTotal);
         order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH");
-        order.setEmail(request.getEmail());
+        order.setEmail(email);
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {
             if (itemDto.getQuantity() == null || itemDto.getQuantity() <= 0) {
