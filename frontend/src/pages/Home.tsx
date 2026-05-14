@@ -8,8 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
-import { useFeaturedProducts, useNewArrivals, useRecommendations } from "../hooks/useProducts";
+import {
+  useFeaturedProducts,
+  useNewArrivals,
+  useRecommendations,
+} from "../hooks/useProducts";
 import { useAuth } from "../store";
+import { AlignRight } from "lucide-react";
 
 const Home = () => {
   const { data: featured, isLoading: loadingFeatured } = useFeaturedProducts();
@@ -17,7 +22,7 @@ const Home = () => {
   const { user, isAuthenticated } = useAuth();
   const { data: recommendations, isLoading: loadingRecs } = useRecommendations(
     isAuthenticated && user?.id != null ? String(user.id) : null,
-    4
+    4,
   );
 
   return (
@@ -28,8 +33,8 @@ const Home = () => {
           Bắt đầu từ danh mục, chạm đến từng chi tiết.
         </h1>
         <p className="mb-8 max-w-2xl text-base leading-8 text-(--sea-ink-soft) sm:text-lg">
-          Khám phá bộ sưu tập, lọc theo nhu cầu và xem trước sản phẩm bằng
-          prefetch nhẹ nhàng khi bạn có ý định mở trang chi tiết.
+          Trang chủ mới của D4C được thiết kế để bạn dễ dàng khám phá sản phẩm
+          ngay.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button variant="default" size="lg">
@@ -43,7 +48,10 @@ const Home = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Sản phẩm mới</h2>
             <Button variant="link" asChild>
-              <Link to="/products">Xem tất cả →</Link>
+              <Link to="/products">
+                Xem tất cả
+                <AlignRight className="inline-block ml-1" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -60,7 +68,7 @@ const Home = () => {
         </section>
       )}
 
-      {isAuthenticated && (recommendations || loadingRecs) && (
+      {isAuthenticated && recommendations && recommendations.length > 0 && (
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -70,7 +78,10 @@ const Home = () => {
               </p>
             </div>
             <Button variant="link" asChild>
-              <Link to="/recommendations">Xem tất cả →</Link>
+              <Link to="/recommendations">
+                Xem tất cả
+                <AlignRight className="inline-block ml-1" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -78,7 +89,7 @@ const Home = () => {
               ? Array.from({ length: 4 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))
-              : (recommendations ?? [])
+              : recommendations
                   .slice(0, 4)
                   .map((product) => (
                     <ProductCard key={product.id} product={product} />
@@ -92,7 +103,10 @@ const Home = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Nổi bật</h2>
             <Button variant="link" asChild>
-              <Link to="/products">Xem tất cả →</Link>
+              <Link to="/products">
+                Xem tất cả
+                <AlignRight className="inline-block ml-1" />
+              </Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -118,7 +132,7 @@ const Home = () => {
             </CardHeader>
             <CardContent className="text-sm text-(--sea-ink-soft)">
               <Link to="/products" className="font-medium text-(--lagoon-deep)">
-                Khám phá ngay →
+                Khám phá ngay <AlignRight className="inline-block ml-1" />
               </Link>
             </CardContent>
           </Card>
