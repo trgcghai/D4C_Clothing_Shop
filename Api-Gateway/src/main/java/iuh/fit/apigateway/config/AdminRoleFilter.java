@@ -45,10 +45,10 @@ public class AdminRoleFilter implements GlobalFilter, Ordered {
     }
 
     private boolean requiresAdmin(String path, HttpMethod method) {
-        if (path.startsWith("/api/admin/")) {
+        if (path.startsWith("/api/admin")) {
             return true;
         }
-        if (path.startsWith("/api/products/") && method != HttpMethod.GET) {
+        if (path.startsWith("/api/products") && method != HttpMethod.GET) {
             return true;
         }
         return false;
