@@ -83,9 +83,8 @@ public class CartController {
     @PostMapping("/checkout/partial")
     @Operation(summary = "Partial checkout - create order draft for selected items", description = "Create order with PENDING status for specific cart items only.")
     public ResponseEntity<CheckoutResponse> partialCheckout(
-            Authentication authentication,
+            @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody CheckoutRequest request) {
-        Long userId = extractUserId(authentication);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(cartService.partialCheckout(userId, request.getItemIds()));
     }
@@ -93,9 +92,8 @@ public class CartController {
     @DeleteMapping("/items/bulk")
     @Operation(summary = "Remove multiple items from cart", description = "Remove specified items from cart.")
     public ResponseEntity<CartResponse> removeItemsBulk(
-            Authentication authentication,
+            @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody CheckoutRequest request) {
-        Long userId = extractUserId(authentication);
         return ResponseEntity.ok(cartService.removeItemsBulk(userId, request.getItemIds()));
     }
 }
