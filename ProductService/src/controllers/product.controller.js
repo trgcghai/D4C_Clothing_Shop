@@ -1,7 +1,5 @@
 import { productService } from "../services/product.service.js";
 
-// ─── Browsing & Listing ────────────────────────────────────────────────────────
-
 /**
  * GET /api/products
  * Query: category, gender, size, color, brand, minPrice, maxPrice,
@@ -13,7 +11,12 @@ export const getAllProducts = async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.error("Lỗi get products:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy dữ liệu sản phẩm", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi lấy dữ liệu sản phẩm",
+        error: error.message,
+      });
   }
 };
 
@@ -26,7 +29,12 @@ export const getFeaturedProducts = async (req, res) => {
     res.status(200).json(products);
   } catch (error) {
     console.error("Lỗi get featured products:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy sản phẩm nổi bật", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi lấy sản phẩm nổi bật",
+        error: error.message,
+      });
   }
 };
 
@@ -40,11 +48,14 @@ export const getNewArrivals = async (req, res) => {
     res.status(200).json(products);
   } catch (error) {
     console.error("Lỗi get new arrivals:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy hàng mới về", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi lấy hàng mới về",
+        error: error.message,
+      });
   }
 };
-
-// ─── Search ────────────────────────────────────────────────────────────────────
 
 /**
  * GET /api/products/search?q=keyword&page=1&limit=12&sort_by=createdAt&sort_order=desc
@@ -53,17 +64,22 @@ export const searchProducts = async (req, res) => {
   try {
     const { q, ...options } = req.query;
     if (!q || q.trim() === "") {
-      return res.status(400).json({ message: "Vui lòng nhập từ khóa tìm kiếm" });
+      return res
+        .status(400)
+        .json({ message: "Vui lòng nhập từ khóa tìm kiếm" });
     }
     const result = await productService.searchProducts(q.trim(), options);
     res.status(200).json(result);
   } catch (error) {
     console.error("Lỗi search products:", error);
-    res.status(500).json({ message: "Lỗi server khi tìm kiếm sản phẩm", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi tìm kiếm sản phẩm",
+        error: error.message,
+      });
   }
 };
-
-// ─── Single Product ────────────────────────────────────────────────────────────
 
 /**
  * GET /api/products/:id
@@ -92,11 +108,14 @@ export const getRelatedProducts = async (req, res) => {
     res.status(200).json(products);
   } catch (error) {
     console.error("Lỗi get related products:", error);
-    res.status(500).json({ message: "Lỗi server khi lấy sản phẩm liên quan", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi lấy sản phẩm liên quan",
+        error: error.message,
+      });
   }
 };
-
-// ─── Admin CRUD ────────────────────────────────────────────────────────────────
 
 /**
  * POST /api/products
@@ -109,7 +128,9 @@ export const createNewProduct = async (req, res) => {
     res.status(201).json(newProduct);
   } catch (error) {
     console.error("Lỗi tạo sản phẩm:", error);
-    res.status(500).json({ message: "Lỗi khi tạo sản phẩm mới", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi tạo sản phẩm mới", error: error.message });
   }
 };
 
@@ -121,11 +142,17 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
     const productData = req.body;
     const file = req.file;
-    const updatedProduct = await productService.updateProduct(id, productData, file);
+    const updatedProduct = await productService.updateProduct(
+      id,
+      productData,
+      file,
+    );
     res.status(200).json(updatedProduct);
   } catch (error) {
     console.error("Lỗi cập nhật sản phẩm:", error);
-    res.status(500).json({ message: "Lỗi khi cập nhật sản phẩm", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi cập nhật sản phẩm", error: error.message });
   }
 };
 
@@ -139,11 +166,11 @@ export const deleteProduct = async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.error("Lỗi xóa sản phẩm:", error);
-    res.status(500).json({ message: "Lỗi khi xóa sản phẩm", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi xóa sản phẩm", error: error.message });
   }
 };
-
-// ─── Stock Management ──────────────────────────────────────────────────────────
 
 /**
  * POST /api/products/variants/:variantId/deduct-stock
@@ -155,7 +182,9 @@ export const deductStock = async (req, res) => {
     const { quantity } = req.body;
 
     if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
-      return res.status(400).json({ message: "Số lượng phải là số nguyên dương" });
+      return res
+        .status(400)
+        .json({ message: "Số lượng phải là số nguyên dương" });
     }
 
     const result = await productService.deductVariantStock(variantId, quantity);
@@ -165,7 +194,9 @@ export const deductStock = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
     console.error("Lỗi trừ tồn kho:", error);
-    res.status(500).json({ message: "Lỗi khi trừ tồn kho", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi trừ tồn kho", error: error.message });
   }
 };
 
@@ -179,16 +210,23 @@ export const restoreStock = async (req, res) => {
     const { quantity } = req.body;
 
     if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
-      return res.status(400).json({ message: "Số lượng phải là số nguyên dương" });
+      return res
+        .status(400)
+        .json({ message: "Số lượng phải là số nguyên dương" });
     }
 
-    const result = await productService.restoreVariantStock(variantId, quantity);
+    const result = await productService.restoreVariantStock(
+      variantId,
+      quantity,
+    );
     res.status(200).json(result);
   } catch (error) {
     if (error.message.includes("không tồn tại")) {
       return res.status(404).json({ message: error.message });
     }
     console.error("Lỗi hoàn tồn kho:", error);
-    res.status(500).json({ message: "Lỗi khi hoàn tồn kho", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi hoàn tồn kho", error: error.message });
   }
 };

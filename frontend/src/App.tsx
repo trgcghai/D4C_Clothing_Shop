@@ -23,6 +23,7 @@ import MyOrders from "./pages/MyOrders";
 import OrderDetail from "./pages/OrderDetail";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentPage from "./pages/PaymentPage";
+import RecommendationsPage from "./pages/RecommendationsPage";
 import { Toaster } from "@/components/ui/sonner";
 
 export const router = createBrowserRouter([
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: "/profile", element: <Profile /> },
       { path: "/orders", element: <MyOrders /> },
       { path: "/orders/:orderId", element: <OrderDetail /> },
+      { path: "/recommendations", element: <RecommendationsPage /> },
     ],
   },
   {

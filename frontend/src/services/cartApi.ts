@@ -45,6 +45,7 @@ export interface ValidationResponse {
 
 export interface CheckoutItem {
   variantId: string;
+  productId: string;
   productName: string;
   color: string;
   size: string;

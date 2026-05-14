@@ -9,6 +9,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getRecommendations,
   type ProductFilters,
   type SearchOptions,
   type ProductCreatePayload,
@@ -29,6 +30,8 @@ export const productKeys = {
   details: () => [...productKeys.all, "detail"] as const,
   detail: (id: string) => [...productKeys.details(), id] as const,
   related: (id: string) => [...productKeys.detail(id), "related"] as const,
+  recommendations: (userId: string, limit: number) =>
+    [...productKeys.all, "recommendations", userId, limit] as const,
 };
 
 // Queries
@@ -75,6 +78,15 @@ export function useRelatedProducts(id: string) {
     queryKey: productKeys.related(id),
     queryFn: () => getRelatedProducts(id),
     enabled: !!id,
+  });
+}
+
+export function useRecommendations(userId: string | null, limit = 10) {
+  return useQuery({
+    queryKey: productKeys.recommendations(userId ?? "", limit),
+    queryFn: () => getRecommendations(userId!, limit),
+    enabled: !!userId,
+    staleTime: 2 * 60_000,
   });
 }
 
