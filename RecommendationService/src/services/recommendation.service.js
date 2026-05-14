@@ -16,7 +16,7 @@ class RecommendationService {
     const weight = EVENT_WEIGHTS[eventType];
     if (weight === undefined) {
       throw new Error(
-        `eventType không hợp lệ. Chấp nhận: ${Object.keys(EVENT_WEIGHTS).join(", ")}`
+        `eventType không hợp lệ. Chấp nhận: ${Object.keys(EVENT_WEIGHTS).join(", ")}`,
       );
     }
 
@@ -26,6 +26,25 @@ class RecommendationService {
     ]);
 
     return event;
+  }
+
+  async fetchAllProducts() {
+    const allProducts = [];
+    let page = 1;
+    let totalPages = 1;
+    const limit = 100;
+
+    do {
+      const res = await productServiceClient.get("/api/products", {
+        params: { page, limit },
+      });
+      const { data: products, totalPages: tp } = res.data;
+      allProducts.push(...(products || []));
+      totalPages = tp || 1;
+      page++;
+    } while (page <= totalPages);
+
+    return allProducts;
   }
 
   async getRecommendations(userId, limit = 10) {
@@ -43,8 +62,8 @@ class RecommendationService {
         productServiceClient
           .get(`/api/products/${s.productId}`)
           .then((res) => res.data)
-          .catch(() => null)
-      )
+          .catch(() => null),
+      ),
     );
     const validTopProducts = topProducts.filter(Boolean);
 
@@ -58,16 +77,17 @@ class RecommendationService {
       if (p.gender) preferredGenders.add(p.gender.toLowerCase());
     }
 
-    const allRes = await productServiceClient.get("/api/products");
-    const allProducts = allRes.data.data || [];
+    const allProducts = await this.fetchAllProducts();
 
     const scored = allProducts
       .filter((p) => !interactedIds.has(p.id))
       .map((p) => {
         let candidateScore = 0;
         if (preferredCategories.has(p.categoryId)) candidateScore += 3;
-        if (preferredBrands.has((p.brand || "").toLowerCase())) candidateScore += 2;
-        if (preferredGenders.has((p.gender || "").toLowerCase())) candidateScore += 1;
+        if (preferredBrands.has((p.brand || "").toLowerCase()))
+          candidateScore += 2;
+        if (preferredGenders.has((p.gender || "").toLowerCase()))
+          candidateScore += 1;
         return { product: p, candidateScore };
       })
       .filter((x) => x.candidateScore > 0)
@@ -76,10 +96,12 @@ class RecommendationService {
       .map((x) => x.product);
 
     if (scored.length < limit) {
-      const featuredRes = await productServiceClient.get("/api/products/featured");
+      const featuredRes = await productServiceClient.get(
+        "/api/products/featured",
+      );
       const featured = featuredRes.data;
       const supplemented = featured.filter(
-        (p) => !interactedIds.has(p.id) && !scored.find((s) => s.id === p.id)
+        (p) => !interactedIds.has(p.id) && !scored.find((s) => s.id === p.id),
       );
       return [...scored, ...supplemented].slice(0, limit);
     }

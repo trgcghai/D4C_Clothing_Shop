@@ -1,6 +1,15 @@
 import axios from "axios";
+dotenv.config();
 
-export const productServiceClient = axios.create({
-  baseURL: process.env.PRODUCT_SERVICE_URL || "http://productservice:8082",
+const baseURL = process.env.PRODUCT_SERVICE_URL;
+
+if (!baseURL) {
+  throw new Error("PRODUCT_SERVICE_URL environment variable is not set");
+}
+
+let productServiceClient = axios.create({
+  baseURL,
   timeout: 10000,
 });
+
+export { productServiceClient };
