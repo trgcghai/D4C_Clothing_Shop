@@ -12,12 +12,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -27,7 +25,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/orders/admin")
 @Tag(name = "AdminOrder", description = "Admin APIs for orders")
-@SecurityRequirement(name = "bearerAuth")
 public class AdminOrderController {
 
     private final OrderService orderService;
@@ -77,7 +74,7 @@ public class AdminOrderController {
         @Operation(summary = "Get order detail (admin)", responses = {
             @ApiResponse(responseCode = "200", description = "Order detail",
                 content = @Content(mediaType = "application/json",
-                    examples = @ExampleObject(value = "{\n  \"id\": 123,\n  \"checkoutOrderId\": \"CHK-987\",\n  \"userId\": 45,\n  \"status\": \"PAID\",\n  \"totalAmount\": 199.99,\n  \"items\": [ { \"id\":1, \"productName\":\"T-Shirt\", \"quantity\":2, \"unitPrice\":99.995, \"lineTotal\":199.99 } ],\n  \"createdAt\": \"2026-05-12T06:00:00Z\",\n  \"updatedAt\": \"2026-05-12T06:01:00Z\"\n}"
+                    examples = @ExampleObject(value = "{\n  \"id\": 123,\n  \"checkoutOrderId\": \"CHK-987\",\n  \"userId\": 45,\n  \"status\": \"PAID\",\n  \"totalAmount\": 199.99,\n      \"items\": [ { \"id\":1, \"productName\":\"T-Shirt\", \"quantity\":2, \"unitPrice\":99.995, \"lineTotal\":199.99 } ],\n  \"createdAt\": \"2026-05-12T06:00:00Z\",\n  \"updatedAt\": \"2026-05-12T06:01:00Z\"\n}"
                     )
                 )
             )
@@ -103,11 +100,10 @@ public class AdminOrderController {
             )
         })
         public ResponseEntity<OrderResponse> adminUpdateStatus(
-            Authentication authentication,
+            @RequestHeader("X-User-Id") Long adminId,
             @Parameter(description = "Order id") @PathVariable Long id,
             @Valid @RequestBody UpdateOrderStatusRequest request
         ) {
-        Long adminId = Long.parseLong(authentication.getName());
         OrderResponse r = orderService.updateOrderStatusAsAdmin(adminId, id, request);
         return ResponseEntity.ok(r);
     }
