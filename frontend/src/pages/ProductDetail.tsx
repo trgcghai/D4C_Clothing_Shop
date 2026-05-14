@@ -346,7 +346,10 @@ function ProductDetailContent({ productId }: { productId: string }) {
                       if (addedItem) {
                         navigate(`/checkout?buyNowItemId=${addedItem.id}&buyNowQty=${purchaseQty}`);
                       } else {
-                        navigate("/checkout");
+                        toast.error(
+                          "Không thể xác định sản phẩm để mua ngay. Vui lòng kiểm tra giỏ hàng.",
+                        );
+                        navigate("/cart");
                       }
                     },
                   },
