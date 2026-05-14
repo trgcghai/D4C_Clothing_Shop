@@ -1,90 +1,79 @@
 package iuh.fit.UserService.Config;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
+import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
+
 @Component
 public class JwtUtils {
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
-    @Value("${jwt.expirationMs}")
-    private long jwtExpirationMs;
+    private final RsaKeyManager rsaKeyManager;
+    private final long jwtExpirationMs;
+    private final long jwtRefreshExpirationMs;
 
-    @Value("${jwt.refreshExpirationMs}")
-    private long jwtRefreshExpirationMs;
-
-    private SecretKey signingKey;
-
-    @PostConstruct
-    private void initSigningKey() {
-        if (jwtSecret == null || jwtSecret.isBlank()) {
-            throw new IllegalStateException("JWT_SECRET is required and must be at least 32 bytes.");
-        }
-
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes (256 bits). Current: " + keyBytes.length + " bytes.");
-        }
-
-        signingKey = Keys.hmacShaKeyFor(keyBytes);
+    public JwtUtils(RsaKeyManager rsaKeyManager,
+                    @Value("${jwt.expirationMs}") long jwtExpirationMs,
+                    @Value("${jwt.refreshExpirationMs}") long jwtRefreshExpirationMs) {
+        this.rsaKeyManager = rsaKeyManager;
+        this.jwtExpirationMs = jwtExpirationMs;
+        this.jwtRefreshExpirationMs = jwtRefreshExpirationMs;
     }
 
-    // Tạo key từ chuỗi secret
-    private SecretKey getSigningKey() {
-        return signingKey;
-    }
-
-    // Tạo JWT Token từ thông tin User
     public String generateToken(UserDetails userDetails) {
-        return Jwts.builder()
-                .subject(userDetails.getUsername())
-                .claim("roles", extractRoles(userDetails))
-                .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
+        return generateToken(userDetails, null, null);
     }
 
     public String generateToken(UserDetails userDetails, Long userId) {
-        return Jwts.builder()
+        return generateToken(userDetails, userId, null);
+    }
+
+    public String generateToken(UserDetails userDetails, Long userId, String email) {
+        var builder = Jwts.builder()
                 .subject(userDetails.getUsername())
-                .claim("userId", userId)
                 .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .signWith(rsaKeyManager.getPrivateKey());
+
+        if (userId != null) {
+            builder.claim("userId", userId);
+        }
+        if (email != null) {
+            builder.claim("email", email);
+        }
+
+        return builder.compact();
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return Jwts.builder()
-                .subject(userDetails.getUsername())
-                .claim("roles", extractRoles(userDetails))
-                .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
+        return generateRefreshToken(userDetails, null, null);
     }
 
     public String generateRefreshToken(UserDetails userDetails, Long userId) {
-        return Jwts.builder()
+        return generateRefreshToken(userDetails, userId, null);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, Long userId, String email) {
+        var builder = Jwts.builder()
                 .subject(userDetails.getUsername())
-                .claim("userId", userId)
                 .claim("roles", extractRoles(userDetails))
                 .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtRefreshExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + jwtRefreshExpirationMs))
+                .signWith(rsaKeyManager.getPrivateKey());
+
+        if (userId != null) {
+            builder.claim("userId", userId);
+        }
+        if (email != null) {
+            builder.claim("email", email);
+        }
+
+        return builder.compact();
     }
 
     private List<String> extractRoles(UserDetails userDetails) {
@@ -96,7 +85,7 @@ public class JwtUtils {
 
     public Long getUserIdFromToken(String token) {
         Object userId = Jwts.parser()
-                .verifyWith(getSigningKey())
+                .verifyWith(rsaKeyManager.getPublicKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
@@ -107,26 +96,24 @@ public class JwtUtils {
         return userId != null ? Long.valueOf(userId.toString()) : null;
     }
 
-    // Lấy username từ JWT
     public String getUserNameFromJwtToken(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
+                .verifyWith(rsaKeyManager.getPublicKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
     }
 
-    // Kiểm tra tính hợp lệ của Token
     public boolean validateJwtToken(String authToken) {
         try {
-            Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);
+            Jwts.parser().verifyWith(rsaKeyManager.getPublicKey()).build().parseSignedClaims(authToken);
             return true;
-        } catch (MalformedJwtException e) {
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
             System.err.println("Invalid JWT token: " + e.getMessage());
-        } catch (ExpiredJwtException e) {
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
             System.err.println("JWT token is expired: " + e.getMessage());
-        } catch (UnsupportedJwtException e) {
+        } catch (io.jsonwebtoken.UnsupportedJwtException e) {
             System.err.println("JWT token is unsupported: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             System.err.println("JWT claims string is empty: " + e.getMessage());
