@@ -1,9 +1,35 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/src/store/useChatStore";
 import { sendChatMessage, getConversation, clearConversation } from "@/src/services/aiApi";
 
-export function useAIChat() {
+export const aiKeys = {
+  all: ["ai-conversation"] as const,
+  detail: () => [...aiKeys.all, "detail"] as const,
+};
+
+export function useAIChat(isOpen: boolean) {
+  const queryClient = useQueryClient();
   const { addMessage, setMessages, clearChat: storeClearChat } = useChatStore();
+
+  // Sync conversation from backend when chat opens
+  useQuery({
+    queryKey: aiKeys.detail(),
+    queryFn: getConversation,
+    enabled: isOpen,
+    staleTime: Infinity,
+    retry: false,
+    onSuccess: (data) => {
+      if (data.data.messages.length > 0) {
+        const synced = data.data.messages.map((msg) => ({
+          id: `${msg.timestamp}-${msg.role}`,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }));
+        setMessages(synced);
+      }
+    },
+  });
 
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: sendChatMessage,
@@ -12,6 +38,7 @@ export function useAIChat() {
     },
     onSuccess: (data) => {
       addMessage({ role: "model", content: data.data.reply });
+      queryClient.invalidateQueries({ queryKey: aiKeys.all });
     },
     onError: () => {
       addMessage({
@@ -27,35 +54,21 @@ export function useAIChat() {
     sendMessage({ message });
   };
 
-  const { mutate: syncConversation } = useMutation({
-    mutationFn: getConversation,
-    onSuccess: (data) => {
-      if (data.data.messages.length > 0) {
-        const synced = data.data.messages.map((msg) => ({
-          id: `${msg.timestamp}-${msg.role}`,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-        }));
-        setMessages(synced);
-      }
-    },
-  });
-
   const { mutate: clearChat } = useMutation({
     mutationFn: clearConversation,
     onSuccess: () => {
       storeClearChat();
+      queryClient.invalidateQueries({ queryKey: aiKeys.all });
     },
     onError: () => {
       storeClearChat();
+      queryClient.invalidateQueries({ queryKey: aiKeys.all });
     },
   });
 
   return {
     sendMessage: handleSend,
     isLoading: isPending,
-    syncConversation,
     clearChat,
   };
 }

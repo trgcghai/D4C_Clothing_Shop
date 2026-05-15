@@ -7,10 +7,9 @@ import AIMessage from "./AIMessage";
 
 const AIChatWindow = () => {
   const { messages, closeChat, isOpen } = useChatStore();
-  const { sendMessage, isLoading, syncConversation, clearChat } = useAIChat();
+  const { sendMessage, isLoading, clearChat } = useAIChat(isOpen);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasSyncedRef = useRef(false);
 
   const title = "D4C AI Stylist";
 
@@ -18,18 +17,6 @@ const AIChatWindow = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Sync messages from backend when chat opens (once per open session)
-  useEffect(() => {
-    if (isOpen) {
-      if (!hasSyncedRef.current) {
-        hasSyncedRef.current = true;
-        syncConversation();
-      }
-    } else {
-      hasSyncedRef.current = false;
-    }
-  }, [isOpen, syncConversation]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
