@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
-import { chatModel } from "../models/chat.model.js";
 import redisClient from "../config/redis.config.js";
 import { productToolDeclarations, productToolHandlers } from "../tools/productTools.js";
 import { cartOrderToolDeclarations, cartOrderToolHandlers } from "../tools/cartOrderTools.js";
@@ -9,7 +8,6 @@ import { adminStatsToolDeclarations, adminStatsToolHandlers } from "../tools/adm
 
 dotenv.config();
 
-// Use Proxy key for auth, proxy URL to bypass network block
 const PROXY_API_KEY = process.env.PROXY_API_KEY;
 const PROXY_BASE_URL = "https://gcli.ggchan.dev";
 
@@ -55,20 +53,11 @@ class GeminiService {
       const chatId = `${role.toLowerCase()}:${userId}`;
       const redisKey = `ai_session:${chatId}`;
 
-      // 1. Fetch short-term context from Redis
+      // 1. Fetch context from Redis
       let contextStr = await redisClient.get(redisKey);
       let history = contextStr ? JSON.parse(contextStr) : [];
-      let dbChat = null;
 
-      // If no Redis context, try to load from DynamoDB
-      if (history.length === 0) {
-        dbChat = await chatModel.getChatHistory(chatId);
-        if (dbChat && dbChat.messages) {
-          // Limit to last 5 messages for faster context processing
-          history = dbChat.messages.slice(-5);
-        }
-      }
-      // Also cap in-memory history
+      // Cap in-memory history to last 5 for Gemini context
       if (history.length > 5) history = history.slice(-5);
 
       // Format history for Gemini API — must start with 'user' and alternate roles
@@ -85,7 +74,7 @@ class GeminiService {
       // Ensure alternating roles: remove consecutive same-role entries (keep last)
       const geminiHistory = formattedHistory.reduce((acc, cur) => {
         if (acc.length > 0 && acc[acc.length - 1].role === cur.role) {
-          acc[acc.length - 1] = cur; // replace with latest
+          acc[acc.length - 1] = cur;
         } else {
           acc.push(cur);
         }
@@ -112,9 +101,8 @@ class GeminiService {
         systemInstruction: systemInstruction,
         tools: tools.length > 0 ? tools : undefined,
         generationConfig: {
-          // Disable thinking mode to avoid 524 timeout
           thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 2048, // increased for JSON-rich UI responses
+          maxOutputTokens: 2048,
           temperature: 0.7,
         }
       }, { baseUrl: PROXY_BASE_URL });
@@ -142,11 +130,9 @@ class GeminiService {
             apiResponse = { error: `Tool ${call.name} not implemented.` };
           }
 
-          // Gemini requires `response` to be a plain object (not array/primitive)
-          // Wrap arrays/primitives accordingly and limit size to avoid token overflow
           let safeResponse;
           if (Array.isArray(apiResponse)) {
-            safeResponse = { result: apiResponse.slice(0, 5) }; // max 5 items
+            safeResponse = { result: apiResponse.slice(0, 5) };
           } else if (apiResponse === null || typeof apiResponse !== 'object') {
             safeResponse = { result: apiResponse };
           } else {
@@ -161,7 +147,6 @@ class GeminiService {
           });
         }
 
-        // Send the function response back to Gemini to get the final text
         result = await chatSession.sendMessage(functionResponses);
 
         functionCalls = typeof result.response.functionCalls === 'function'
@@ -172,7 +157,7 @@ class GeminiService {
       const responseText = result.response.text();
       console.log(`AI Response for ${userId}: ${responseText}`);
 
-      // 2. Update History
+      // 3. Update History
       const userMsg = { role: 'user', content: incomingMessage, timestamp: Date.now() };
       const modelMsg = { role: 'model', content: responseText, timestamp: Date.now() };
 
@@ -183,16 +168,8 @@ class GeminiService {
         history = history.slice(-15);
       }
 
-      // 3. Save to Redis (7 days TTL)
+      // 4. Save to Redis only (7 days TTL)
       await redisClient.set(redisKey, JSON.stringify(history), "EX", 604800);
-
-      // 4. Save to DynamoDB
-      if (!dbChat) {
-        dbChat = await chatModel.getChatHistory(chatId);
-      }
-      const fullMessages = dbChat && dbChat.messages ? dbChat.messages : [];
-      fullMessages.push(userMsg, modelMsg);
-      await chatModel.saveChatHistory(chatId, userId, role, fullMessages);
 
       return responseText;
     } catch (error) {
