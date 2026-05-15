@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Send, RotateCcw, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChatStore } from "@/src/store/useChatStore";
+import { useAi } from "@/src/store";
 import { useAIChat } from "@/src/hooks/useAIChat";
 import AIMessage from "./AIMessage";
 
 const AIChatWindow = () => {
-  const { messages, closeChat, isOpen } = useChatStore();
+  const { messages, closeChat, isOpen } = useAi();
   const { sendMessage, isLoading, clearChat } = useAIChat(isOpen);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);

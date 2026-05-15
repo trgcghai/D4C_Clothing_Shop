@@ -1,10 +1,10 @@
 import { Bot, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChatStore } from "@/src/store/useChatStore";
+import { useAi } from "@/src/store";
 import AIChatWindow from "./AIChatWindow";
 
 const AIChatBubble = () => {
-  const { isOpen, toggleChat } = useChatStore();
+  const { isOpen, toggleChat } = useAi();
 
   return (
     <>

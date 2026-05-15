@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useChatStore } from "@/src/store/useChatStore";
+import { useAi } from "@/src/store";
 import { sendChatMessage, getConversation, clearConversation } from "@/src/services/aiApi";
 
 export const aiKeys = {
@@ -9,7 +9,7 @@ export const aiKeys = {
 
 export function useAIChat(isOpen: boolean) {
   const queryClient = useQueryClient();
-  const { addMessage, setMessages, clearChat: storeClearChat } = useChatStore();
+  const { addMessage, setMessages, clearChat: storeClearChat } = useAi();
 
   // Sync conversation from backend when chat opens
   useQuery({
