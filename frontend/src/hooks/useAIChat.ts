@@ -1,11 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/src/store";
 import { useChatStore } from "@/src/store/useChatStore";
-import { sendChatMessage } from "@/src/services/aiApi";
+import { sendChatMessage, getConversation, clearConversation } from "@/src/services/aiApi";
 
 export function useAIChat() {
-  const { user, role } = useAuth();
-  const { addMessage } = useChatStore();
+  const { addMessage, setMessages, clearChat: storeClearChat } = useChatStore();
 
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: sendChatMessage,
@@ -26,13 +24,38 @@ export function useAIChat() {
 
   const handleSend = (message: string) => {
     if (!message.trim()) return;
-
-    sendMessage({
-      message,
-      userId: user?.id?.toString() || "anonymous",
-      role: role || "USER",
-    });
+    sendMessage({ message });
   };
 
-  return { sendMessage: handleSend, isLoading: isPending };
+  const { mutate: syncConversation } = useMutation({
+    mutationFn: getConversation,
+    onSuccess: (data) => {
+      if (data.data.messages.length > 0) {
+        const synced = data.data.messages.map((msg) => ({
+          id: `${msg.timestamp}-${msg.role}`,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }));
+        setMessages(synced);
+      }
+    },
+  });
+
+  const { mutate: clearChat } = useMutation({
+    mutationFn: clearConversation,
+    onSuccess: () => {
+      storeClearChat();
+    },
+    onError: () => {
+      storeClearChat();
+    },
+  });
+
+  return {
+    sendMessage: handleSend,
+    isLoading: isPending,
+    syncConversation,
+    clearChat,
+  };
 }
