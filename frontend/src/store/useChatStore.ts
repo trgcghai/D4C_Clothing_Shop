@@ -15,6 +15,7 @@ interface ChatStore {
   openChat: () => void;
   closeChat: () => void;
   addMessage: (message: Omit<ChatMessage, "id" | "timestamp">) => void;
+  setMessages: (messages: ChatMessage[]) => void;
   setLoading: (loading: boolean) => void;
   clearChat: () => void;
 }
@@ -40,6 +41,7 @@ export const useChatStore = create<ChatStore>((set) => ({
         { ...msg, id: Date.now().toString(), timestamp: Date.now() },
       ],
     })),
+  setMessages: (messages) => set({ messages }),
   setLoading: (loading) => set({ isLoading: loading }),
   clearChat: () =>
     set({
