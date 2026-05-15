@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Send, RotateCcw, Loader2 } from "lucide-react";
+import { X, Send, RotateCcw, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useChatStore } from "@/src/store/useChatStore";
 import { useAIChat } from "@/src/hooks/useAIChat";
@@ -7,8 +7,8 @@ import AIMessage from "./AIMessage";
 import { useAuth } from "@/src/store";
 
 const AIChatWindow = () => {
-  const { messages, isLoading, closeChat, clearChat } = useChatStore();
-  const { sendMessage } = useAIChat();
+  const { messages, closeChat, clearChat } = useChatStore();
+  const { sendMessage, isLoading } = useAIChat();
   const { role } = useAuth();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -70,8 +70,8 @@ const AIChatWindow = () => {
         ))}
         {isLoading && (
           <div className="flex w-full justify-start py-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary border">
-              <Loader2 className="size-4 animate-spin" />
+            <div className="flex size-8 shrink-0 select-none items-center justify-center rounded-full bg-primary/10 text-primary border">
+              <Bot className="size-5" />
             </div>
             <div className="ml-3 flex items-center space-x-1.5 rounded-2xl bg-muted/50 px-4 py-3 border">
               <div className="size-1.5 rounded-full bg-muted-foreground/60 animate-bounce" />
