@@ -35,36 +35,42 @@ const AIChatWindow = () => {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 flex h-[550px] w-[380px] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300 ease-out sm:right-8 sm:w-[400px]">
-      {/* Header */}
+    <div className="fixed bottom-24 right-6 z-50 flex h-137.5 w-95 flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300 ease-out sm:right-8 sm:w-100">
       <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-            <div className="size-2.5 rounded-full bg-primary animate-pulse" />
-          </div>
           <div>
             <h3 className="text-sm font-semibold">{title}</h3>
             <p className="text-xs text-muted-foreground">Sẵn sàng hỗ trợ</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-8" onClick={clearChat} title="Xóa trò chuyện">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={clearChat}
+            title="Xóa trò chuyện"
+          >
             <RotateCcw className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="size-8" onClick={closeChat}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={closeChat}
+          >
             <X className="size-4" />
           </Button>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10 [scrollbar-width:thin] [scrollbar-color:hsl(var(--muted-foreground)/0.28)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/35">
         {messages.map((msg) => (
           <AIMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}
         {isLoading && (
           <div className="flex w-full justify-start py-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary border">
               <Loader2 className="size-4 animate-spin" />
             </div>
             <div className="ml-3 flex items-center space-x-1.5 rounded-2xl bg-muted/50 px-4 py-3 border">
@@ -77,13 +83,16 @@ const AIChatWindow = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="border-t bg-background p-3">
         <div className="flex items-center gap-2 rounded-full border bg-muted/20 px-2 py-1 focus-within:ring-1 focus-within:ring-primary">
           <input
             type="text"
             className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-            placeholder={role === "ADMIN" ? "Hỏi về doanh thu, đơn hàng..." : "Hỏi về sản phẩm, size..."}
+            placeholder={
+              role === "ADMIN"
+                ? "Hỏi về doanh thu, đơn hàng..."
+                : "Hỏi về sản phẩm, size..."
+            }
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -95,7 +104,7 @@ const AIChatWindow = () => {
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
           >
-            <Send className="size-4 ml-1" />
+            <Send className="size-4 mr-0.5" />
           </Button>
         </div>
       </div>

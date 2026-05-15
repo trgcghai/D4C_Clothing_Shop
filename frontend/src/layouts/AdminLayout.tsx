@@ -73,7 +73,7 @@ const AdminLayout = () => {
             onClick={handleSignOut}
             className="w-full"
           >
-            Dang xuat
+            Đăng xuất
           </Button>
         </div>
       </aside>
