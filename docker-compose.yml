@@ -248,6 +248,30 @@ services:
     networks:
       - d4c-net
 
+  aiservice:
+    build:
+      context: ./AIService
+      dockerfile: Dockerfile
+    container_name: aiservice
+    hostname: aiservice
+    env_file:
+      - ./AIService/.env
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/api/v1/ai/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - d4c-net
+
   api-gateway:
     build:
       context: ./Api-Gateway
@@ -273,6 +297,8 @@ services:
         condition: service_healthy
       recommendationservice:
         condition: service_healthy
+      aiservice:
+        condition: service_healthy
     ports:
       - "8080:8080"
     healthcheck:
@@ -297,7 +323,7 @@ services:
       productservice:
         condition: service_healthy
     ports:
-      - "5173:5173"
+      - "5174:5173"
     healthcheck:
       test:
         [

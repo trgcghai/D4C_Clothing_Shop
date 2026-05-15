@@ -15,10 +15,26 @@ import type { Product } from "../services/productApi";
 const GENDERS = ["Nam", "Nữ", "Unisex"];
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const COLORS = [
-  "Đen", "Trắng", "Xám", "Đỏ", "Xanh Navy",
-  "Xanh Dương", "Xanh Lá", "Vàng", "Hồng", "Nâu",
+  "Đen",
+  "Trắng",
+  "Xám",
+  "Đỏ",
+  "Xanh Navy",
+  "Xanh Dương",
+  "Xanh Lá",
+  "Vàng",
+  "Hồng",
+  "Nâu",
 ];
-const BRANDS = ["Nike", "Adidas", "Zara", "D4C", "H&M", "Uniqlo", "Local Brand"];
+const BRANDS = [
+  "Nike",
+  "Adidas",
+  "Zara",
+  "D4C",
+  "H&M",
+  "Uniqlo",
+  "Local Brand",
+];
 
 const PAGE_SIZE = 12;
 
@@ -39,7 +55,7 @@ const RecommendationsPage = () => {
 
   const { data: allRecs, isLoading } = useRecommendations(
     isAuthenticated && user?.id != null ? String(user.id) : null,
-    48
+    48,
   );
 
   // ── Client-side filtering ────────────────────────────────────────────────
@@ -54,13 +70,15 @@ const RecommendationsPage = () => {
     if (size) {
       const sizes = size.split(",");
       items = items.filter((p) =>
-        p.variants.some((v) => sizes.includes(v.size) && Number(v.quantity) > 0)
+        p.variants.some(
+          (v) => sizes.includes(v.size) && Number(v.quantity) > 0,
+        ),
       );
     }
     if (color) {
       const colors = color.split(",").map((c) => c.toLowerCase());
       items = items.filter((p) =>
-        p.variants.some((v) => colors.includes(v.color.toLowerCase()))
+        p.variants.some((v) => colors.includes(v.color.toLowerCase())),
       );
     }
 
@@ -82,7 +100,7 @@ const RecommendationsPage = () => {
     key: string,
     value: string,
     isActive: boolean,
-    current: string[]
+    current: string[],
   ) => {
     const next = isActive
       ? current.filter((x) => x !== value)
@@ -104,8 +122,9 @@ const RecommendationsPage = () => {
   const hasFilters = !!(categoryId || gender || size || color || brand);
 
   const filteredBrands = useMemo(
-    () => BRANDS.filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase())),
-    [brandSearch]
+    () =>
+      BRANDS.filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase())),
+    [brandSearch],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -115,7 +134,8 @@ const RecommendationsPage = () => {
         <Sparkles className="size-12 text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold mb-2">Đăng nhập để xem đề xuất</h1>
         <p className="text-muted-foreground">
-          Hãy đăng nhập để nhận các gợi ý sản phẩm cá nhân hoá dành riêng cho bạn.
+          Hãy đăng nhập để nhận các gợi ý sản phẩm cá nhân hoá dành riêng cho
+          bạn.
         </p>
       </main>
     );
@@ -135,11 +155,10 @@ const RecommendationsPage = () => {
         </p>
       </div>
 
-      {/* Active filter chips */}
       <div
         className={cn(
           "mb-4 flex flex-wrap items-center gap-3",
-          hasFilters ? "justify-between" : "justify-end"
+          hasFilters ? "justify-between" : "justify-end",
         )}
       >
         {hasFilters && (
@@ -176,7 +195,10 @@ const RecommendationsPage = () => {
                   key={s}
                   label={`Size: ${s}`}
                   onRemove={() => {
-                    const remaining = size.split(",").filter((x) => x !== s).join(",");
+                    const remaining = size
+                      .split(",")
+                      .filter((x) => x !== s)
+                      .join(",");
                     updateFilter("size", remaining || null);
                   }}
                 />
@@ -187,7 +209,10 @@ const RecommendationsPage = () => {
                   key={c}
                   label={`Màu: ${c}`}
                   onRemove={() => {
-                    const remaining = color.split(",").filter((x) => x !== c).join(",");
+                    const remaining = color
+                      .split(",")
+                      .filter((x) => x !== c)
+                      .join(",");
                     updateFilter("color", remaining || null);
                   }}
                 />
@@ -197,9 +222,7 @@ const RecommendationsPage = () => {
       </div>
 
       <div className="flex flex-col gap-6 md:flex-row">
-        {/* ── Sidebar ── */}
         <aside className="w-full shrink-0 md:w-60 space-y-6">
-          {/* Category */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Danh mục
@@ -225,7 +248,6 @@ const RecommendationsPage = () => {
             </div>
           </div>
 
-          {/* Gender */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Giới tính
@@ -251,7 +273,6 @@ const RecommendationsPage = () => {
             </div>
           </div>
 
-          {/* Brand */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Thương hiệu
@@ -283,7 +304,6 @@ const RecommendationsPage = () => {
             </div>
           </div>
 
-          {/* Size */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Kích thước
@@ -298,7 +318,9 @@ const RecommendationsPage = () => {
                     key={s}
                     variant={isActive ? "default" : "outline"}
                     className="flex h-8 min-w-8 items-center justify-center rounded-md border text-xs font-medium"
-                    onClick={() => updateMultiFilter("size", s, isActive, current)}
+                    onClick={() =>
+                      updateMultiFilter("size", s, isActive, current)
+                    }
                   >
                     {s}
                   </Button>
@@ -307,7 +329,6 @@ const RecommendationsPage = () => {
             </div>
           </div>
 
-          {/* Color */}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Màu sắc
@@ -322,7 +343,9 @@ const RecommendationsPage = () => {
                     key={c}
                     variant={isActive ? "default" : "outline"}
                     className="flex h-7 items-center justify-center rounded-md border px-2 text-xs font-medium"
-                    onClick={() => updateMultiFilter("color", c, isActive, current)}
+                    onClick={() =>
+                      updateMultiFilter("color", c, isActive, current)
+                    }
                   >
                     {c}
                   </Button>
@@ -332,7 +355,6 @@ const RecommendationsPage = () => {
           </div>
         </aside>
 
-        {/* ── Product grid ── */}
         <div className="flex-1">
           {isLoading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -367,7 +389,11 @@ const RecommendationsPage = () => {
                   : "Hãy khám phá thêm sản phẩm để hệ thống hiểu sở thích của bạn!"}
               </p>
               {hasFilters && (
-                <Button variant="outline" className="mt-4" onClick={clearAllFilters}>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={clearAllFilters}
+                >
                   Xóa tất cả bộ lọc
                 </Button>
               )}
@@ -379,7 +405,13 @@ const RecommendationsPage = () => {
   );
 };
 
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
   return (
     <Badge variant="secondary" className="p-4">
       {label}
