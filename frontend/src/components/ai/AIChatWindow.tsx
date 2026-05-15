@@ -4,21 +4,26 @@ import { Button } from "@/components/ui/button";
 import { useChatStore } from "@/src/store/useChatStore";
 import { useAIChat } from "@/src/hooks/useAIChat";
 import AIMessage from "./AIMessage";
-import { useAuth } from "@/src/store";
 
 const AIChatWindow = () => {
-  const { messages, closeChat, clearChat } = useChatStore();
-  const { sendMessage, isLoading } = useAIChat();
-  const { role } = useAuth();
+  const { messages, closeChat, isOpen } = useChatStore();
+  const { sendMessage, isLoading, syncConversation, clearChat } = useAIChat();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const title = role === "ADMIN" ? "Admin Copilot" : "D4C AI Stylist";
+  const title = "D4C AI Stylist";
 
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Sync messages from backend when chat opens
+  useEffect(() => {
+    if (isOpen) {
+      syncConversation();
+    }
+  }, [isOpen, syncConversation]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
@@ -48,7 +53,7 @@ const AIChatWindow = () => {
             variant="ghost"
             size="icon"
             className="size-8"
-            onClick={clearChat}
+            onClick={() => clearChat()}
             title="Xóa trò chuyện"
           >
             <RotateCcw className="size-4" />
@@ -88,11 +93,7 @@ const AIChatWindow = () => {
           <input
             type="text"
             className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-            placeholder={
-              role === "ADMIN"
-                ? "Hỏi về doanh thu, đơn hàng..."
-                : "Hỏi về sản phẩm, size..."
-            }
+            placeholder="Hỏi về sản phẩm, size..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
