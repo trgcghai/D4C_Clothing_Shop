@@ -1,10 +1,4 @@
-import axios from "axios";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || "http://notificationservice:8083/api/v1";
-const RECOMMENDATION_SERVICE_URL = process.env.RECOMMENDATION_SERVICE_URL || "http://recommendationservice:8087/api/v1";
+import { notificationServiceClient, recommendationServiceClient } from "../config/service-urls.js";
 
 export const socialToolDeclarations = [
   {
@@ -41,7 +35,7 @@ export const socialToolHandlers = {
       if (!userId || userId === "anonymous") return { error: "User must be logged in to check notifications." };
 
       const limit = Math.min(args.limit || 5, 5); // cap at 5
-      const response = await axios.get(`${NOTIFICATION_SERVICE_URL}/notifications/user/${userId}`);
+      const response = await notificationServiceClient.get(`/notifications/user/${userId}`);
 
       if (response.data && response.data.data) {
         const notifications = response.data.data.slice(0, limit).map(n => ({
@@ -66,7 +60,7 @@ export const socialToolHandlers = {
       if (!userId || userId === "anonymous") return { error: "User must be logged in for personalized recommendations." };
 
       const limit = Math.min(args.limit || 5, 5); // cap at 5
-      const response = await axios.get(`${RECOMMENDATION_SERVICE_URL}/recommendations/${userId}`);
+      const response = await recommendationServiceClient.get(`/recommendations/${userId}`);
 
       if (response.data && response.data.data) {
         const raw = Array.isArray(response.data.data)

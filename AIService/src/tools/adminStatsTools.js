@@ -1,10 +1,4 @@
-import axios from "axios";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://orderservice:8085/api/v1";
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || "http://productservice:8082/api/v1";
+import { orderServiceClient, productServiceClient } from "../config/service-urls.js";
 
 export const adminStatsToolDeclarations = [
   {
@@ -65,7 +59,7 @@ export const adminStatsToolHandlers = {
   get_revenue_stats: async (args) => {
     try {
       const { period = 'today' } = args;
-      const response = await axios.get(`${ORDER_SERVICE_URL}/orders/stats/revenue?period=${period}`);
+      const response = await orderServiceClient.get(`/orders/stats/revenue?period=${period}`);
 
       if (response.data && response.data.data) {
         const data = response.data.data;
@@ -88,8 +82,7 @@ export const adminStatsToolHandlers = {
   get_low_inventory_report: async (args) => {
     try {
       const threshold = args.threshold || 5;
-      const PRODUCT_API_BASE = `${PRODUCT_SERVICE_URL.replace('/api/v1', '')}/api/products`;
-      const response = await axios.get(`${PRODUCT_API_BASE}`);
+      const response = await productServiceClient.get("/");
 
       if (response.data && response.data.data) {
         const allProducts = response.data.data;
@@ -128,8 +121,7 @@ export const adminStatsToolHandlers = {
 
   create_product: async (args) => {
     try {
-      const PRODUCT_API_BASE = `${PRODUCT_SERVICE_URL.replace('/api/v1', '')}/api/products`;
-      const response = await axios.post(`${PRODUCT_API_BASE}`, args);
+      const response = await productServiceClient.post("/", args);
       return { success: true, message: `Sản phẩm '${args.name}' đã được tạo thành công.`, productId: response.data.id };
     } catch (error) {
       console.error("Error creating product:", error.response?.data || error.message);
@@ -140,8 +132,7 @@ export const adminStatsToolHandlers = {
   delete_product: async (args) => {
     try {
       const { productId } = args;
-      const PRODUCT_API_BASE = `${PRODUCT_SERVICE_URL.replace('/api/v1', '')}/api/products`;
-      await axios.delete(`${PRODUCT_API_BASE}/${productId}`);
+      await productServiceClient.delete(`/${productId}`);
       return { success: true, message: `Đã xóa sản phẩm ID: ${productId} thành công.` };
     } catch (error) {
       console.error("Error deleting product:", error.message);

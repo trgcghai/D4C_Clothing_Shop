@@ -1,10 +1,4 @@
-import axios from "axios";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://localhost:8084/api/v1";
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:8085/api/v1";
+import { cartServiceClient, orderServiceClient } from "../config/service-urls.js";
 
 // 1. Function Declarations for Gemini
 export const cartOrderToolDeclarations = [
@@ -58,7 +52,7 @@ export const cartOrderToolHandlers = {
          quantity
       };
 
-      const response = await axios.post(`${CART_SERVICE_URL}/cart/items`, payload);
+      const response = await cartServiceClient.post("/cart/items", payload);
       return { success: true, message: "Item added to cart successfully.", currentCartTotal: response.data.totalPrice || "N/A" };
     } catch (error) {
       console.error("Error in add_to_cart:", error.message);
@@ -72,7 +66,7 @@ export const cartOrderToolHandlers = {
          return { error: "User must be logged in to view checkout summary." };
       }
 
-      const response = await axios.get(`${CART_SERVICE_URL}/cart/${userId}`);
+      const response = await cartServiceClient.get(`/cart/${userId}`);
       
       if (response.data && response.data.data) {
         return {

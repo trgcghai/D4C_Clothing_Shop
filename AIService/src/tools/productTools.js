@@ -1,10 +1,4 @@
-import axios from "axios";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || "http://localhost:8082";
-const PRODUCT_API_BASE = `${PRODUCT_SERVICE_URL.replace('/api/v1', '')}/api/products`;
+import { productServiceClient } from "../config/service-urls.js";
 
 // 1. Function Declarations for Gemini
 export const productToolDeclarations = [
@@ -57,14 +51,14 @@ export const productToolHandlers = {
         // ✅ Use the dedicated search endpoint that does proper keyword filtering
         const params = { q: keyword, limit: 5 };
         if (maxPrice) params.maxPrice = maxPrice;
-        response = await axios.get(`${PRODUCT_API_BASE}/search`, { params });
+        response = await productServiceClient.get("/search", { params });
       } else {
         // Fallback to filter endpoint for category/price-only queries
         const params = {};
         if (category) params.category = category;
         if (maxPrice) params.maxPrice = maxPrice;
         params.limit = 5;
-        response = await axios.get(`${PRODUCT_API_BASE}`, { params });
+        response = await productServiceClient.get("/", { params });
       }
 
       if (response.data && response.data.data) {
@@ -90,7 +84,7 @@ export const productToolHandlers = {
   get_product_details: async (args) => {
     try {
       const { productId } = args;
-      const response = await axios.get(`${PRODUCT_API_BASE}/${productId}`);
+      const response = await productServiceClient.get(`/${productId}`);
 
       if (response.data && response.data.data) {
         const p = response.data.data;
