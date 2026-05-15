@@ -1,5 +1,6 @@
 package iuh.fit.PaymentService.service;
 
+import iuh.fit.PaymentService.client.OrderClient;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.CreatePaymentRequest;
 import iuh.fit.PaymentService.domain.dto.PaymentResponse;
@@ -28,7 +29,7 @@ public class PaymentService {
     private SePayConfig sePayConfig;
 
     @Autowired
-    private OrderServiceClient orderServiceClient;
+    private OrderClient orderClient;
 
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
@@ -84,7 +85,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentException("Payment not found for orderId: " + orderId));
 
-        Long orderUserId = orderServiceClient.getOrderUserId(orderId);
+        Long orderUserId = orderClient.getOrderUserId(orderId);
         if (!orderUserId.equals(requestingUserId)) {
             throw new PaymentException("Access denied: you do not own this order");
         }

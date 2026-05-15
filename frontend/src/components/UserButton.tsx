@@ -7,7 +7,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from "@/src/store";
-import { ClipboardList, LogOut, User } from "lucide-react";
+import { ClipboardList, LayoutDashboard, LogOut, User } from "lucide-react";
+import { Role } from "@/src/services/authApi";
 
 const UserButton = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -72,6 +73,19 @@ const UserButton = () => {
         </div>
         <div className="border-t" />
         <div className="flex flex-col gap-1 p-1">
+          {user.role == Role.ADMIN && (
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="justify-start gap-2"
+            >
+              <Link to="/admin">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

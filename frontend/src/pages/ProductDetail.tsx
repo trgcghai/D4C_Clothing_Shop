@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProductById, useRelatedProducts } from "../hooks/useProducts";
 import { useAddToCart } from "../hooks/useCart";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { useAuth } from "../store";
 import { Shirt, Minus, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -150,7 +151,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           </Badge>
           <h1 className="text-3xl font-bold">{product.name}</h1>
           <p className="text-2xl font-semibold mt-2 tabular-nums">
-            {product.price.toLocaleString("vi-VN")}₫
+            {formatCurrency(product.price)}
           </p>
         </div>
 

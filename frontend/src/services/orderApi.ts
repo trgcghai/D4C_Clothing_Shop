@@ -1,6 +1,5 @@
+import type { PaymentMethod } from "@/src/services/paymentApi";
 import axiosInstance from "./_axios";
-
-export type PaymentMethod = "QR" | "CASH";
 
 export interface CheckoutSnapshot {
   priceAtCheckout: number;

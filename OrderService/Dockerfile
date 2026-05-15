@@ -13,5 +13,5 @@ COPY --from=build /workspace/target/*.jar app.jar
 USER appuser
 EXPOSE 8085
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
-  CMD curl -fsS http://localhost:8085/v3/api-docs >/dev/null || exit 1
+  CMD curl -fsS http://localhost:8085/actuator/health >/dev/null || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -19,6 +19,7 @@ import {
   useClearCart,
 } from "@/src/hooks/useCart";
 import { useCartSelection } from "@/src/hooks/useCartSelection";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import {
   ShoppingCart,
   Trash2,
@@ -267,7 +268,7 @@ const CartPage = () => {
                     <p className="text-sm text-muted-foreground flex items-center">
                       Đơn giá:
                       <span className="font-semibold tabular-nums text-base inline-block ml-1">
-                        {item.price.toLocaleString("vi-VN")}₫
+                        {formatCurrency(item.price)}
                       </span>
                     </p>
 
@@ -309,7 +310,7 @@ const CartPage = () => {
                     <p className="text-sm text-muted-foreground flex items-center min-w-20 text-right">
                       Tổng cộng:
                       <span className="font-semibold tabular-nums inline-block ml-1 text-base">
-                        {item.subtotal.toLocaleString("vi-VN")}₫
+                        {formatCurrency(item.subtotal)}
                       </span>
                     </p>
                   </div>
@@ -326,7 +327,7 @@ const CartPage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Tạm tính ({selectedItemCount} sản phẩm)</span>
-                  <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
+                  <span>{formatCurrency(selectedTotal)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Phí vận chuyển</span>
@@ -339,7 +340,7 @@ const CartPage = () => {
               <div className="flex justify-between text-lg font-bold">
                 <span>Tổng cộng</span>
                 <span className="tabular-nums">
-                  {selectedTotal.toLocaleString("vi-VN")}₫
+                  {formatCurrency(selectedTotal)}
                 </span>
               </div>
 
