@@ -7,18 +7,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-
 @FeignClient(name = "ORDERSERVICE")
-@RequestMapping("/api/public/orders")
 public interface OrderClient {
 
-    @PostMapping("/{orderId}/status")
+    @PostMapping("/api/public/orders/{orderId}/status")
     void updateOrderStatus(
         @PathVariable("orderId") Long orderId,
         @RequestBody UpdateOrderStatusRequest request
     );
 
-    @GetMapping("/{orderId}/owner")
+    @GetMapping("/api/public/orders/{orderId}/owner")
     Long getOrderUserId(@PathVariable("orderId") Long orderId);
 }
