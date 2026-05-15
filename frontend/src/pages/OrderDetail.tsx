@@ -11,47 +11,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
-import { ArrowLeft, SquareArrowOutUpRight } from "lucide-react";
-import type { PaymentMethod } from "@/src/services/orderApi";
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value);
-
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
-
-const getStatusBadgeVariant = (status: string) => {
-  if (status === "PAID") return "default";
-  if (status === "CANCELLED") return "destructive";
-  return "secondary";
-};
-
-const getStatusLabel = (status: string) => {
-  if (status === "PENDING_PAYMENT") return "Chờ thanh toán";
-  if (status === "PAID") return "Đã thanh toán";
-  if (status === "CANCELLED") return "Đã hủy";
-  return status;
-};
-
-const getPaymentMethodLabel = (method: PaymentMethod) => {
-  return method === "QR" ? "QR Code" : "Tiền mặt";
-};
-
-const getPaymentMethodBadgeVariant = (method: PaymentMethod) => {
-  return method === "QR" ? "default" : "secondary";
-};
+import { usePaymentByOrderId } from "@/src/hooks/usePayment";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
+import { formatDateTime } from "@/src/lib/dateTimeFormatter";
+import {
+  ArrowLeft,
+  SquareArrowOutUpRight,
+  CreditCard,
+  Clock,
+  Building2,
+  Hash,
+} from "lucide-react";
+import {
+  getPaymentMethodBadgeVariant,
+  getPaymentMethodLabel,
+  getStatusBadgeVariant,
+  getStatusLabel,
+} from "@/src/lib/orderStyleGetter";
 
 export default function OrderDetail() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const id = orderId ? parseInt(orderId, 10) : null;
   const { data: order, isLoading, isError } = useUserOrderDetail(id);
+  const { data: payment } = usePaymentByOrderId(
+    order?.id ?? null,
+    order?.paymentMethod === "QR" && order?.status !== "CANCELLED",
+  );
 
   if (isLoading) {
     return (
@@ -171,6 +157,72 @@ export default function OrderDetail() {
             </TableBody>
           </Table>
         </div>
+
+        {order.paymentMethod === "QR" &&
+          payment &&
+          payment.status === "PAID" && (
+            <div className="mt-6 rounded-lg border p-5">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                <CreditCard className="h-5 w-5" />
+                Thông tin thanh toán
+              </h2>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-md border p-3">
+                  <Hash className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mã thanh toán
+                    </p>
+                    <p className="font-mono text-sm font-semibold">
+                      {payment.paymentCode}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-md border p-3">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Cổng thanh toán
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {payment.sepayGateway || "SePay"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-md border p-3">
+                  <Hash className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mã giao dịch
+                    </p>
+                    <p className="font-mono text-sm font-semibold">
+                      {payment.sepayTransactionId ?? "-"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-md border p-3">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Thời gian thanh toán
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {payment.paidAt ? formatDateTime(payment.paidAt) : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {order.paymentMethod === "QR" && order.status === "PENDING_PAYMENT" && (
+          <div className="mt-6 rounded-lg border p-5">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-5 w-5" />
+              <p>Đang chờ thanh toán</p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

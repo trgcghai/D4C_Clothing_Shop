@@ -7,6 +7,7 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controllers/category.controller.js";
+import { requireAdmin } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -91,7 +92,12 @@ router.get("/:id", getCategoryById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/", uploadImage.single("categoryImage"), createCategory);
+router.post(
+  "/",
+  uploadImage.single("categoryImage"),
+  requireAdmin,
+  createCategory,
+);
 
 /**
  * @swagger
@@ -128,7 +134,12 @@ router.post("/", uploadImage.single("categoryImage"), createCategory);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put("/:id", uploadImage.single("categoryImage"), updateCategory);
+router.put(
+  "/:id",
+  uploadImage.single("categoryImage"),
+  requireAdmin,
+  updateCategory,
+);
 
 /**
  * @swagger
@@ -168,6 +179,6 @@ router.put("/:id", uploadImage.single("categoryImage"), updateCategory);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/:id", deleteCategory);
+router.delete("/:id", requireAdmin, deleteCategory);
 
 export default router;

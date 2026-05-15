@@ -47,6 +47,7 @@ import {
   useDeleteProduct,
 } from "@/src/hooks/useProducts";
 import { useCategories } from "@/src/hooks/useCategories";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import type {
   Product,
   ProductCreatePayload,
@@ -774,10 +775,7 @@ export default function ProductManagement() {
                   </TableCell>
                   <TableCell className="text-sm">{p.brand}</TableCell>
                   <TableCell className="tabular-nums text-sm">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(p.price)}
+                    {formatCurrency(p.price)}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {p.variants?.length ?? 0} biến thể

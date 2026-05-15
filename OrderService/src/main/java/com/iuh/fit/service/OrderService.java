@@ -1,5 +1,7 @@
 package com.iuh.fit.service;
 
+import com.iuh.fit.client.ProductClient;
+import com.iuh.fit.client.dto.RestoreStockRequest;
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
 import com.iuh.fit.domain.dto.PagedResponse;
@@ -33,21 +35,21 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final AuditService auditService;
-    private final ProductServiceClient productServiceClient;
+    private final ProductClient productClient;
     private final OrderEventPublisher orderEventPublisher;
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     public OrderService(OrderRepository orderRepository, AuditService auditService,
-            ProductServiceClient productServiceClient,
+            ProductClient productClient,
             OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
-        this.productServiceClient = productServiceClient;
+        this.productClient = productClient;
         this.orderEventPublisher = orderEventPublisher;
     }
 
     @Transactional
-    public OrderResponse createOrderFromCheckout(Long userId, CreateOrderFromCheckoutRequest request) {
+    public OrderResponse createOrderFromCheckout(Long userId, String email, CreateOrderFromCheckoutRequest request) {
         Order existing = orderRepository
                 .findByUserIdAndCheckoutOrderId(userId, request.getOrderId())
                 .orElse(null);
@@ -68,7 +70,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setTotalAmount(calculatedTotal);
         order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH");
-        order.setEmail(request.getEmail());
+        order.setEmail(email);
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {
             if (itemDto.getQuantity() == null || itemDto.getQuantity() <= 0) {
@@ -137,6 +139,13 @@ public class OrderService {
         return toResponse(order);
     }
 
+    @Transactional(readOnly = true)
+    public Long getOrderUserId(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        return order.getUserId();
+    }
+
     @Transactional
     public OrderResponse updateOrderStatus(Long userId, Long id, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findByIdAndUserId(id, userId)
@@ -174,7 +183,11 @@ public class OrderService {
     private void restoreStockForOrder(Order order) {
         for (OrderItem item : order.getItems()) {
             if (item.getVariantId() != null && !item.getVariantId().isBlank()) {
-                productServiceClient.restoreStock(item.getVariantId(), item.getQuantity());
+                try {
+                    productClient.restoreStock(item.getVariantId(), new RestoreStockRequest(item.getQuantity()));
+                } catch (Exception e) {
+                    log.error("Error calling ProductService to restore stock for variant {}: {}", item.getVariantId(), e.getMessage());
+                }
             }
         }
     }

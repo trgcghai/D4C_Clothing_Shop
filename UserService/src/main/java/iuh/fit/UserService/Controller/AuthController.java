@@ -75,6 +75,7 @@ public class AuthController {
         }
 
         String username = jwtUtils.getUserNameFromJwtToken(refreshToken);
+
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -94,8 +95,8 @@ public class AuthController {
                         .authorities(user.getRole().name())
                         .build();
 
-        String newAccessToken = jwtUtils.generateToken(userDetails, user.getId());
-        String newRefreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId());
+        String newAccessToken = jwtUtils.generateToken(userDetails, user.getId(), user.getEmail());
+        String newRefreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId(), user.getEmail());
 
         user.setRefreshToken(newRefreshToken);
         user.setRefreshTokenExpiryDate(Instant.now().plusMillis(jwtUtils.getRefreshTokenExpirationMs()));

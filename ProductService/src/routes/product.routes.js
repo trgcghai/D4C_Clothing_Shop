@@ -1,5 +1,6 @@
 import express from "express";
 import { uploadImage } from "../middlewares/upload.middleware.js";
+import { requireAdmin, requireAuth } from "../middlewares/auth.middleware.js";
 import {
   getAllProducts,
   getProduct,
@@ -276,7 +277,7 @@ router.get("/:id/related", getRelatedProducts);
  *       500:
  *         description: Server error
  */
-router.post("/variants/:variantId/deduct-stock", deductStock);
+router.post("/variants/:variantId/deduct-stock", requireAuth, deductStock);
 
 /**
  * @swagger
@@ -315,7 +316,7 @@ router.post("/variants/:variantId/deduct-stock", deductStock);
  *       500:
  *         description: Server error
  */
-router.post("/variants/:variantId/restore-stock", restoreStock);
+router.post("/variants/:variantId/restore-stock", requireAuth, restoreStock);
 
 // ─── Admin CRUD ─────────────────────────────────────────────────────────────────
 /**
@@ -340,7 +341,12 @@ router.post("/variants/:variantId/restore-stock", restoreStock);
  *       500:
  *         description: Server error
  */
-router.post("/", uploadImage.single("productImage"), createNewProduct);
+router.post(
+  "/",
+  uploadImage.single("productImage"),
+  requireAdmin,
+  createNewProduct,
+);
 /**
  * @swagger
  * /api/products/{id}:
@@ -369,7 +375,12 @@ router.post("/", uploadImage.single("productImage"), createNewProduct);
  *       500:
  *         description: Server error
  */
-router.put("/:id", uploadImage.single("productImage"), updateProduct);
+router.put(
+  "/:id",
+  uploadImage.single("productImage"),
+  requireAdmin,
+  updateProduct,
+);
 /**
  * @swagger
  * /api/products/{id}:
@@ -397,6 +408,6 @@ router.put("/:id", uploadImage.single("productImage"), updateProduct);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", deleteProduct);
+router.delete("/:id", requireAdmin, deleteProduct);
 
 export default router;

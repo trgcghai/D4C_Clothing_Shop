@@ -1,5 +1,6 @@
 package iuh.fit.PaymentService.service;
 
+import iuh.fit.PaymentService.client.OrderClient;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.CreatePaymentRequest;
 import iuh.fit.PaymentService.domain.dto.PaymentResponse;
@@ -26,6 +27,9 @@ public class PaymentService {
 
     @Autowired
     private SePayConfig sePayConfig;
+
+    @Autowired
+    private OrderClient orderClient;
 
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
@@ -73,6 +77,19 @@ public class PaymentService {
     public PaymentResponse getPaymentByPaymentCode(String paymentCode) {
         Payment payment = paymentRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new PaymentException("Payment not found for code: " + paymentCode));
+        return toResponse(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse getPaymentByOrderId(Long orderId, Long requestingUserId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new PaymentException("Payment not found for orderId: " + orderId));
+
+        Long orderUserId = orderClient.getOrderUserId(orderId);
+        if (!orderUserId.equals(requestingUserId)) {
+            throw new PaymentException("Access denied: you do not own this order");
+        }
+
         return toResponse(payment);
     }
 
@@ -141,6 +158,9 @@ public class PaymentService {
         response.setStatus(payment.getStatus());
         response.setExpiresAt(payment.getExpiresAt());
         response.setCreatedAt(payment.getCreatedAt());
+        response.setSepayTransactionId(payment.getSepayTransactionId());
+        response.setSepayGateway(payment.getSepayGateway());
+        response.setPaidAt(payment.getPaidAt());
 
         if (payment.getMethod() == PaymentMethod.QR && payment.getStatus() == PaymentStatus.PENDING) {
             response.setQrUrl(sePayConfig.generateQrUrl(payment.getAmount(), payment.getPaymentCode()));

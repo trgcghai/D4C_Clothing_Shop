@@ -1,6 +1,8 @@
 package iuh.fit.PaymentService.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import iuh.fit.PaymentService.client.OrderClient;
+import iuh.fit.PaymentService.client.dto.UpdateOrderStatusRequest;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.SePayWebhookPayload;
 import iuh.fit.PaymentService.domain.entity.WebhookLog;
@@ -36,7 +38,7 @@ public class WebhookService {
     private PaymentService paymentService;
 
     @Autowired
-    private OrderServiceClient orderServiceClient;
+    private OrderClient orderClient;
 
     @Autowired
     private SePayConfig sePayConfig;
@@ -134,7 +136,7 @@ public class WebhookService {
                 var payment = paymentService.findPaymentByPaymentCodeOrNull(paymentCode);
                 if (payment != null && payment.getCheckoutOrderId() != null) {
                     try {
-                        orderServiceClient.updateOrderStatus(payment.getOrderId(), "PAID");
+                        orderClient.updateOrderStatus(payment.getOrderId(), new UpdateOrderStatusRequest("PAID", null));
                         log.info("Order {} updated to PAID", payment.getOrderId());
                     } catch (Exception e) {
                         log.error("Failed to update order status for order {}: {}", payment.getOrderId(), e.getMessage());

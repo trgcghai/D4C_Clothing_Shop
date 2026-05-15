@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import type { Product } from "../services/productApi";
 import { Shirt } from "lucide-react";
 
@@ -51,7 +52,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           <p className="text-base font-semibold mt-1 tabular-nums">
-            {product.price.toLocaleString("vi-VN")}₫
+            {formatCurrency(product.price)}
           </p>
         </CardContent>
       </Card>

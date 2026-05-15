@@ -4,10 +4,14 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { useCart, usePartialCheckout, useRemoveCartItemsBulk } from "@/src/hooks/useCart";
+import {
+  useCart,
+  usePartialCheckout,
+  useRemoveCartItemsBulk,
+} from "@/src/hooks/useCart";
 import { useCreatePayment } from "@/src/hooks/usePayment";
 import { deductStock, restoreStock } from "@/src/services/productApi";
-import type { PaymentMethod } from "@/src/services/orderApi";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -16,6 +20,7 @@ import {
   useCreateOrderFromCheckout,
 } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
+import type { PaymentMethod } from "@/src/services/paymentApi";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -26,7 +31,11 @@ export default function CheckoutPage() {
   const cancelOrderMutation = useCancelOrder();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  const isProcessing =
+    partialCheckoutMutation.isPending ||
+    createOrderFromCheckoutMutation.isPending ||
+    createPaymentMutation.isPending;
 
   const { user } = useStore((state) => state);
 
@@ -43,7 +52,9 @@ export default function CheckoutPage() {
       if (isNaN(id)) return [];
       const item = cart.items.find((i) => i.id === id);
       if (!item) return [];
-      const qty = buyNowQty ? Math.min(Number(buyNowQty), item.quantity) : item.quantity;
+      const qty = buyNowQty
+        ? Math.min(Number(buyNowQty), item.quantity)
+        : item.quantity;
       return [{ ...item, quantity: qty, subtotal: item.price * qty }];
     }
 
@@ -123,10 +134,9 @@ export default function CheckoutPage() {
     let orderCreated = false;
     let createdOrderId: number | null = null;
 
-    if (!user || !user.email) return;
+    if (!user) return;
     if (itemIdsForCheckout.length === 0) return;
 
-    setIsProcessing(true);
     try {
       const checkoutData = await partialCheckoutMutation.mutateAsync({
         itemIds: itemIdsForCheckout,
@@ -156,7 +166,6 @@ export default function CheckoutPage() {
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
         paymentMethod: method,
-        email: user.email,
       });
       orderCreated = true;
       createdOrderId = order.id;
@@ -174,7 +183,9 @@ export default function CheckoutPage() {
           navigate(`/payment/${payment.paymentId}?removeItemIds=${idsParam}`);
         } catch (paymentError) {
           await Promise.allSettled(
-            deductedItems.map((item) => restoreStock(item.variantId, item.quantity)),
+            deductedItems.map((item) =>
+              restoreStock(item.variantId, item.quantity),
+            ),
           );
           await cancelOrderMutation.mutateAsync(order.id);
           toast.error(
@@ -192,7 +203,9 @@ export default function CheckoutPage() {
     } catch (error) {
       if (orderCreated && createdOrderId) {
         await Promise.allSettled(
-          deductedItems.map((item) => restoreStock(item.variantId, item.quantity)),
+          deductedItems.map((item) =>
+            restoreStock(item.variantId, item.quantity),
+          ),
         );
         await cancelOrderMutation.mutateAsync(createdOrderId);
       }
@@ -202,8 +215,6 @@ export default function CheckoutPage() {
       } else {
         toast.error("Thanh toán thất bại, vui lòng thử lại");
       }
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -272,7 +283,7 @@ export default function CheckoutPage() {
                     {item.quantity}
                   </span>
                   <span className="tabular-nums whitespace-nowrap">
-                    {item.subtotal.toLocaleString("vi-VN")}₫
+                    {formatCurrency(item.subtotal)}
                   </span>
                 </div>
               ))}
@@ -281,7 +292,7 @@ export default function CheckoutPage() {
             <div className="flex justify-between font-bold">
               <span>Tổng cộng</span>
               <span className="tabular-nums">
-                {filteredTotal.toLocaleString("vi-VN")}₫
+                {formatCurrency(filteredTotal)}
               </span>
             </div>
             <Button
