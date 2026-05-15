@@ -1,5 +1,7 @@
 package com.iuh.fit.service;
 
+import com.iuh.fit.client.ProductClient;
+import com.iuh.fit.client.dto.RestoreStockRequest;
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
 import com.iuh.fit.domain.dto.PagedResponse;
@@ -33,16 +35,16 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final AuditService auditService;
-    private final ProductServiceClient productServiceClient;
+    private final ProductClient productClient;
     private final OrderEventPublisher orderEventPublisher;
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     public OrderService(OrderRepository orderRepository, AuditService auditService,
-            ProductServiceClient productServiceClient,
+            ProductClient productClient,
             OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
         this.auditService = auditService;
-        this.productServiceClient = productServiceClient;
+        this.productClient = productClient;
         this.orderEventPublisher = orderEventPublisher;
     }
 
@@ -181,7 +183,7 @@ public class OrderService {
     private void restoreStockForOrder(Order order) {
         for (OrderItem item : order.getItems()) {
             if (item.getVariantId() != null && !item.getVariantId().isBlank()) {
-                productServiceClient.restoreStock(item.getVariantId(), item.getQuantity());
+                productClient.restoreStock(item.getVariantId(), new RestoreStockRequest(item.getQuantity()));
             }
         }
     }

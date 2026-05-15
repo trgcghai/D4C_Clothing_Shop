@@ -11,7 +11,7 @@ import {
 } from "@/src/hooks/useCart";
 import { useCreatePayment } from "@/src/hooks/usePayment";
 import { deductStock, restoreStock } from "@/src/services/productApi";
-import type { PaymentMethod } from "@/src/services/orderApi";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -20,6 +20,7 @@ import {
   useCreateOrderFromCheckout,
 } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
+import type { PaymentMethod } from "@/src/services/paymentApi";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -282,7 +283,7 @@ export default function CheckoutPage() {
                     {item.quantity}
                   </span>
                   <span className="tabular-nums whitespace-nowrap">
-                    {item.subtotal.toLocaleString("vi-VN")}₫
+                    {formatCurrency(item.subtotal)}
                   </span>
                 </div>
               ))}
@@ -291,7 +292,7 @@ export default function CheckoutPage() {
             <div className="flex justify-between font-bold">
               <span>Tổng cộng</span>
               <span className="tabular-nums">
-                {filteredTotal.toLocaleString("vi-VN")}₫
+                {formatCurrency(filteredTotal)}
               </span>
             </div>
             <Button

@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
+import { getCurrentYear } from "@/src/lib/dateTimeFormatter";
 import { cn } from "@/src/lib/utils";
 import UserButton from "@/src/components/UserButton";
 import CartIcon from "@/src/components/CartIcon";
@@ -71,7 +72,7 @@ const AppLayout = () => {
             </div>
           </div>
           <div className="mt-6 border-t pt-4 text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} D4C. All rights reserved.
+            © {getCurrentYear()} D4C. All rights reserved.
           </div>
         </div>
       </footer>

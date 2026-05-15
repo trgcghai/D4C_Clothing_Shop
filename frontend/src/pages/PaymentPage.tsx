@@ -11,6 +11,7 @@ import {
 } from "@/src/hooks/usePayment";
 import { useRemoveCartItemsBulk } from "@/src/hooks/useCart";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { cancelOrder } from "@/src/services/orderApi";
 import {
   ArrowLeft,
@@ -22,11 +23,6 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    value,
-  );
 
 function useCountdown(expiresAt: string | null, onExpire: () => void) {
   const [remaining, setRemaining] = useState(0);

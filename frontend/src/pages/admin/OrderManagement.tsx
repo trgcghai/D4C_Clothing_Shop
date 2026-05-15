@@ -34,6 +34,8 @@ import {
   useOrderAudits,
   useUpdateAdminOrderStatus,
 } from "@/src/hooks/useAdminOrders";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
+import { formatDateTime } from "@/src/lib/dateTimeFormatter";
 import type { AdminOrder, OrderStatus } from "@/src/services/orderAdminApi";
 import { ClipboardList } from "lucide-react";
 import { toast } from "sonner";
@@ -52,18 +54,6 @@ const STATUS_UPDATE_OPTIONS: Array<{ value: OrderStatus; label: string }> = [
   { value: "PAID", label: "Đã thanh toán" },
   { value: "CANCELLED", label: "Đã hủy" },
 ];
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value);
-
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
 
 const getStatusBadgeVariant = (status: OrderStatus) => {
   if (status === "PAID") return "default";
