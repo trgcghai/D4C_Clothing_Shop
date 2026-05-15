@@ -10,6 +10,7 @@ const AIChatWindow = () => {
   const { sendMessage, isLoading, syncConversation, clearChat } = useAIChat();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasSyncedRef = useRef(false);
 
   const title = "D4C AI Stylist";
 
@@ -18,10 +19,15 @@ const AIChatWindow = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Sync messages from backend when chat opens
+  // Sync messages from backend when chat opens (once per open session)
   useEffect(() => {
     if (isOpen) {
-      syncConversation();
+      if (!hasSyncedRef.current) {
+        hasSyncedRef.current = true;
+        syncConversation();
+      }
+    } else {
+      hasSyncedRef.current = false;
     }
   }, [isOpen, syncConversation]);
 
