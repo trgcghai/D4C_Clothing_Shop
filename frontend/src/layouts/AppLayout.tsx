@@ -4,6 +4,7 @@ import { cn } from "@/src/lib/utils";
 import UserButton from "@/src/components/UserButton";
 import CartIcon from "@/src/components/CartIcon";
 import { useAuth } from "@/src/store";
+import AIChatBubble from "@/src/components/ai/AIChatBubble";
 
 const navLinks = [
   { to: "/", label: "Trang chủ" },
@@ -76,6 +77,7 @@ const AppLayout = () => {
           </div>
         </div>
       </footer>
+      <AIChatBubble />
     </div>
   );
 };
