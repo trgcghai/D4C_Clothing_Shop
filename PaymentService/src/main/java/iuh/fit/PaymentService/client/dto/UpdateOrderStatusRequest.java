@@ -1,3 +1,3 @@
 package iuh.fit.PaymentService.client.dto;
 
-public record UpdateOrderStatusRequest(String status) {}
+public record UpdateOrderStatusRequest(String status, String note) {}
