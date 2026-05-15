@@ -505,7 +505,7 @@ Write-Host "=== All tests completed ===" -ForegroundColor Green
 | Issue | Solution |
 |-------|----------|
 | `JWT secret must be at least 32 bytes` | Ensure `JWT_SECRET` in `.env` is at least 32 characters |
-| `Cannot fetch product info from ProductService` | ProductService must be running and accessible at `product.service.url` |
+| `Cannot fetch product info from ProductService` | ProductService must be running and registered with Eureka. CartService resolves it via Feign client + Eureka service discovery. |
 | `Cart not found` | Call GET `/api/cart` first to auto-create cart, or add an item |
 | Connection refused to MariaDB | Ensure `docker compose up -d mariadb` and DB `cart_db` exists |
 | Connection refused to Redis | Ensure `docker compose up -d redis` |
