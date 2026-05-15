@@ -183,7 +183,11 @@ public class OrderService {
     private void restoreStockForOrder(Order order) {
         for (OrderItem item : order.getItems()) {
             if (item.getVariantId() != null && !item.getVariantId().isBlank()) {
-                productClient.restoreStock(item.getVariantId(), new RestoreStockRequest(item.getQuantity()));
+                try {
+                    productClient.restoreStock(item.getVariantId(), new RestoreStockRequest(item.getQuantity()));
+                } catch (Exception e) {
+                    log.error("Error calling ProductService to restore stock for variant {}: {}", item.getVariantId(), e.getMessage());
+                }
             }
         }
     }
