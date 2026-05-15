@@ -20,6 +20,9 @@ export interface PaymentResponse {
   qrUrl?: string;
   expiresAt: string;
   createdAt: string;
+  sepayTransactionId?: number;
+  sepayGateway?: string;
+  paidAt?: string;
 }
 
 export interface PaymentStatusResponse {
@@ -46,4 +49,9 @@ export const getPaymentById = (paymentId: number) =>
 export const cancelPayment = (paymentId: number) =>
   axiosInstance
     .post<PaymentStatusResponse>(`/api/payments/${paymentId}/cancel`)
+    .then((res) => res.data);
+
+export const getPaymentByOrderId = (orderId: number) =>
+  axiosInstance
+    .get<PaymentResponse>("/api/payments", { params: { orderId } })
     .then((res) => res.data);

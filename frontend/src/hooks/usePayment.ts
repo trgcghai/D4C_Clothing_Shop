@@ -4,6 +4,7 @@ import {
   getPaymentStatus,
   getPaymentById,
   cancelPayment,
+  getPaymentByOrderId,
   type CreatePaymentPayload,
 } from "@/src/services/paymentApi";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ export const paymentKeys = {
   all: ["payments"] as const,
   detail: (id: number) => [...paymentKeys.all, "detail", id] as const,
   status: (id: number) => [...paymentKeys.all, "status", id] as const,
+  byOrder: (orderId: number) => [...paymentKeys.all, "byOrder", orderId] as const,
 };
 
 export function useCreatePayment() {
@@ -60,5 +62,13 @@ export function useCancelPayment() {
         toast.error("Hủy thanh toán thất bại");
       }
     },
+  });
+}
+
+export function usePaymentByOrderId(orderId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: paymentKeys.byOrder(orderId ?? 0),
+    queryFn: () => getPaymentByOrderId(orderId!),
+    enabled: enabled && orderId !== null,
   });
 }

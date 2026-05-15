@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -33,6 +34,21 @@ public class PaymentController {
     @Operation(summary = "Get payment details", description = "Get full payment information by ID")
     public ResponseEntity<PaymentResponse> getPayment(@PathVariable Long id) {
         return ResponseEntity.ok(paymentService.getPaymentById(id));
+    }
+
+    @GetMapping
+    @Operation(summary = "Get payment by orderId query param", description = "Get payment details by orderId query parameter")
+    public ResponseEntity<PaymentResponse> getPaymentByOrderId(@RequestParam Long orderId) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Object principal = authentication.getPrincipal();
+        Long requestingUserId = principal instanceof Long ? (Long) principal : null;
+        if (requestingUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId, requestingUserId));
     }
 
     @GetMapping("/{id}/status")

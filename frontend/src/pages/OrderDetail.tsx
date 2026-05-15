@@ -11,7 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
-import { ArrowLeft, SquareArrowOutUpRight } from "lucide-react";
+import { usePaymentByOrderId } from "@/src/hooks/usePayment";
+import { ArrowLeft, SquareArrowOutUpRight, CreditCard, Clock, Building2, Hash } from "lucide-react";
 import type { PaymentMethod } from "@/src/services/orderApi";
 
 const formatCurrency = (value: number) =>
@@ -52,6 +53,10 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const id = orderId ? parseInt(orderId, 10) : null;
   const { data: order, isLoading, isError } = useUserOrderDetail(id);
+  const { data: payment } = usePaymentByOrderId(
+    order?.id ?? null,
+    order?.paymentMethod === "QR" && order?.status !== "CANCELLED"
+  );
 
   if (isLoading) {
     return (
@@ -171,6 +176,62 @@ export default function OrderDetail() {
             </TableBody>
           </Table>
         </div>
+
+        {order.paymentMethod === "QR" && payment && payment.status === "PAID" && (
+          <div className="mt-6 rounded-lg border p-5">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <CreditCard className="h-5 w-5" />
+              Thông tin thanh toán
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Mã thanh toán</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {payment.paymentCode}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Cổng thanh toán</p>
+                  <p className="text-sm font-semibold">
+                    {payment.sepayGateway || "SePay"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Mã giao dịch</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {payment.sepayTransactionId ?? "-"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Thời gian thanh toán</p>
+                  <p className="text-sm font-semibold">
+                    {payment.paidAt ? formatDateTime(payment.paidAt) : "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {order.paymentMethod === "QR" && order.status === "PENDING_PAYMENT" && (
+          <div className="mt-6 rounded-lg border p-5">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-5 w-5" />
+              <p>Đang chờ thanh toán</p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
