@@ -3,6 +3,7 @@ import { getCurrentYear } from "@/src/lib/dateTimeFormatter";
 import { cn } from "@/src/lib/utils";
 import UserButton from "@/src/components/UserButton";
 import CartIcon from "@/src/components/CartIcon";
+import SearchBar from "@/src/components/SearchBar";
 import { useAuth } from "@/src/store";
 import AIChatBubble from "@/src/components/ai/AIChatBubble";
 
@@ -39,6 +40,10 @@ const AppLayout = () => {
               </Link>
             ))}
           </nav>
+
+          <div className="flex flex-1 justify-center md:justify-start md:ml-6">
+            <SearchBar />
+          </div>
 
           <div className="flex items-center gap-2">
             {isAuthenticated && <CartIcon />}

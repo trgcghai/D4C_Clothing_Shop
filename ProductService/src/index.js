@@ -6,6 +6,8 @@ import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import eurekaClient from "./config/eureka.config.js";
 import { openApiSpec } from "./config/openapi.js";
+import { connectEventPublisher } from "./services/event-publisher.service.js";
+import { close as closeRabbitMQ } from "./config/rabbitmq.publisher.js";
 
 dotenv.config();
 
@@ -37,6 +39,8 @@ app.listen(PORT, () => {
     `API documentation available at http://localhost:${PORT}/api-docs`,
   );
 
+  connectEventPublisher();
+
   eurekaClient.start((err) => {
     if (err) {
       console.error("Eureka registration failed", err);
@@ -46,9 +50,14 @@ app.listen(PORT, () => {
   });
 });
 
-process.on("SIGINT", () => {
+function gracefulShutdown(signal) {
+  console.log(`${signal} received, shutting down...`);
   eurekaClient.stop(() => {
     console.log("Eureka client stopped");
-    process.exit();
   });
-});
+  closeRabbitMQ().catch(console.error);
+  process.exit(0);
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
