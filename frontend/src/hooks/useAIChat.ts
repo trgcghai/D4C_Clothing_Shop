@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAi } from "@/src/store";
-import { sendChatMessage, getConversation, clearConversation } from "@/src/services/aiApi";
+import {
+  sendChatMessage,
+  getConversation,
+  clearConversation,
+} from "@/src/services/aiApi";
 
 export const aiKeys = {
   all: ["ai-conversation"] as const,
@@ -9,7 +13,7 @@ export const aiKeys = {
 
 export function useAIChat(isOpen: boolean) {
   const queryClient = useQueryClient();
-  const { addMessage, setMessages, clearChat: storeClearChat } = useAi();
+  const { addMessage, clearChat: storeClearChat } = useAi();
 
   // Sync conversation from backend when chat opens
   useQuery({
@@ -18,17 +22,6 @@ export function useAIChat(isOpen: boolean) {
     enabled: isOpen,
     staleTime: Infinity,
     retry: false,
-    onSuccess: (data) => {
-      if (data.data.messages.length > 0) {
-        const synced = data.data.messages.map((msg) => ({
-          id: `${msg.timestamp}-${msg.role}`,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-        }));
-        setMessages(synced);
-      }
-    },
   });
 
   const { mutate: sendMessage, isPending } = useMutation({
