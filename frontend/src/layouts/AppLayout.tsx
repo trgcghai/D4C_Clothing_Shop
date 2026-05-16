@@ -20,11 +20,11 @@ const AppLayout = () => {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link to="/" className="text-xl font-bold tracking-tight">
+          <Link to="/" className="text-xl font-bold tracking-tight shrink-0">
             D4C
           </Link>
 
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-6 md:flex absolute left-1/2 -translate-x-1/2">
             {navLinks.map(({ to, label }) => (
               <Link
                 key={to}
@@ -41,14 +41,36 @@ const AppLayout = () => {
             ))}
           </nav>
 
-          <div className="flex flex-1 justify-center md:justify-start md:ml-6">
+          <div className="hidden md:flex items-center gap-3">
             <SearchBar />
-          </div>
-
-          <div className="flex items-center gap-2">
             {isAuthenticated && <CartIcon />}
             <UserButton />
           </div>
+
+          <div className="flex md:hidden items-center gap-2">
+            {isAuthenticated && <CartIcon />}
+            <UserButton />
+          </div>
+        </div>
+
+        <div className="block md:hidden px-4 pb-3">
+          <SearchBar />
+          <nav className="flex items-center gap-4 mt-3">
+            {navLinks.map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  location.pathname === to
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </header>
 
