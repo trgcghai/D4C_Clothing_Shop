@@ -17,7 +17,7 @@ const UserButton = () => {
   if (!isAuthenticated || !user) {
     return (
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild>
           <Link to="/signin">Đăng nhập</Link>
         </Button>
         <Button size="sm" asChild>
