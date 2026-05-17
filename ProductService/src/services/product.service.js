@@ -5,6 +5,7 @@ import { s3Client } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
+import { publishProductEvent } from "./event-publisher.service.js";
 
 dotenv.config();
 
@@ -244,7 +245,23 @@ class ProductService {
       });
     }
 
-    return await this._populateRelations(newProduct);
+    const populated = await this._populateRelations(newProduct);
+    publishProductEvent("CREATE", {
+      id: newProduct.id,
+      name: newProduct.name,
+      description: newProduct.description,
+      price: newProduct.price,
+      categoryId: newProduct.categoryId,
+      category: populated.category,
+      brand: newProduct.brand,
+      gender: newProduct.gender,
+      tags: newProduct.tags,
+      imageUrl: newProduct.imageUrl,
+      isFeatured: newProduct.isFeatured,
+      createdAt: newProduct.createdAt,
+      variants: populated.variants || [],
+    });
+    return populated;
   }
 
   async updateProduct(id, data, file) {
@@ -318,7 +335,23 @@ class ProductService {
       }
     }
 
-    return await this.getProductById(id);
+    const updated = await this.getProductById(id);
+    publishProductEvent("UPDATE", {
+      id,
+      name: updated.name,
+      description: updated.description,
+      price: updated.price,
+      categoryId: updated.categoryId,
+      category: updated.category,
+      brand: updated.brand,
+      gender: updated.gender,
+      tags: updated.tags,
+      imageUrl: updated.imageUrl,
+      isFeatured: updated.isFeatured,
+      createdAt: updated.createdAt,
+      variants: updated.variants || [],
+    });
+    return updated;
   }
 
   async deleteProduct(id) {
@@ -338,6 +371,7 @@ class ProductService {
 
     await variantModel.removeByProductId(id);
     await productModel.remove(id);
+    publishProductEvent("DELETE", { id });
     return { success: true, message: "Đã xóa sản phẩm thành công" };
   }
 

@@ -12,6 +12,7 @@ public class RouteProtectionConfig {
             "/api/auth/",
             "/api/categories/",
             "/api/webhooks/",
+            "/api/search/",
             "/v3/api-docs/",
             "/swagger-ui/",
             "/actuator/");
