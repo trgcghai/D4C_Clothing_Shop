@@ -1,51 +1,12 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { getCurrentYear } from "@/src/lib/dateTimeFormatter";
-import { cn } from "@/src/lib/utils";
-import UserButton from "@/src/components/UserButton";
-import CartIcon from "@/src/components/CartIcon";
-import { useAuth } from "@/src/store";
+import Header from "@/src/components/Header";
 import AIChatBubble from "@/src/components/ai/AIChatBubble";
 
-const navLinks = [
-  { to: "/", label: "Trang chủ" },
-  { to: "/products", label: "Sản phẩm" },
-];
-
 const AppLayout = () => {
-  const location = useLocation();
-  const { isAuthenticated } = useAuth();
-
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link to="/" className="text-xl font-bold tracking-tight">
-            D4C
-          </Link>
-
-          <nav className="hidden items-center gap-6 md:flex">
-            {navLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className={cn(
-                  "text-sm font-medium transition-colors hover:text-primary",
-                  location.pathname === to
-                    ? "text-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            {isAuthenticated && <CartIcon />}
-            <UserButton />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <div className="mx-auto w-full max-w-7xl flex-1">
         <Outlet />

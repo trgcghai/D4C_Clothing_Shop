@@ -113,6 +113,8 @@ services:
     depends_on:
       discovery-server:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     env_file:
       - ./ProductService/.env
     ports:
@@ -299,6 +301,8 @@ services:
         condition: service_healthy
       aiservice:
         condition: service_healthy
+      searchservice:
+        condition: service_healthy
     ports:
       - "8080:8080"
     healthcheck:
@@ -307,6 +311,52 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    networks:
+      - d4c-net
+
+  typesense:
+    image: typesense/typesense:30.2
+    container_name: typesense
+    restart: unless-stopped
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - d4c-net
+
+  searchservice:
+    build:
+      context: ./SearchService
+      dockerfile: Dockerfile
+    container_name: searchservice
+    hostname: searchservice
+    env_file:
+      - ./SearchService/.env
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      typesense:
+        condition: service_healthy
+    ports:
+      - "8089:8089"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     networks:
       - d4c-net
 
@@ -343,6 +393,7 @@ volumes:
   mariadb_data:
   redis_data:
   rabbitmq_data:
+  typesense-data:
 
 networks:
   d4c-net:
