@@ -38,6 +38,26 @@ export const getConversation = () =>
     .then((res) => res.data);
 
 export const clearConversation = () =>
+  axiosInstance.delete<AIClearResponse>("/api/ai/chat").then((res) => res.data);
+
+export interface AITagsPayload {
+  productData: {
+    name: string;
+    description?: string;
+    categoryName?: string;
+    brand?: string;
+    gender?: string;
+  };
+}
+
+export interface AITagsResponse {
+  success: boolean;
+  data: {
+    tags: string[];
+  };
+}
+
+export const generateProductTags = (payload: AITagsPayload) =>
   axiosInstance
-    .delete<AIClearResponse>("/api/ai/chat")
+    .post<AITagsResponse>("/api/ai/tags/generate", payload)
     .then((res) => res.data);

@@ -40,6 +40,7 @@ import {
   X,
   Image as ImageIcon,
   Package,
+  Sparkles,
 } from "lucide-react";
 import {
   useProducts,
@@ -54,6 +55,7 @@ import type {
   ProductCreatePayload,
   Variant,
 } from "@/src/services/productApi";
+import { generateProductTags } from "@/src/services/aiApi";
 
 const PAGE_SIZE = 10;
 const GENDERS = ["Nam", "Nữ", "Unisex"];
@@ -92,6 +94,7 @@ export default function ProductManagement() {
   const [imagePreview, setImagePreview] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [imageError, setImageError] = useState<string | undefined>();
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
   const { data: categoriesData = [] } = useCategories();
   const { data, isLoading } = useProducts({
@@ -227,6 +230,39 @@ export default function ProductManagement() {
     if (tagInput.trim() && !form.tags?.includes(tagInput.trim())) {
       setForm({ ...form, tags: [...(form.tags || []), tagInput.trim()] });
       setTagInput("");
+    }
+  };
+
+  const handleGenerateTags = async () => {
+    if (!form.name) {
+      alert("Vui lòng nhập tên sản phẩm trước khi tạo tags bằng AI.");
+      return;
+    }
+    
+    setIsGeneratingTags(true);
+    try {
+      const categoryName = categoriesData.find(c => c.id === form.categoryId)?.name;
+      const res = await generateProductTags({
+        productData: {
+          name: form.name,
+          description: form.description,
+          categoryName,
+          brand: form.brand,
+          gender: form.gender,
+        }
+      });
+      
+      if (res.success && res.data?.tags) {
+        const newTags = res.data.tags;
+        const currentTags = form.tags || [];
+        const merged = Array.from(new Set([...currentTags, ...newTags]));
+        setForm({ ...form, tags: merged });
+      }
+    } catch (error) {
+      console.error("Lỗi khi tạo tags:", error);
+      alert("Đã có lỗi xảy ra khi tạo tags bằng AI.");
+    } finally {
+      setIsGeneratingTags(false);
     }
   };
 
@@ -693,6 +729,22 @@ export default function ProductManagement() {
                           disabled={!tagInput.trim()}
                         >
                           <Plus className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleGenerateTags}
+                          disabled={isGeneratingTags || !form.name}
+                          title="Tự động tạo tags bằng AI dựa trên thông tin sản phẩm"
+                          className="gap-1.5 font-medium whitespace-nowrap bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800 dark:hover:bg-indigo-900/50"
+                        >
+                          {isGeneratingTags ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="size-4" />
+                          )}
+                          Tạo bằng AI
                         </Button>
                       </div>
                       <div className="flex flex-wrap gap-2 min-h-8">
