@@ -11,7 +11,6 @@ dotenv.config();
 
 const app = express();
 
-// Note: CORS is handled by API Gateway — do NOT add cors() middleware here
 app.use(express.json());
 app.use(morgan("dev"));
 
@@ -25,7 +24,7 @@ app.get("/api/ai/health", (req, res) => {
   res.status(200).json({ status: "UP" });
 });
 
-app.use("/api/ai", chatRoutes);
+app.use("/api/ai/chat", chatRoutes);
 app.use("/api/ai/tags", tagsRoutes);
 
 // Error Handling Middleware

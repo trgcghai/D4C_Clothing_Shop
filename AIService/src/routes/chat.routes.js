@@ -37,7 +37,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get("/chat", requireAuth, getConversation);
+router.get("/", requireAuth, getConversation);
 
 /**
  * @openapi
@@ -86,7 +86,7 @@ router.get("/chat", requireAuth, getConversation);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/chat", requireAuth, processMessage);
+router.post("/", requireAuth, processMessage);
 
 /**
  * @openapi
@@ -117,6 +117,6 @@ router.post("/chat", requireAuth, processMessage);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete("/chat", requireAuth, clearConversation);
+router.delete("/", requireAuth, clearConversation);
 
 export default router;
