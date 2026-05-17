@@ -164,7 +164,7 @@ public class AuditLoggingFilter implements GlobalFilter, Ordered {
             case "orders"                   -> "ORDERSERVICE";
             case "payments", "webhooks"     -> "PAYMENTSERVICE";
             case "recommendations"          -> "RECOMMENDATIONSERVICE";
-            case "v1"                       -> "AISERVICE";
+            case "ai"                       -> "AISERVICE";
             default                        -> parts[2].toUpperCase();
         };
     }

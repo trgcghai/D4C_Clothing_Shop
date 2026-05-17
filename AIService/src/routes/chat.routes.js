@@ -10,7 +10,7 @@ const router = express.Router();
 
 /**
  * @openapi
- * /api/v1/ai/chat:
+ * /api/ai/chat:
  *   get:
  *     tags: [chat]
  *     summary: Fetch conversation history
@@ -41,7 +41,7 @@ router.get("/chat", requireAuth, getConversation);
 
 /**
  * @openapi
- * /api/v1/ai/chat:
+ * /api/ai/chat:
  *   post:
  *     tags: [chat]
  *     summary: Send a message and get AI response
@@ -90,7 +90,7 @@ router.post("/chat", requireAuth, processMessage);
 
 /**
  * @openapi
- * /api/v1/ai/chat:
+ * /api/ai/chat:
  *   delete:
  *     tags: [chat]
  *     summary: Clear conversation history

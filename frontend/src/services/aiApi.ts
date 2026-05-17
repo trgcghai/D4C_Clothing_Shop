@@ -29,15 +29,15 @@ export interface AIClearResponse {
 
 export const sendChatMessage = (payload: AIChatPayload) =>
   axiosInstance
-    .post<AIChatResponse>("/api/v1/ai/chat", payload)
+    .post<AIChatResponse>("/api/ai/chat", payload)
     .then((res) => res.data);
 
 export const getConversation = () =>
   axiosInstance
-    .get<AIConversationResponse>("/api/v1/ai/chat")
+    .get<AIConversationResponse>("/api/ai/chat")
     .then((res) => res.data);
 
 export const clearConversation = () =>
   axiosInstance
-    .delete<AIClearResponse>("/api/v1/ai/chat")
+    .delete<AIClearResponse>("/api/ai/chat")
     .then((res) => res.data);
