@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * @openapi
- * /api/v1/ai/tags/generate:
+ * /api/ai/tags/generate:
  *   post:
  *     tags: [tags]
  *     summary: Generate product tags via AI

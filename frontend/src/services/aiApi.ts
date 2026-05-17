@@ -38,9 +38,7 @@ export const getConversation = () =>
     .then((res) => res.data);
 
 export const clearConversation = () =>
-  axiosInstance
-    .delete<AIClearResponse>("/api/ai/chat")
-    .then((res) => res.data);
+  axiosInstance.delete<AIClearResponse>("/api/ai/chat").then((res) => res.data);
 
 export interface AITagsPayload {
   productData: {
@@ -61,5 +59,5 @@ export interface AITagsResponse {
 
 export const generateProductTags = (payload: AITagsPayload) =>
   axiosInstance
-    .post<AITagsResponse>("/api/v1/ai/tags/generate", payload)
+    .post<AITagsResponse>("/api/ai/tags/generate", payload)
     .then((res) => res.data);
