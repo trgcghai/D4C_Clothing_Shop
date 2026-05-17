@@ -266,7 +266,7 @@ services:
     ports:
       - "8088:8088"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8088/api/v1/ai/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/api/ai/health"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -301,6 +301,8 @@ services:
         condition: service_healthy
       aiservice:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
       searchservice:
         condition: service_healthy
     ports:
@@ -311,6 +313,60 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    networks:
+      - d4c-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - d4c-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_BASEPATH=
+      - XPACK_SECURITY_ENABLED=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'curl -sf http://localhost:5601/api/status | grep -q ''"level":"available"''',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
     networks:
       - d4c-net
 
@@ -393,6 +449,7 @@ volumes:
   mariadb_data:
   redis_data:
   rabbitmq_data:
+  elasticsearch_data:
   typesense-data:
 
 networks:

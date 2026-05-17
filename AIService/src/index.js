@@ -20,11 +20,11 @@ app.get("/openapi.json", (req, res) => {
 });
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
-app.get("/api/v1/ai/health", (req, res) => {
-  res.status(200).json({ status: "UP" });
+app.get("/api/ai/health", (req, res) => {
+    res.status(200).json({ status: "UP" });
 });
 
-app.use("/api/v1/ai", chatRoutes);
+app.use("/api/ai", chatRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
