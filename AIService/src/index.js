@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import eurekaClient from "./config/eureka.config.js";
 import chatRoutes from "./routes/chat.routes.js";
+import tagsRoutes from "./routes/tags.routes.js";
 import { openApiSpec } from "./config/openapi.js";
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.get("/api/v1/ai/health", (req, res) => {
 });
 
 app.use("/api/v1/ai", chatRoutes);
+app.use("/api/v1/ai/tags", tagsRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

@@ -177,6 +177,43 @@ class GeminiService {
       throw new Error("Failed to process chat message");
     }
   }
+
+  async generateProductTags(productData) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+        }
+      }, { baseUrl: PROXY_BASE_URL });
+
+      const prompt = `Bạn là một chuyên gia SEO và thời trang. Dựa vào thông tin sản phẩm dưới đây, hãy tạo ra 5 đến 7 thẻ (tags) ngắn gọn, phù hợp để tối ưu hóa tìm kiếm. Trả về kết quả dưới dạng một mảng JSON các chuỗi (string). KHÔNG trả về gì khác ngoài mảng JSON.
+      
+      Thông tin sản phẩm:
+      - Tên: ${productData.name || "Không có"}
+      - Mô tả: ${productData.description || "Không có"}
+      - Danh mục: ${productData.categoryName || "Không có"}
+      - Thương hiệu: ${productData.brand || "Không có"}
+      - Giới tính: ${productData.gender || "Không có"}
+      
+      Ví dụ kết quả: ["áo thun", "thời trang nam", "mùa hè", "cotton", "năng động"]`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      
+      try {
+        const tags = JSON.parse(responseText);
+        return Array.isArray(tags) ? tags : [];
+      } catch (e) {
+        console.error("Failed to parse tags JSON:", responseText);
+        return [];
+      }
+    } catch (error) {
+      console.error("Gemini Generate Tags Error:", error);
+      throw new Error("Failed to generate tags");
+    }
+  }
 }
 
 export const geminiService = new GeminiService();
