@@ -31,6 +31,13 @@ export interface SearchOptions {
   limit?: number;
   filter_by?: string;
   sort_by?: string;
+  // Individual filter params (backend buildFilterString() processes these)
+  category?: string;
+  brand?: string;
+  size?: string;
+  color?: string;
+  priceMin?: number;
+  priceMax?: number;
 }
 
 export interface SearchResponse {
