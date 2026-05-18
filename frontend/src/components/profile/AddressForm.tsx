@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Check, Loader2, Pencil, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface AddressFormProps {
   user: UserResponse;
@@ -57,11 +58,26 @@ const AddressForm = ({ user }: AddressFormProps) => {
     e.preventDefault();
     setSuccess(false);
 
+    if (!province) {
+      toast.error("Vui lòng chọn tỉnh/thành phố");
+      return;
+    }
+
+    if (!ward) {
+      toast.error("Vui lòng chọn phường/xã");
+      return;
+    }
+
+    if (!street.trim()) {
+      toast.error("Vui lòng nhập số nhà, tên đường");
+      return;
+    }
+
     mutate(
       {
-        street: street || undefined,
-        ward: ward || undefined,
-        province: province || undefined,
+        street,
+        ward,
+        province,
       },
       {
         onSuccess: () => {
@@ -148,7 +164,9 @@ const AddressForm = ({ user }: AddressFormProps) => {
 
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label>Tỉnh/Thành phố</Label>
+          <Label className="text-muted-foreground">
+            Tỉnh/Thành phố <span className="text-destructive">*</span>
+          </Label>
           <Combobox
             value={province}
             onValueChange={(value) => {
@@ -182,7 +200,9 @@ const AddressForm = ({ user }: AddressFormProps) => {
         </div>
 
         <div className="space-y-1.5">
-          <Label>Phường/Xã</Label>
+          <Label className="text-muted-foreground">
+            Phường/Xã <span className="text-destructive">*</span>
+          </Label>
           <Combobox
             value={ward}
             onValueChange={(value) => setWard(value ?? "")}
@@ -218,7 +238,9 @@ const AddressForm = ({ user }: AddressFormProps) => {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="address-street">Số nhà, tên đường</Label>
+          <Label className="text-muted-foreground" htmlFor="address-street">
+            Số nhà, tên đường <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="address-street"
             value={street}
