@@ -156,3 +156,17 @@ export const changePassword = async (
     .put("/api/users/me/password", payload)
     .then((res) => res.data);
 };
+
+/**
+ * POST /api/users/me/avatar
+ * Upload avatar image via multipart form data.
+ */
+export const uploadAvatar = async (file: File): Promise<UserResponse> => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  return axiosInstance
+    .post("/api/users/me/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((res) => res.data);
+};

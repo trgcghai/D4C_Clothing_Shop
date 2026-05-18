@@ -6,6 +6,7 @@ import {
   signOut,
   getCurrentUser,
   updateProfile,
+  uploadAvatar,
   changePassword,
   verifyEmail,
   type LoginRequest,
@@ -118,6 +119,19 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (payload: ChangePasswordRequest) => changePassword(payload),
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  const setUser = useStore((state) => state.setUser);
+
+  return useMutation({
+    mutationFn: (file: File) => uploadAvatar(file),
+    onSuccess: (data) => {
+      queryClient.setQueryData(authKeys.me(), data);
+      setUser(data);
+    },
   });
 }
 

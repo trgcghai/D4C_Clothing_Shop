@@ -133,6 +133,12 @@
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>9.37.3</version>
         </dependency>
+        <!-- AWS S3 -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.27</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
