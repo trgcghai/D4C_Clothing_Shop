@@ -7,11 +7,13 @@ import {
   getCurrentUser,
   updateProfile,
   uploadAvatar,
+  updateAddress,
   changePassword,
   verifyEmail,
   type LoginRequest,
   type SignupRequest,
   type UpdateProfileRequest,
+  type UpdateAddressRequest,
   type ChangePasswordRequest,
   type VerifyEmailRequest,
   type UserResponse,
@@ -128,6 +130,19 @@ export function useUploadAvatar() {
 
   return useMutation({
     mutationFn: (file: File) => uploadAvatar(file),
+    onSuccess: (data) => {
+      queryClient.setQueryData(authKeys.me(), data);
+      setUser(data);
+    },
+  });
+}
+
+export function useUpdateAddress() {
+  const queryClient = useQueryClient();
+  const setUser = useStore((state) => state.setUser);
+
+  return useMutation({
+    mutationFn: (payload: UpdateAddressRequest) => updateAddress(payload),
     onSuccess: (data) => {
       queryClient.setQueryData(authKeys.me(), data);
       setUser(data);
