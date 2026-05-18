@@ -28,6 +28,12 @@ public class User {
 
     private String phoneNumber;
 
+    private String street;
+
+    private String ward;
+
+    private String province;
+
     private String avatar;
 
     @Column(nullable = false)
