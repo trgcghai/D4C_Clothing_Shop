@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/src/store";
 import { useUploadAvatar } from "@/src/hooks/useAuth";
 import { useRef } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Camera, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfileInfoForm from "@/src/components/profile/ProfileInfoForm";
 import ChangePasswordForm from "@/src/components/profile/ChangePasswordForm";
@@ -13,7 +13,11 @@ import ChangePasswordForm from "@/src/components/profile/ChangePasswordForm";
 const Profile = () => {
   const { user, isAuthenticated } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { mutate: uploadAvatar, isPending: isUploading, error: uploadError } = useUploadAvatar();
+  const {
+    mutate: uploadAvatar,
+    isPending: isUploading,
+    error: uploadError,
+  } = useUploadAvatar();
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -59,7 +63,7 @@ const Profile = () => {
       <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-bold mb-8">Thông tin tài khoản</h1>
 
-        <div className="flex flex-col sm:flex-row items-start gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
           <input
             ref={fileInputRef}
             type="file"
@@ -76,26 +80,31 @@ const Profile = () => {
             onKeyDown={(e) => e.key === "Enter" && handleAvatarClick()}
             title="Nhấn để đổi ảnh đại diện"
           >
-            <Avatar className="size-20! group-hover:opacity-70 transition-opacity">
-              <AvatarImage src={user.avatar} alt={user.fullName} />
-              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-            </Avatar>
+            {!isUploading && (
+              <Avatar className="size-20! group-hover:opacity-70 transition-opacity">
+                <AvatarImage src={user.avatar} alt={user.fullName} />
+                <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+              </Avatar>
+            )}
             {isUploading && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-full">
                 <Loader2 className="size-6 animate-spin text-primary" />
               </div>
             )}
+            <Camera className="absolute bottom-0 right-0 size-5 bg-primary text-white rounded-full p-1 opacity-100 transition-opacity" />
           </div>
           {uploadError && (
             <Alert variant="destructive" className="mt-3">
               <AlertCircle className="size-4" />
               <AlertDescription>
-                {uploadError instanceof Error ? uploadError.message : "Không thể tải ảnh lên. Thử lại sau."}
+                {uploadError instanceof Error
+                  ? uploadError.message
+                  : "Không thể tải ảnh lên. Thử lại sau."}
               </AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <h2 className="text-xl font-semibold">{user.fullName}</h2>
             <p className="text-muted-foreground">@{user.username}</p>
           </div>
