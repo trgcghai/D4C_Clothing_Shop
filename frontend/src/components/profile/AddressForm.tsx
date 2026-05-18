@@ -137,6 +137,7 @@ const AddressForm = ({ user }: AddressFormProps) => {
             <ComboboxInput
               placeholder={provincesLoading ? "Đang tải..." : "Tìm tỉnh/thành phố..."}
               disabled={provincesLoading}
+              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
             />
             <ComboboxContent>
               <ComboboxList>
@@ -163,6 +164,7 @@ const AddressForm = ({ user }: AddressFormProps) => {
                 !province ? "Chọn tỉnh/TP trước" : wardsLoading ? "Đang tải..." : "Tìm phường/xã..."
               }
               disabled={!province || wardsLoading}
+              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
             />
             <ComboboxContent>
               <ComboboxList>
