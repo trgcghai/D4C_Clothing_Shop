@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+} from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Check, Pencil, X } from "lucide-react";
 
@@ -125,49 +126,54 @@ const AddressForm = ({ user }: AddressFormProps) => {
       <div className="space-y-3">
         <div className="space-y-1.5">
           <Label>Tỉnh/Thành phố</Label>
-          <Select
+          <Combobox
             value={province}
             onValueChange={(value) => {
-              setProvince(value);
+              setProvince(value ?? "");
               setWard("");
             }}
-            disabled={provincesLoading}
           >
-            <SelectTrigger>
-              <SelectValue placeholder={provincesLoading ? "Đang tải..." : "Chọn tỉnh/thành phố"} />
-            </SelectTrigger>
-            <SelectContent>
-              {provinces.map((p) => (
-                <SelectItem key={p.code} value={p.name}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <ComboboxValue>{province}</ComboboxValue>
+            <ComboboxInput
+              placeholder={provincesLoading ? "Đang tải..." : "Tìm tỉnh/thành phố..."}
+              disabled={provincesLoading}
+            />
+            <ComboboxContent>
+              <ComboboxList>
+                {provinces.map((p) => (
+                  <ComboboxItem key={p.code} value={p.name}>
+                    <span>{p.name}</span>
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         </div>
 
         <div className="space-y-1.5">
           <Label>Phường/Xã</Label>
-          <Select
+          <Combobox
             value={ward}
-            onValueChange={setWard}
+            onValueChange={(value) => setWard(value ?? "")}
             disabled={!province || wardsLoading}
           >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  !province ? "Chọn tỉnh/TP trước" : wardsLoading ? "Đang tải..." : "Chọn phường/xã"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {wards.map((w) => (
-                <SelectItem key={w.code} value={w.name}>
-                  {w.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <ComboboxValue>{ward}</ComboboxValue>
+            <ComboboxInput
+              placeholder={
+                !province ? "Chọn tỉnh/TP trước" : wardsLoading ? "Đang tải..." : "Tìm phường/xã..."
+              }
+              disabled={!province || wardsLoading}
+            />
+            <ComboboxContent>
+              <ComboboxList>
+                {wards.map((w) => (
+                  <ComboboxItem key={w.code} value={w.name}>
+                    <span>{w.name}</span>
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         </div>
 
         <div className="space-y-1.5">
