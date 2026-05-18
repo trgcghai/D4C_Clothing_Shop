@@ -43,6 +43,15 @@ public class Order {
     @Column(name = "email", length = 255)
     private String email;
 
+    @Column(name = "shipping_street", nullable = false)
+    private String shippingStreet;
+
+    @Column(name = "shipping_ward", nullable = false)
+    private String shippingWard;
+
+    @Column(name = "shipping_province", nullable = false)
+    private String shippingProvince;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 
