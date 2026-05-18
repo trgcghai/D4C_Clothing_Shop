@@ -142,7 +142,7 @@ const AddressForm = ({ user }: AddressFormProps) => {
             <ComboboxContent>
               <ComboboxList>
                 {provinces.map((p) => (
-                  <ComboboxItem key={p.code} value={p.name}>
+                  <ComboboxItem key={p.code} value={p.name} className="hover:bg-primary/10 data-highlighted:bg-primary data-highlighted:text-primary-foreground">
                     <span>{p.name}</span>
                   </ComboboxItem>
                 ))}
@@ -169,7 +169,7 @@ const AddressForm = ({ user }: AddressFormProps) => {
             <ComboboxContent>
               <ComboboxList>
                 {wards.map((w) => (
-                  <ComboboxItem key={w.code} value={w.name}>
+                  <ComboboxItem key={w.code} value={w.name} className="hover:bg-primary/10 data-highlighted:bg-primary data-highlighted:text-primary-foreground">
                     <span>{w.name}</span>
                   </ComboboxItem>
                 ))}
