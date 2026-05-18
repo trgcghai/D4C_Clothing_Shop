@@ -21,6 +21,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import iuh.fit.UserService.Service.S3Service;
 
 import java.util.Map;
 
@@ -35,6 +40,9 @@ public class UserController {
 
     @Autowired
     private PasswordEncoder encoder;
+
+    @Autowired
+    private S3Service s3Service;
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -102,6 +110,36 @@ public class UserController {
         userRepository.save(user);
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+    }
+
+    @PostMapping("/me/avatar")
+    @Operation(summary = "Upload user avatar to S3")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Avatar uploaded successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid file"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<?> uploadAvatar(@RequestParam("avatar") MultipartFile file) {
+        String username = getCurrentUsername();
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "File is required"));
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Only image files are allowed"));
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String avatarUrl = s3Service.uploadAvatar(user.getId(), file);
+
+        return ResponseEntity.ok(toUserResponse(user));
     }
 
     private String getCurrentUsername() {
