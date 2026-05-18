@@ -2,6 +2,7 @@ package iuh.fit.UserService.Controller;
 
 import iuh.fit.UserService.Exception.GlobalExceptionHandler;
 import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.Repository.AddressRepository;
 import iuh.fit.UserService.domain.common.Role;
 import iuh.fit.UserService.domain.entity.User;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class UserControllerValidationTest {
 
     @MockBean
     private S3Service s3Service;
+
+    @MockBean
+    private AddressRepository addressRepository;
 
     @Test
     void updateProfileShouldReturnBadRequestWhenFullNameBlank() throws Exception {

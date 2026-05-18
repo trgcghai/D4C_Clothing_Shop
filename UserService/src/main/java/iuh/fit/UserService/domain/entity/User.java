@@ -28,12 +28,6 @@ public class User {
 
     private String phoneNumber;
 
-    private String street;
-
-    private String ward;
-
-    private String province;
-
     private String avatar;
 
     @Column(nullable = false)
@@ -57,4 +51,7 @@ public class User {
     private String lockReason;
 
     private Instant createdAt = Instant.now();
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Address address;
 }
