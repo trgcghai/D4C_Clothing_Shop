@@ -11,10 +11,9 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxValue,
 } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Check, Pencil, X } from "lucide-react";
+import { AlertCircle, Check, Loader2, Pencil, X } from "lucide-react";
 
 interface AddressFormProps {
   user: UserResponse;
@@ -26,9 +25,14 @@ const AddressForm = ({ user }: AddressFormProps) => {
   const [province, setProvince] = useState(user.province || "");
   const [ward, setWard] = useState(user.ward || "");
 
-  const { data: provinces = [], isLoading: provincesLoading, error: provincesError } = useProvinces();
+  const {
+    data: provinces = [],
+    isLoading: provincesLoading,
+    error: provincesError,
+  } = useProvinces();
   const selectedProvinceCode = provinces.find((p) => p.name === province)?.code;
-  const { data: wards = [], isLoading: wardsLoading } = useWards(selectedProvinceCode);
+  const { data: wards = [], isLoading: wardsLoading } =
+    useWards(selectedProvinceCode);
 
   const { mutate, isPending, error } = useUpdateAddress();
   const [success, setSuccess] = useState(false);
@@ -54,7 +58,11 @@ const AddressForm = ({ user }: AddressFormProps) => {
     setSuccess(false);
 
     mutate(
-      { street: street || undefined, ward: ward || undefined, province: province || undefined },
+      {
+        street: street || undefined,
+        ward: ward || undefined,
+        province: province || undefined,
+      },
       {
         onSuccess: () => {
           setEditMode(false);
@@ -79,7 +87,11 @@ const AddressForm = ({ user }: AddressFormProps) => {
     return (
       <div className="space-y-4">
         {success && (
-          <Alert variant="default" className="border-emerald-300 bg-emerald-50" role="status">
+          <Alert
+            variant="default"
+            className="border-emerald-300 bg-emerald-50"
+            role="status"
+          >
             <Check className="size-4 text-emerald-700" />
             <AlertDescription className="text-sm text-emerald-700">
               Cập nhật địa chỉ thành công
@@ -90,15 +102,21 @@ const AddressForm = ({ user }: AddressFormProps) => {
         {hasAddress ? (
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <span className="text-sm font-medium text-muted-foreground min-w-35">Tỉnh/TP</span>
+              <span className="text-sm font-medium text-muted-foreground min-w-35">
+                Tỉnh/TP
+              </span>
               <span className="text-sm">{user.province}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <span className="text-sm font-medium text-muted-foreground min-w-35">Phường/Xã</span>
+              <span className="text-sm font-medium text-muted-foreground min-w-35">
+                Phường/Xã
+              </span>
               <span className="text-sm">{user.ward}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <span className="text-sm font-medium text-muted-foreground min-w-35">Số nhà, đường</span>
+              <span className="text-sm font-medium text-muted-foreground min-w-35">
+                Số nhà, đường
+              </span>
               <span className="text-sm">{user.street}</span>
             </div>
           </div>
@@ -106,7 +124,12 @@ const AddressForm = ({ user }: AddressFormProps) => {
           <p className="text-sm text-muted-foreground">Chưa cập nhật địa chỉ</p>
         )}
 
-        <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="mt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setEditMode(true)}
+          className="mt-2"
+        >
           <Pencil className="mr-1.5 size-3.5" />
           {hasAddress ? "Chỉnh sửa" : "Thêm địa chỉ"}
         </Button>
@@ -133,16 +156,23 @@ const AddressForm = ({ user }: AddressFormProps) => {
               setWard("");
             }}
           >
-            <ComboboxValue>{province}</ComboboxValue>
             <ComboboxInput
-              placeholder={provincesLoading ? "Đang tải..." : "Tìm tỉnh/thành phố..."}
+              placeholder={
+                provincesLoading ? "Đang tải..." : "Tìm tỉnh/thành phố..."
+              }
               disabled={provincesLoading}
-              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
             />
             <ComboboxContent>
               <ComboboxList>
                 {provinces.map((p) => (
-                  <ComboboxItem key={p.code} value={p.name} className="hover:bg-primary/10 data-highlighted:bg-primary data-highlighted:text-primary-foreground">
+                  <ComboboxItem
+                    key={p.code}
+                    value={p.name}
+                    className="cursor-pointer"
+                  >
                     <span>{p.name}</span>
                   </ComboboxItem>
                 ))}
@@ -158,18 +188,27 @@ const AddressForm = ({ user }: AddressFormProps) => {
             onValueChange={(value) => setWard(value ?? "")}
             disabled={!province || wardsLoading}
           >
-            <ComboboxValue>{ward}</ComboboxValue>
             <ComboboxInput
               placeholder={
-                !province ? "Chọn tỉnh/TP trước" : wardsLoading ? "Đang tải..." : "Tìm phường/xã..."
+                !province
+                  ? "Chọn tỉnh/TP trước"
+                  : wardsLoading
+                    ? "Đang tải..."
+                    : "Tìm phường/xã..."
               }
               disabled={!province || wardsLoading}
-              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
             />
             <ComboboxContent>
               <ComboboxList>
                 {wards.map((w) => (
-                  <ComboboxItem key={w.code} value={w.name} className="hover:bg-primary/10 data-highlighted:bg-primary data-highlighted:text-primary-foreground">
+                  <ComboboxItem
+                    key={w.code}
+                    value={w.name}
+                    className="cursor-pointer"
+                  >
                     <span>{w.name}</span>
                   </ComboboxItem>
                 ))}
@@ -191,9 +230,24 @@ const AddressForm = ({ user }: AddressFormProps) => {
 
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? "Đang lưu..." : "Lưu"}
+          {isPending ? (
+            <>
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Đang lưu...
+            </>
+          ) : (
+            <>
+              <Check className="mr-1.5 size-3.5" />
+              Lưu
+            </>
+          )}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={handleCancel}
+        >
           <X className="mr-1.5 size-3.5" />
           Hủy
         </Button>
