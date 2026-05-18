@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "users")
-@Data // Lombok annotation tự động tạo Getter/Setter/ToString
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
@@ -52,6 +52,6 @@ public class User {
 
     private Instant createdAt = Instant.now();
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "user", cascade = { CascadeType.PERSIST, CascadeType.MERGE })
     private Address address;
 }
