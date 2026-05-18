@@ -13,5 +13,8 @@ public class UserResponse {
     private String fullName;
     private String phoneNumber;
     private String avatar;
+    private String street;
+    private String ward;
+    private String province;
     private Role role;
 }
