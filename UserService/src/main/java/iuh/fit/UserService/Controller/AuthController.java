@@ -108,6 +108,9 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(new JwtResponse(newAccessToken, "Bearer", user.getId(), userDetails.getUsername(),
                         user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(),
+                        user.getAddress() != null ? user.getAddress().getStreet() : null,
+                        user.getAddress() != null ? user.getAddress().getWard() : null,
+                        user.getAddress() != null ? user.getAddress().getProvince() : null,
                         user.getRole().name(), user.getEmailVerification()));
     }
 

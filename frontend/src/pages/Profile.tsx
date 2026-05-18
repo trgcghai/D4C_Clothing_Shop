@@ -9,6 +9,7 @@ import { AlertCircle, Camera, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfileInfoForm from "@/src/components/profile/ProfileInfoForm";
 import ChangePasswordForm from "@/src/components/profile/ChangePasswordForm";
+import AddressForm from "@/src/components/profile/AddressForm";
 
 const Profile = () => {
   const { user, isAuthenticated } = useAuth();
@@ -116,6 +117,7 @@ const Profile = () => {
           <TabsList>
             <TabsTrigger value="info">Thông tin</TabsTrigger>
             <TabsTrigger value="password">Đổi mật khẩu</TabsTrigger>
+            <TabsTrigger value="address">Địa chỉ</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
@@ -124,6 +126,10 @@ const Profile = () => {
 
           <TabsContent value="password">
             <ChangePasswordForm />
+          </TabsContent>
+
+          <TabsContent value="address">
+            <AddressForm user={user} />
           </TabsContent>
         </Tabs>
       </div>

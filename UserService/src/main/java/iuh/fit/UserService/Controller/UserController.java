@@ -1,9 +1,12 @@
 package iuh.fit.UserService.Controller;
 
 import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.Repository.AddressRepository;
 import iuh.fit.UserService.domain.dto.ChangePasswordRequest;
 import iuh.fit.UserService.domain.dto.UpdateProfileRequest;
+import iuh.fit.UserService.domain.dto.AddressRequest;
 import iuh.fit.UserService.domain.dto.UserResponse;
+import iuh.fit.UserService.domain.entity.Address;
 import iuh.fit.UserService.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -43,6 +46,9 @@ public class UserController {
 
     @Autowired
     private S3Service s3Service;
+
+    @Autowired
+    private AddressRepository addressRepository;
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -142,6 +148,38 @@ public class UserController {
         return ResponseEntity.ok(toUserResponse(user));
     }
 
+    @PutMapping("/me/address")
+    @Operation(summary = "Update current user address")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Address updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<?> updateAddress(@Valid @RequestBody AddressRequest request) {
+        String username = getCurrentUsername();
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Address address = user.getAddress();
+        if (address == null) {
+            address = new Address();
+            address.setUser(user);
+        }
+
+        address.setStreet(request.getStreet());
+        address.setWard(request.getWard());
+        address.setProvince(request.getProvince());
+
+        user.setAddress(address);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(toUserResponse(user));
+    }
+
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -152,6 +190,7 @@ public class UserController {
     }
 
     private UserResponse toUserResponse(User user) {
+        Address address = user.getAddress();
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
@@ -159,6 +198,9 @@ public class UserController {
                 user.getFullName(),
                 user.getPhoneNumber(),
                 user.getAvatar(),
+                address != null ? address.getStreet() : null,
+                address != null ? address.getWard() : null,
+                address != null ? address.getProvince() : null,
                 user.getRole()
         );
     }

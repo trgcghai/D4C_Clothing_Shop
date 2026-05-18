@@ -51,4 +51,7 @@ public class User {
     private String lockReason;
 
     private Instant createdAt = Instant.now();
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Address address;
 }
