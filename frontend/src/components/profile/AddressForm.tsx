@@ -31,7 +31,9 @@ const AddressForm = ({ user }: AddressFormProps) => {
     isLoading: provincesLoading,
     error: provincesError,
   } = useProvinces();
+
   const selectedProvinceCode = provinces.find((p) => p.name === province)?.code;
+
   const { data: wards = [], isLoading: wardsLoading } =
     useWards(selectedProvinceCode);
 

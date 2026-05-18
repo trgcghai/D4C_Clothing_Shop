@@ -25,6 +25,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentPage from "./pages/PaymentPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 import { Toaster } from "@/components/ui/sonner";
+import { useSyncUser } from "./hooks/useSyncUser";
 
 export const router = createBrowserRouter([
   {
@@ -69,6 +70,8 @@ export const router = createBrowserRouter([
 const queryClient = new QueryClient();
 
 function App() {
+  useSyncUser();
+
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-right" />

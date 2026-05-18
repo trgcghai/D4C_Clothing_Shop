@@ -55,6 +55,9 @@ export function useSignIn() {
         fullName: data.fullName,
         phoneNumber: data.phoneNumber,
         avatar: data.avatar,
+        street: data.street,
+        ward: data.ward,
+        province: data.province,
         role: data.role,
       };
       setAuth(user, data.token);
@@ -83,6 +86,9 @@ export function useRefreshToken() {
         fullName: data.fullName,
         phoneNumber: data.phoneNumber,
         avatar: data.avatar,
+        street: data.street,
+        ward: data.ward,
+        province: data.province,
         role: data.role,
       };
       setUser(user);
