@@ -22,6 +22,9 @@ export interface CreateOrderPayload {
   items: CheckoutItem[];
   totalAmount: number;
   paymentMethod: PaymentMethod;
+  shippingStreet: string;
+  shippingWard: string;
+  shippingProvince: string;
 }
 
 export interface OrderItemResponse {
@@ -45,6 +48,9 @@ export interface OrderResponse {
   status: string;
   totalAmount: number;
   paymentMethod: PaymentMethod;
+  shippingStreet: string;
+  shippingWard: string;
+  shippingProvince: string;
   items: OrderItemResponse[];
   createdAt: string;
   updatedAt: string;
