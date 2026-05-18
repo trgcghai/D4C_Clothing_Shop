@@ -71,6 +71,9 @@ public class OrderService {
         order.setTotalAmount(calculatedTotal);
         order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH");
         order.setEmail(email);
+        order.setShippingStreet(request.getShippingStreet());
+        order.setShippingWard(request.getShippingWard());
+        order.setShippingProvince(request.getShippingProvince());
 
         for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : request.getItems()) {
             if (itemDto.getQuantity() == null || itemDto.getQuantity() <= 0) {
@@ -321,6 +324,9 @@ public class OrderService {
         response.setTotalAmount(order.getTotalAmount());
         response.setPaymentMethod(order.getPaymentMethod());
         response.setEmail(order.getEmail());
+        response.setShippingStreet(order.getShippingStreet());
+        response.setShippingWard(order.getShippingWard());
+        response.setShippingProvince(order.getShippingProvince());
         response.setCreatedAt(order.getCreatedAt());
         response.setUpdatedAt(order.getUpdatedAt());
 

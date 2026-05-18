@@ -21,6 +21,7 @@ import {
 } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
 import type { PaymentMethod } from "@/src/services/paymentApi";
+import AddressForm from "@/src/components/profile/AddressForm";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ export default function CheckoutPage() {
     createPaymentMutation.isPending;
 
   const { user } = useStore((state) => state);
+
+  const hasAddress = !!(user?.street && user?.ward && user?.province);
 
   const [searchParams] = useSearchParams();
   const buyNowItemId = searchParams.get("buyNowItemId");
@@ -137,6 +140,11 @@ export default function CheckoutPage() {
     if (!user) return;
     if (itemIdsForCheckout.length === 0) return;
 
+    if (!hasAddress) {
+      toast.error("Vui lòng cập nhật địa chỉ nhận hàng trước khi thanh toán");
+      return;
+    }
+
     try {
       const checkoutData = await partialCheckoutMutation.mutateAsync({
         itemIds: itemIdsForCheckout,
@@ -166,6 +174,9 @@ export default function CheckoutPage() {
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
         paymentMethod: method,
+        shippingStreet: user.street || "",
+        shippingWard: user.ward || "",
+        shippingProvince: user.province || "",
       });
       orderCreated = true;
       createdOrderId = order.id;
@@ -270,6 +281,21 @@ export default function CheckoutPage() {
                 </Label>
               </div>
             </RadioGroup>
+
+            <h2 className="text-lg font-semibold mt-6">Địa chỉ nhận hàng</h2>
+            {hasAddress ? (
+              <div className="rounded-lg border p-4 text-sm space-y-1">
+                <p>{user?.street}</p>
+                <p>{user?.ward}, {user?.province}</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+                <p className="text-sm font-medium text-destructive mb-3">
+                  Vui lòng cập nhật địa chỉ nhận hàng
+                </p>
+                <AddressForm user={user!} />
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border p-6 space-y-4">

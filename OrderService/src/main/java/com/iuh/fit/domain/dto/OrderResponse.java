@@ -22,6 +22,9 @@ public class OrderResponse {
     private BigDecimal totalAmount;
     private String paymentMethod;
     private String email;
+    private String shippingStreet;
+    private String shippingWard;
+    private String shippingProvince;
     private List<OrderItemResponse> items;
     private Instant createdAt;
     private Instant updatedAt;

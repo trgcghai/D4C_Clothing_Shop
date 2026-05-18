@@ -30,6 +30,15 @@ public class CreateOrderFromCheckoutRequest {
 
     private String paymentMethod;
 
+    @NotBlank(message = "Shipping street is required")
+    private String shippingStreet;
+
+    @NotBlank(message = "Shipping ward is required")
+    private String shippingWard;
+
+    @NotBlank(message = "Shipping province is required")
+    private String shippingProvince;
+
     @Data
     @Builder
     @NoArgsConstructor
