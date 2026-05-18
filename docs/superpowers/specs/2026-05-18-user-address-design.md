@@ -2,42 +2,68 @@
 
 **Date:** 2026-05-18
 **Feature:** Add shipping address (province, ward, street) to user profile
-**Status:** Draft
+**Status:** Final
 
 ---
 
 ## Overview
 
-Add `street`, `ward`, `province` fields to the `users` table. Add new "Địa chỉ" tab on Profile page with cascading selects (province → ward) from Vietnam Provinces Open API v2, plus street text input.
+Create `addresses` table with `street`, `ward`, `province` fields, linked 1-1 to `users`. Add new "Địa chỉ" tab on Profile page with cascading selects (province → ward) from Vietnam Provinces Open API v2.
 
-Only UserService and frontend are affected. No other microservices.
+Only UserService and frontend are affected.
 
 ---
 
 ## Backend Changes
 
-### User Entity (`domain/entity/User.java`)
+### New Files
 
-Add 3 fields:
+| File | Purpose |
+|------|---------|
+| `domain/entity/Address.java` | JPA entity: id, userId, street, ward, province |
+| `domain/dto/AddressRequest.java` | DTO: street, ward, province (for PUT body) |
+| `repository/AddressRepository.java` | JPA repository |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `domain/entity/User.java` | + `@OneToOne Address address` relation |
+| `domain/dto/UserResponse.java` | +street, +ward, +province (flat, từ address) |
+| `domain/dto/JwtResponse.java` | +street, +ward, +province (flat) |
+| `controller/UserController.java` | + `PUT /api/users/me/address` |
+
+### Address Entity
 
 ```java
-private String street;
-private String ward;
-private String province;
+@Entity
+@Table(name = "addresses")
+@Data
+@NoArgsConstructor
+public class Address {
+    @Id @GeneratedValue(strategy = IDENTITY)
+    private Long id;
+
+    @OneToOne
+    @JoinColumn(name = "user_id", unique = true)
+    private User user;
+
+    private String street;
+    private String ward;
+    private String province;
+}
 ```
 
-### DTOs
+### User Entity
 
-Add same 3 fields to:
-- `UserResponse.java`
-- `UpdateProfileRequest.java` (nullable, no hard validation needed — optional update)
-- `JwtResponse.java` (consistency, used at login)
+```java
+@OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+private Address address;
+```
 
-No new controller endpoint. Existing `PUT /api/users/me` handles these fields via `UpdateProfileRequest`.
+### New Endpoint
 
-### DB Migration
-
-Hibernate `ddl-auto=update` handles adding columns automatically.
+`PUT /api/users/me/address` — body: `{ street?, ward?, province? }` — returns `UserResponse`
 
 ---
 
@@ -45,72 +71,28 @@ Hibernate `ddl-auto=update` handles adding columns automatically.
 
 ### New Files
 
-`components/profile/AddressForm.tsx`:
-- Province `<select>` — populated once from API v2
-- Ward `<select>` — populated when province changes
-- Street `<input>`
-- Save/Cancel buttons
-- Uses `useUpdateProfile()` mutation (existing)
+`services/provinceApi.ts`, `hooks/useAddress.ts` — province/ward API + hooks
 
-`services/provinceApi.ts`:
-```ts
-export interface Province { name: string; code: number; }
-export interface Ward { name: string; code: number; }
+`services/authApi.ts` — + `updateAddress()` function
 
-export const getProvinces = async (): Promise<Province[]> =>
-  axios.get("https://provinces.open-api.vn/api/v2/").then(r => r.data);
+`hooks/useAuth.ts` — + `useUpdateAddress()` mutation
 
-export const getWards = async (provinceCode: number): Promise<Ward[]> =>
-  axios.get(`https://provinces.open-api.vn/api/v2/p/${provinceCode}?depth=2`)
-    .then(r => r.data.wards);
-```
-
-`hooks/useAddress.ts`:
-- `useProvinces()` — `useQuery` for province list
-- `useWards(provinceCode)` — `useQuery` for ward list, enabled when provinceCode is set
+`components/profile/AddressForm.tsx` — form with cascading selects
 
 ### Modified Files
 
-`pages/Profile.tsx`:
-- Add tab "Địa chỉ" with `<AddressForm user={user} />`
-
-`services/authApi.ts`:
-- `UpdateProfileRequest` type already supports optional fields — no change needed
+`pages/Profile.tsx` — + tab "Địa chỉ"
 
 ---
 
 ## API Flow
 
 ```
-GET https://provinces.open-api.vn/api/v2/
-  → [{ name, code }, ...]  34 provinces
-
-GET https://provinces.open-api.vn/api/v2/p/{code}?depth=2
-  → { wards: [{ name, code }, ...] }
-
-PUT /api/users/me  { street, ward, province }
-  → UserResponse with updated fields
+PUT /api/users/me/address  { street, ward, province }
+  → upsert address → return UserResponse
 ```
 
----
-
-## Tab Layout
-
 ```
-[Thông tin] [Địa chỉ] [Đổi mật khẩu]
+GET https://provinces.open-api.vn/api/v2/  →  34 provinces
+GET https://provinces.open-api.vn/api/v2/p/{code}?depth=2  →  wards
 ```
-
-Address tab shows:
-- Read mode: displays street, ward, province (or "Chưa cập nhật") + Edit button
-- Edit mode: province select → ward select → street input + Save/Cancel
-
----
-
-## Error Handling
-
-| Scenario | UI |
-|----------|-----|
-| Province API fails | Alert: "Không tải được danh sách tỉnh/thành" |
-| Ward API fails | Alert in ward select area |
-| Save fails | Alert from useUpdateProfile error |
-| Save success | Switch to read mode, success alert |
