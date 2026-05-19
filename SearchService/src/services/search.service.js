@@ -22,13 +22,13 @@ export function buildFilterString(query) {
   if (query.category) {
     const cats = flattenFilterValue(query.category);
     const catExpr = cats.map((c) => `category_norm:="${escapeFilterValue(normalizeVietnamese(c))}"`).join(" || ");
-    filters.push(catExpr);
+    filters.push(cats.length > 1 ? `(${catExpr})` : catExpr);
   }
 
   if (query.brand) {
     const brands = flattenFilterValue(query.brand);
     const brandExpr = brands.map((b) => `brand_norm:="${escapeFilterValue(normalizeVietnamese(b))}"`).join(" || ");
-    filters.push(brandExpr);
+    filters.push(brands.length > 1 ? `(${brandExpr})` : brandExpr);
   }
 
   if (query.priceMin !== undefined && query.priceMin !== "") {
@@ -48,13 +48,13 @@ export function buildFilterString(query) {
   if (query.size) {
     const sizes = flattenFilterValue(query.size);
     const sizeExpr = sizes.map((s) => `sizes:="${escapeFilterValue(s)}"`).join(" || ");
-    filters.push(sizeExpr);
+    filters.push(sizes.length > 1 ? `(${sizeExpr})` : sizeExpr);
   }
 
   if (query.color) {
     const colors = flattenFilterValue(query.color);
     const colorExpr = colors.map((c) => `colors:="${escapeFilterValue(c)}"`).join(" || ");
-    filters.push(colorExpr);
+    filters.push(colors.length > 1 ? `(${colorExpr})` : colorExpr);
   }
 
   return filters.length > 0 ? filters.join(" && ") : undefined;
