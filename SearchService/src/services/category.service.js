@@ -53,8 +53,8 @@ export async function searchCategories(options = {}) {
   return {
     data,
     total,
-    page: Number(page),
-    limit: Number(limit),
+    page: searchParams.page,
+    limit: searchParams.per_page,
     totalPages,
     keyword: q === "*" ? "" : q,
     searchTimeMs,
