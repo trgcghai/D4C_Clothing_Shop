@@ -36,6 +36,7 @@ export interface SearchOptions {
   brand?: string;
   size?: string;
   color?: string;
+  gender?: string;
   priceMin?: number;
   priceMax?: number;
 }

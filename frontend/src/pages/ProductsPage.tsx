@@ -81,9 +81,10 @@ const ProductsPage = () => {
       brand,
       size,
       color,
+      gender,
       sort_by: sort,
     }),
-    [page, limit, sort, categoryId, categories, brand, size, color],
+    [page, limit, sort, categoryId, categories, brand, size, color, gender],
   );
 
   const { data: searchData, isLoading: searchLoading } = useSearchResults(
