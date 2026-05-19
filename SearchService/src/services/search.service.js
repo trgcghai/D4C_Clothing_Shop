@@ -3,6 +3,15 @@ import { normalizeVietnamese } from "../utils/product-transformer.js";
 
 const COLLECTION_NAME = "d4c_products";
 
+function escapeFilterValue(val) {
+  return String(val).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function flattenFilterValue(value) {
+  const arr = Array.isArray(value) ? value : [value];
+  return arr.flatMap((v) => v.split(",").map((x) => x.trim()).filter(Boolean));
+}
+
 export function buildFilterString(query) {
   const filters = [];
 
@@ -11,14 +20,14 @@ export function buildFilterString(query) {
   }
 
   if (query.category) {
-    const cats = Array.isArray(query.category) ? query.category : [query.category];
-    const catExpr = cats.map((c) => `category_norm:="${normalizeVietnamese(c)}"`).join(" || ");
+    const cats = flattenFilterValue(query.category);
+    const catExpr = cats.map((c) => `category_norm:="${escapeFilterValue(normalizeVietnamese(c))}"`).join(" || ");
     filters.push(catExpr);
   }
 
   if (query.brand) {
-    const brands = Array.isArray(query.brand) ? query.brand : [query.brand];
-    const brandExpr = brands.map((b) => `brand_norm:="${normalizeVietnamese(b)}"`).join(" || ");
+    const brands = flattenFilterValue(query.brand);
+    const brandExpr = brands.map((b) => `brand_norm:="${escapeFilterValue(normalizeVietnamese(b))}"`).join(" || ");
     filters.push(brandExpr);
   }
 
@@ -37,14 +46,14 @@ export function buildFilterString(query) {
   }
 
   if (query.size) {
-    const sizes = Array.isArray(query.size) ? query.size : [query.size];
-    const sizeExpr = sizes.map((s) => `sizes:="${s}"`).join(" || ");
+    const sizes = flattenFilterValue(query.size);
+    const sizeExpr = sizes.map((s) => `sizes:="${escapeFilterValue(s)}"`).join(" || ");
     filters.push(sizeExpr);
   }
 
   if (query.color) {
-    const colors = Array.isArray(query.color) ? query.color : [query.color];
-    const colorExpr = colors.map((c) => `colors:="${c}"`).join(" || ");
+    const colors = flattenFilterValue(query.color);
+    const colorExpr = colors.map((c) => `colors:="${escapeFilterValue(c)}"`).join(" || ");
     filters.push(colorExpr);
   }
 
