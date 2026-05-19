@@ -25,3 +25,26 @@ export function publishProductEvent(eventType, productData) {
 }
 
 export { connect as connectEventPublisher };
+
+const CATEGORY_ROUTING_KEYS = {
+  CREATE: "category.created",
+  UPDATE: "category.updated",
+  DELETE: "category.deleted",
+};
+
+export function publishCategoryEvent(eventType, categoryData) {
+  const event = {
+    eventId: uuidv4(),
+    eventType: `CATEGORY_${eventType}D`,
+    timestamp: new Date().toISOString(),
+    data: categoryData,
+  };
+
+  const routingKey = CATEGORY_ROUTING_KEYS[eventType];
+  if (!routingKey) {
+    console.error(`Unknown category event type: ${eventType}`);
+    return;
+  }
+
+  publish(routingKey, event);
+}

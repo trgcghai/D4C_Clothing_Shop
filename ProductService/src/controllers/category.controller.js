@@ -1,4 +1,5 @@
 import { categoryService } from "../services/category.service.js";
+import { publishCategoryEvent } from "../services/event-publisher.service.js";
 
 export const getAllCategories = async (req, res) => {
   try {
@@ -28,6 +29,7 @@ export const createCategory = async (req, res) => {
     const data = req.body;
     const file = req.file;
     const newCategory = await categoryService.createCategory(data, file);
+    publishCategoryEvent("CREATE", newCategory);
     res.status(201).json(newCategory);
   } catch (error) {
     console.error("Error creating category:", error);
@@ -41,6 +43,7 @@ export const updateCategory = async (req, res) => {
     const data = req.body;
     const file = req.file;
     const updated = await categoryService.updateCategory(id, data, file);
+    publishCategoryEvent("UPDATE", updated);
     res.status(200).json(updated);
   } catch (error) {
     console.error("Error updating category:", error);
@@ -55,6 +58,7 @@ export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await categoryService.deleteCategory(id);
+    publishCategoryEvent("DELETE", { id });
     res.status(200).json(result);
   } catch (error) {
     console.error("Error deleting category:", error);

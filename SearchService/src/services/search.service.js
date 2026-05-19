@@ -1,6 +1,55 @@
 import typesenseClient from "../config/typesense.config.js";
+import { normalizeVietnamese } from "../utils/product-transformer.js";
 
 const COLLECTION_NAME = "d4c_products";
+
+export function buildFilterString(query) {
+  const filters = [];
+
+  if (query.filter_by) {
+    filters.push(query.filter_by);
+  }
+
+  if (query.category) {
+    const cats = Array.isArray(query.category) ? query.category : [query.category];
+    const catExpr = cats.map((c) => `category_norm:="${normalizeVietnamese(c)}"`).join(" || ");
+    filters.push(catExpr);
+  }
+
+  if (query.brand) {
+    const brands = Array.isArray(query.brand) ? query.brand : [query.brand];
+    const brandExpr = brands.map((b) => `brand_norm:="${normalizeVietnamese(b)}"`).join(" || ");
+    filters.push(brandExpr);
+  }
+
+  if (query.priceMin !== undefined && query.priceMin !== "") {
+    const minVal = Number(query.priceMin);
+    if (!Number.isNaN(minVal)) {
+      filters.push(`price:>=${minVal}`);
+    }
+  }
+
+  if (query.priceMax !== undefined && query.priceMax !== "") {
+    const maxVal = Number(query.priceMax);
+    if (!Number.isNaN(maxVal)) {
+      filters.push(`price:<=${maxVal}`);
+    }
+  }
+
+  if (query.size) {
+    const sizes = Array.isArray(query.size) ? query.size : [query.size];
+    const sizeExpr = sizes.map((s) => `sizes:="${s}"`).join(" || ");
+    filters.push(sizeExpr);
+  }
+
+  if (query.color) {
+    const colors = Array.isArray(query.color) ? query.color : [query.color];
+    const colorExpr = colors.map((c) => `colors:="${c}"`).join(" || ");
+    filters.push(colorExpr);
+  }
+
+  return filters.length > 0 ? filters.join(" && ") : undefined;
+}
 
 export async function searchProducts(query, options = {}) {
   const {
