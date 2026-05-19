@@ -10,6 +10,9 @@ export async function searchCategories(options = {}) {
     sort_by = "createdAt:desc",
   } = options;
 
+  const pageNum = Number(page);
+  const limitNum = Number(limit);
+
   const allowedSortFields = ["name", "createdAt"];
   const rawSortBy = sort_by || "createdAt:desc";
   const validatedSortBy = rawSortBy
@@ -25,8 +28,8 @@ export async function searchCategories(options = {}) {
     collection: COLLECTION_NAME,
     q: q,
     query_by: "name,description",
-    page: Math.max(1, Number(page)),
-    per_page: Math.min(100, Math.max(1, Number(limit))),
+    page: Math.max(1, Number.isNaN(pageNum) ? 1 : pageNum),
+    per_page: Math.min(100, Math.max(1, Number.isNaN(limitNum) ? 20 : limitNum)),
     sort_by: validatedSortBy,
   };
 
