@@ -54,6 +54,7 @@ export async function connect() {
 
   // Bind DLQ to DLX
   await channel.bindQueue(DLQ_QUEUE, DLX_EXCHANGE, DLQ_ROUTING_KEY);
+  await channel.bindQueue(DLQ_QUEUE, DLX_EXCHANGE, CATEGORY_DLQ_ROUTING_KEY);
 
   // Declare main exchange (topic)
   await channel.assertExchange(EXCHANGE, "topic", { durable: true });
