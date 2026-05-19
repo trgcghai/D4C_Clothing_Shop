@@ -1,8 +1,24 @@
-import { searchProducts, buildFilterString } from "../services/search.service.js";
+import {
+  searchProducts,
+  buildFilterString,
+} from "../services/search.service.js";
 
 export const handleSearch = async (req, res) => {
   try {
-    const { q, page, limit, filter_by, sort_by, category, brand, priceMin, priceMax, size, color } = req.query;
+    const {
+      q,
+      page,
+      limit,
+      filter_by,
+      sort_by,
+      category,
+      brand,
+      priceMin,
+      priceMax,
+      size,
+      color,
+      gender,
+    } = req.query;
 
     if (!q || q.trim() === "") {
       return res.status(400).json({
@@ -18,6 +34,7 @@ export const handleSearch = async (req, res) => {
       priceMax,
       size,
       color,
+      gender,
     });
 
     const options = {};

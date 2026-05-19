@@ -1,6 +1,11 @@
 import { toTypesenseDoc } from "./product-transformer.js";
 import { toCategoryTypesenseDoc } from "./category-transformer.js";
-import { upsertDoc, deleteDoc, upsertCategoryDoc, deleteCategoryDoc } from "../services/sync.service.js";
+import {
+  upsertDoc,
+  deleteDoc,
+  upsertCategoryDoc,
+  deleteCategoryDoc,
+} from "../services/sync.service.js";
 import { reindexProductsByCategory } from "../services/product-reindex.service.js";
 
 export async function processEvent(eventType, data) {
@@ -26,7 +31,11 @@ export async function processEvent(eventType, data) {
         try {
           await reindexProductsByCategory(data.id);
         } catch (err) {
-          console.error(`Failed to reindex products for category ${data.id}:`, err.message);
+          console.error(
+            `Failed to reindex products for category ${data.id}:`,
+            err.message,
+          );
+          throw err; // Rethrow to trigger retry mechanism
         }
       }
       break;
