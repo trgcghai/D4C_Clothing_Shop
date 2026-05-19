@@ -1,6 +1,64 @@
 import typesenseClient from "../config/typesense.config.js";
+import { normalizeVietnamese } from "../utils/product-transformer.js";
 
 const COLLECTION_NAME = "d4c_products";
+
+function escapeFilterValue(val) {
+  return String(val).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function flattenFilterValue(value) {
+  const arr = Array.isArray(value) ? value : [value];
+  return arr.flatMap((v) => v.split(",").map((x) => x.trim()).filter(Boolean));
+}
+
+export function buildFilterString(query) {
+  const filters = [];
+
+  if (query.filter_by) {
+    filters.push(query.filter_by);
+  }
+
+  if (query.category) {
+    const cats = flattenFilterValue(query.category);
+    const catExpr = cats.map((c) => `category_norm:="${escapeFilterValue(normalizeVietnamese(c))}"`).join(" || ");
+    filters.push(cats.length > 1 ? `(${catExpr})` : catExpr);
+  }
+
+  if (query.brand) {
+    const brands = flattenFilterValue(query.brand);
+    const brandExpr = brands.map((b) => `brand_norm:="${escapeFilterValue(normalizeVietnamese(b))}"`).join(" || ");
+    filters.push(brands.length > 1 ? `(${brandExpr})` : brandExpr);
+  }
+
+  if (query.priceMin !== undefined && query.priceMin !== "") {
+    const minVal = Number(query.priceMin);
+    if (!Number.isNaN(minVal)) {
+      filters.push(`price:>=${minVal}`);
+    }
+  }
+
+  if (query.priceMax !== undefined && query.priceMax !== "") {
+    const maxVal = Number(query.priceMax);
+    if (!Number.isNaN(maxVal)) {
+      filters.push(`price:<=${maxVal}`);
+    }
+  }
+
+  if (query.size) {
+    const sizes = flattenFilterValue(query.size);
+    const sizeExpr = sizes.map((s) => `sizes:="${escapeFilterValue(s)}"`).join(" || ");
+    filters.push(sizes.length > 1 ? `(${sizeExpr})` : sizeExpr);
+  }
+
+  if (query.color) {
+    const colors = flattenFilterValue(query.color);
+    const colorExpr = colors.map((c) => `colors:="${escapeFilterValue(c)}"`).join(" || ");
+    filters.push(colors.length > 1 ? `(${colorExpr})` : colorExpr);
+  }
+
+  return filters.length > 0 ? filters.join(" && ") : undefined;
+}
 
 export async function searchProducts(query, options = {}) {
   const {

@@ -15,7 +15,7 @@ const VI_DIACRITICS_MAP = {
   D: "Đ",
 };
 
-function normalizeVietnamese(text) {
+export function normalizeVietnamese(text) {
   if (!text) return "";
   let result = String(text);
   for (const [base, variants] of Object.entries(VI_DIACRITICS_MAP)) {
@@ -51,6 +51,8 @@ export function toTypesenseDoc(product) {
         })()
       : 0,
     variants: product.variants || [],
+    sizes: [...new Set((product.variants || []).map((v) => v.size).filter(Boolean))],
+    colors: [...new Set((product.variants || []).map((v) => v.color).filter(Boolean))],
     name_norm: normalizeVietnamese(name),
     description_norm: normalizeVietnamese(description),
     category_norm: normalizeVietnamese(category),

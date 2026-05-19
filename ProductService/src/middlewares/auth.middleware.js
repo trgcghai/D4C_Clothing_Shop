@@ -18,7 +18,7 @@ export const requireAuth = (req, res, next) => {
 export const requireAdmin = (req, res, next) => {
   const userRoles = req.headers["x-user-roles"];
 
-  if (!userRoles.split(",").includes("ADMIN")) {
+  if (!userRoles || !userRoles.split(",").includes("ADMIN")) {
     return res.status(403).json({
       error: "Forbidden",
       message: "Admin role required",

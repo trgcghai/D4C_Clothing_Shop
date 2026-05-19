@@ -2,11 +2,14 @@ import express from "express";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import searchRoutes from "./routes/search.routes.js";
+import categoryRoutes from "./routes/category.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
-import { ensureCollection } from "./services/sync.service.js";
+import { ensureCollection, ensureCategoryCollection } from "./services/sync.service.js";
 import { initialSync } from "./services/initial-sync.service.js";
+import { initialCategorySync } from "./services/category-initial-sync.service.js";
 import { connect } from "./config/rabbitmq.config.js";
 import { startConsumer } from "./consumers/product-event.consumer.js";
+import { startCategoryConsumer } from "./consumers/category-event.consumer.js";
 import eurekaClient from "./config/eureka.config.js";
 
 dotenv.config();
@@ -18,8 +21,9 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes (admin first to avoid shadowing)
+// Routes (most specific first to avoid shadowing)
 app.use("/api/search/admin", adminRoutes);
+app.use("/api/search/categories", categoryRoutes);
 app.use("/api/search", searchRoutes);
 
 // Health check
@@ -32,15 +36,18 @@ app.get("/health", (req, res) => {
 
 async function bootstrap() {
   try {
-    // Ensure Typesense collection exists
+    // Ensure Typesense collections exist
     await ensureCollection();
+    await ensureCategoryCollection();
 
     // Initial sync from ProductService
     await initialSync();
+    await initialCategorySync();
 
-    // Connect to RabbitMQ and start consumer
+    // Connect to RabbitMQ and start consumers
     await connect();
     await startConsumer();
+    await startCategoryConsumer();
 
     // Start Express server
     const server = app.listen(PORT, () => {

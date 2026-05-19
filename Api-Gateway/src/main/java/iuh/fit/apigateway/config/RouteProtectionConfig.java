@@ -10,7 +10,6 @@ public class RouteProtectionConfig {
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/",
-            "/api/categories/",
             "/api/webhooks/",
             "/api/search/",
             "/v3/api-docs/",
@@ -32,6 +31,14 @@ public class RouteProtectionConfig {
         // Product routes: GET is public, POST / PUT / DELETE / PATCH require
         // authentication
         if (path.startsWith("/api/products")) {
+            if (method == HttpMethod.GET) {
+                return AccessLevel.PUBLIC;
+            }
+            return AccessLevel.AUTHENTICATED;
+        }
+
+        // Category routes: GET is public, POST / PUT / DELETE require authentication
+        if (path.startsWith("/api/categories")) {
             if (method == HttpMethod.GET) {
                 return AccessLevel.PUBLIC;
             }

@@ -15,6 +15,14 @@ export const ROUTING_KEYS = {
   DELETE: "product.deleted",
 };
 
+export const CATEGORY_QUEUE = "search.category.queue";
+export const CATEGORY_DLQ_ROUTING_KEY = "category.failed";
+export const CATEGORY_ROUTING_KEYS = {
+  CREATE: "category.created",
+  UPDATE: "category.updated",
+  DELETE: "category.deleted",
+};
+
 let connection = null;
 let channel = null;
 
@@ -46,6 +54,7 @@ export async function connect() {
 
   // Bind DLQ to DLX
   await channel.bindQueue(DLQ_QUEUE, DLX_EXCHANGE, DLQ_ROUTING_KEY);
+  await channel.bindQueue(DLQ_QUEUE, DLX_EXCHANGE, CATEGORY_DLQ_ROUTING_KEY);
 
   // Declare main exchange (topic)
   await channel.assertExchange(EXCHANGE, "topic", { durable: true });
@@ -66,6 +75,8 @@ export async function connect() {
   await channel.bindQueue(QUEUE, EXCHANGE, ROUTING_KEYS.UPDATE);
   await channel.bindQueue(QUEUE, EXCHANGE, ROUTING_KEYS.DELETE);
 
+  await setupCategoryQueue();
+
   console.log("RabbitMQ connected, exchange and queues declared");
   return { connection, channel };
 }
@@ -75,6 +86,24 @@ export async function getChannel() {
     await connect();
   }
   return channel;
+}
+
+export async function setupCategoryQueue() {
+  await channel.assertQueue(CATEGORY_QUEUE, {
+    durable: true,
+    arguments: {
+      "x-queue-type": "quorum",
+      "x-dead-letter-exchange": DLX_EXCHANGE,
+      "x-dead-letter-routing-key": CATEGORY_DLQ_ROUTING_KEY,
+      "x-message-ttl": 300000,
+    },
+  });
+
+  await channel.bindQueue(CATEGORY_QUEUE, EXCHANGE, CATEGORY_ROUTING_KEYS.CREATE);
+  await channel.bindQueue(CATEGORY_QUEUE, EXCHANGE, CATEGORY_ROUTING_KEYS.UPDATE);
+  await channel.bindQueue(CATEGORY_QUEUE, EXCHANGE, CATEGORY_ROUTING_KEYS.DELETE);
+
+  console.log("Category queue and bindings declared");
 }
 
 export async function close() {

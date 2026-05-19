@@ -1,19 +1,46 @@
-import { searchProducts } from "../services/search.service.js";
+import {
+  searchProducts,
+  buildFilterString,
+} from "../services/search.service.js";
 
 export const handleSearch = async (req, res) => {
   try {
-    const { q, page, limit, filter_by, sort_by } = req.query;
+    const {
+      q,
+      page,
+      limit,
+      filter_by,
+      sort_by,
+      category,
+      brand,
+      priceMin,
+      priceMax,
+      size,
+      color,
+      gender,
+    } = req.query;
 
     if (!q || q.trim() === "") {
       return res.status(400).json({
-        message: "Vui lòng nhập từ khóa tìm kiếm",
+        message: "Vui long nhap tu khoa tim kiem",
       });
     }
+
+    const dynamicFilter = buildFilterString({
+      filter_by,
+      category,
+      brand,
+      priceMin,
+      priceMax,
+      size,
+      color,
+      gender,
+    });
 
     const options = {};
     if (page) options.page = page;
     if (limit) options.limit = limit;
-    if (filter_by) options.filter_by = filter_by;
+    options.filter_by = dynamicFilter || filter_by;
     if (sort_by) options.sort_by = sort_by;
 
     const result = await searchProducts(q.trim(), options);

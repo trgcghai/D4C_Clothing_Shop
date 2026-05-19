@@ -7,6 +7,7 @@ import { useProducts } from "../hooks/useProducts";
 import { useSearchResults } from "@/src/hooks/useSearchResults";
 import { useCategories } from "../hooks/useCategories";
 import type { ProductFilters } from "../services/productApi";
+import type { SearchOptions } from "../services/searchApi";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/src/lib/utils";
@@ -70,13 +71,20 @@ const ProductsPage = () => {
   const { data: dataFromProducts, isLoading: isLoadingFromProducts } =
     useProducts(filters);
 
-  const searchOptions = useMemo(
+  const searchOptions: SearchOptions = useMemo(
     () => ({
       page,
       limit,
+      category: categoryId
+        ? categories.find((c) => c.id === categoryId)?.name
+        : undefined,
+      brand,
+      size,
+      color,
+      gender,
       sort_by: sort,
     }),
-    [page, limit, sort],
+    [page, limit, sort, categoryId, categories, brand, size, color, gender],
   );
 
   const { data: searchData, isLoading: searchLoading } = useSearchResults(

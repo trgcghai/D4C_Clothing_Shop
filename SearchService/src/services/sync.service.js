@@ -19,6 +19,8 @@ const COLLECTION_SCHEMA = {
     { name: "gender", type: "string", facet: true, optional: true },
     { name: "price", type: "float", facet: true },
     { name: "tags", type: "string[]", optional: true },
+    { name: "sizes", type: "string[]", facet: true, optional: true },
+    { name: "colors", type: "string[]", facet: true, optional: true },
     { name: "imageUrl", type: "string", index: false, optional: true },
     { name: "isFeatured", type: "bool", optional: true },
     { name: "createdAt", type: "int64" },
@@ -101,6 +103,76 @@ export async function deleteDoc(id) {
   } catch (err) {
     if (err.httpStatus === 404) {
       console.log(`Document ${id} not found in Typesense, skipping delete`);
+      return null;
+    }
+    throw err;
+  }
+}
+
+const CATEGORY_COLLECTION_NAME = "d4c_categories";
+
+const CATEGORY_COLLECTION_SCHEMA = {
+  name: CATEGORY_COLLECTION_NAME,
+  fields: [
+    { name: "id", type: "string" },
+    { name: "name", type: "string", locale: "vi", facet: true },
+    { name: "description", type: "string", locale: "vi", optional: true },
+    { name: "imageUrl", type: "string", index: false, optional: true },
+    { name: "createdAt", type: "int64" },
+    { name: "updatedAt", type: "int64" },
+  ],
+  default_sorting_field: "createdAt",
+};
+
+export async function ensureCategoryCollection() {
+  const maxRetries = 10;
+  const retryDelay = 3000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const collections = await typesenseClient.collections().retrieve();
+      const exists = collections.find((c) => c.name === CATEGORY_COLLECTION_NAME);
+
+      if (exists) {
+        console.log(`Dropping existing collection "${CATEGORY_COLLECTION_NAME}" to recreate...`);
+        await typesenseClient.collections(CATEGORY_COLLECTION_NAME).delete();
+      }
+
+      const collection = await typesenseClient.collections().create(CATEGORY_COLLECTION_SCHEMA);
+      console.log(`Typesense collection "${CATEGORY_COLLECTION_NAME}" created`);
+      return collection;
+    } catch (err) {
+      if (err.httpStatus === 503 && attempt < maxRetries) {
+        console.log(`Typesense not ready for categories (attempt ${attempt}/${maxRetries}), retrying in ${retryDelay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        continue;
+      }
+      if (err.httpStatus === 409 && attempt < maxRetries) {
+        console.log(`Category collection already exists (race condition), retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+export async function upsertCategoryDoc(doc) {
+  return await typesenseClient
+    .collections(CATEGORY_COLLECTION_NAME)
+    .documents()
+    .upsert(doc);
+}
+
+export async function deleteCategoryDoc(id) {
+  try {
+    return await typesenseClient
+      .collections(CATEGORY_COLLECTION_NAME)
+      .documents(id)
+      .delete();
+  } catch (err) {
+    if (err.httpStatus === 404) {
+      console.log(`Category document ${id} not found in Typesense, skipping delete`);
       return null;
     }
     throw err;
