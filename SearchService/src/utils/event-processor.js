@@ -1,6 +1,7 @@
 import { toTypesenseDoc } from "./product-transformer.js";
 import { toCategoryTypesenseDoc } from "./category-transformer.js";
 import { upsertDoc, deleteDoc, upsertCategoryDoc, deleteCategoryDoc } from "../services/sync.service.js";
+import { reindexProductsByCategory } from "../services/product-reindex.service.js";
 
 export async function processEvent(eventType, data) {
   switch (eventType) {
@@ -19,6 +20,15 @@ export async function processEvent(eventType, data) {
       const catDoc = toCategoryTypesenseDoc(data);
       await upsertCategoryDoc(catDoc);
       console.log(`Category ${data.id} synced to Typesense (${eventType})`);
+
+      // Reindex products when category is updated to refresh denormalized category name
+      if (eventType === "CATEGORY_UPDATED" && data.id) {
+        try {
+          await reindexProductsByCategory(data.id);
+        } catch (err) {
+          console.error(`Failed to reindex products for category ${data.id}:`, err.message);
+        }
+      }
       break;
     case "CATEGORY_DELETED":
       await deleteCategoryDoc(data.id);
