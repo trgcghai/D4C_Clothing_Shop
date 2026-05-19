@@ -6,6 +6,7 @@ import categoryRoutes from "./routes/category.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import { ensureCollection, ensureCategoryCollection } from "./services/sync.service.js";
 import { initialSync } from "./services/initial-sync.service.js";
+import { initialCategorySync } from "./services/category-initial-sync.service.js";
 import { connect } from "./config/rabbitmq.config.js";
 import { startConsumer } from "./consumers/product-event.consumer.js";
 import { startCategoryConsumer } from "./consumers/category-event.consumer.js";
@@ -41,6 +42,7 @@ async function bootstrap() {
 
     // Initial sync from ProductService
     await initialSync();
+    await initialCategorySync();
 
     // Connect to RabbitMQ and start consumers
     await connect();
