@@ -133,16 +133,12 @@ export default function PaymentPage() {
     return () => {
       if (!paymentCompletedRef.current && paymentId) {
         const pid = parseInt(paymentId, 10);
-        fetch(
-          `${import.meta.env.VITE_PAYMENT_SERVICE_URL}/api/payments/${pid}/cancel`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+        fetch(`/api/payments/${pid}/cancel`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ).catch(() => {});
+        }).catch(() => {});
       }
     };
   }, []);
@@ -151,9 +147,7 @@ export default function PaymentPage() {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
         const pid = parseInt(paymentId, 10);
-        navigator.sendBeacon(
-          `${import.meta.env.VITE_PAYMENT_SERVICE_URL}/api/payments/${pid}/cancel`,
-        );
+        navigator.sendBeacon(`/api/payments/${pid}/cancel`);
       }
     };
     window.addEventListener("beforeunload", handler);
