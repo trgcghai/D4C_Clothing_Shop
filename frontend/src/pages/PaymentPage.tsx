@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useCountdownTimer } from "use-countdown-timer";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,38 +24,6 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
-
-function useCountdown(expiresAt: string | null, onExpire: () => void) {
-  const [remaining, setRemaining] = useState(0);
-  const expiredRef = useRef(false);
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const end = new Date(expiresAt).getTime();
-    const tick = () => {
-      const left = end - Date.now();
-      if (left <= 0 && !expiredRef.current) {
-        expiredRef.current = true;
-        setRemaining(0);
-        onExpire();
-      } else {
-        setRemaining(Math.max(0, left));
-      }
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [expiresAt, onExpire]);
-
-  return remaining;
-}
-
-function formatTime(ms: number) {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
 
 export default function PaymentPage() {
   const { paymentId } = useParams<{ paymentId: string }>();
@@ -86,17 +55,14 @@ export default function PaymentPage() {
   const isProcessing =
     cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
 
-  const handleExpire = async () => {
-    if (paymentCompletedRef.current || !paymentId || !order) return;
-    try {
-      await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
-      await cancelOrder(order.id);
-      toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
-      navigate("/orders");
-    } catch {}
-  };
-
-  const remaining = useCountdown(payment?.expiresAt ?? null, handleExpire);
+  const timerMs = payment?.expiresAt
+    ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
+    : 0;
+  const { countdown } = useCountdownTimer({
+    timer: timerMs,
+    autostart: true,
+    onExpire: () => {},
+  });
 
   const isCompleted =
     paymentStatus?.status === "PAID" || paymentStatus?.status === "CANCELLED";
@@ -264,11 +230,11 @@ export default function PaymentPage() {
 
           <Separator />
 
-          {remaining > 0 && (
+          {countdown > 0 && (
             <div className="flex items-center justify-center gap-2 text-amber-600">
               <Clock className="h-4 w-4" />
               <span className="font-mono font-semibold text-lg">
-                {formatTime(remaining)}
+                {`${Math.floor(countdown / 60000).toString().padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000).toString().padStart(2, "0")}`}
               </span>
               <span className="text-sm">còn lại để thanh toán</span>
             </div>
