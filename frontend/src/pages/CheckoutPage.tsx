@@ -14,9 +14,7 @@ import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
-import {
-  useCreateOrderFromCheckout,
-} from "@/src/hooks/useUserOrders";
+import { useCreateOrderFromCheckout } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
 import type { PaymentMethod } from "@/src/services/paymentApi";
 import AddressForm from "@/src/components/profile/AddressForm";
@@ -241,7 +239,9 @@ export default function CheckoutPage() {
             {hasAddress ? (
               <div className="rounded-lg border p-4 text-sm space-y-1">
                 <p>{user?.street}</p>
-                <p>{user?.ward}, {user?.province}</p>
+                <p>
+                  {user?.ward}, {user?.province}
+                </p>
               </div>
             ) : (
               <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
@@ -253,7 +253,7 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div className="rounded-lg border p-6 space-y-4">
+          <div className="rounded-lg border p-6 space-y-4 h-fit">
             <h2 className="text-lg font-semibold">Đơn hàng</h2>
             <Separator />
             <div className="space-y-2 max-h-48 overflow-y-auto">
