@@ -4,6 +4,7 @@ import com.iuh.fit.domain.dto.OrderPaidEvent;
 import com.iuh.fit.domain.dto.PaymentConfirmedEvent;
 import com.iuh.fit.domain.entity.Order;
 import com.iuh.fit.domain.enums.OrderStatus;
+import com.iuh.fit.exception.ResourceNotFoundException;
 import com.iuh.fit.repository.OrderRepository;
 import com.iuh.fit.service.OrderEventPublisher;
 
@@ -36,11 +37,9 @@ public class PaymentConfirmedEventConsumer {
 
         log.info("Received PaymentConfirmedEvent for orderId: {}", event.getOrderId());
 
-        Order order = orderRepository.findById(event.getOrderId()).orElse(null);
-        if (order == null) {
-            log.error("Order not found for PaymentConfirmedEvent: orderId={}. Acking message to prevent requeue.", event.getOrderId());
-            return;
-        }
+        Order order = orderRepository.findById(event.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order not found for PaymentConfirmedEvent: orderId=" + event.getOrderId()));
 
         if (order.getStatus() == OrderStatus.PAID) {
             log.info("Order {} already PAID, skipping", event.getOrderId());

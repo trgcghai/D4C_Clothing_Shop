@@ -4,6 +4,9 @@ const RABBITMQ_URL = `amqp://${process.env.RABBITMQ_USER || "guest"}:${process.e
 const ORDER_EXCHANGE = "order.exchange";
 const ORDER_CANCELLED_ROUTING_KEY = "order.cancelled";
 const QUEUE_NAME = "order.cancelled.queue";
+const DLX_EXCHANGE = "order.dlx";
+const DLQ_QUEUE = "order.cancelled.dlq";
+const DLQ_ROUTING_KEY = "order.dlq";
 
 let connection = null;
 let channel = null;
@@ -11,9 +14,23 @@ let reconnectTimer = null;
 
 async function setupChannel() {
   channel = await connection.createChannel();
+
+  // Main exchange and queue with DLQ
   await channel.assertExchange(ORDER_EXCHANGE, "topic", { durable: true });
-  await channel.assertQueue(QUEUE_NAME, { durable: true });
+  await channel.assertExchange(DLX_EXCHANGE, "topic", { durable: true });
+  await channel.assertQueue(DLQ_QUEUE, { durable: true });
+  await channel.bindQueue(DLQ_QUEUE, DLX_EXCHANGE, DLQ_ROUTING_KEY);
+
+  await channel.assertQueue(QUEUE_NAME, {
+    durable: true,
+    arguments: {
+      "x-dead-letter-exchange": DLX_EXCHANGE,
+      "x-dead-letter-routing-key": DLQ_ROUTING_KEY,
+      "x-message-ttl": 300000,
+    },
+  });
   await channel.bindQueue(QUEUE_NAME, ORDER_EXCHANGE, ORDER_CANCELLED_ROUTING_KEY);
+
   console.log("ProductService RabbitMQ consumer channel ready");
 }
 
@@ -67,7 +84,8 @@ export async function consumeOrderCancelled(handler) {
         channel.ack(msg);
       } catch (err) {
         console.error("Failed to process order cancelled event:", err.message);
-        channel.nack(msg, false, false);
+        // Requeue on failure (true = requeue). DLQ will catch after TTL.
+        channel.nack(msg, false, true);
       }
     });
     console.log("Listening for order.cancelled events on queue:", QUEUE_NAME);

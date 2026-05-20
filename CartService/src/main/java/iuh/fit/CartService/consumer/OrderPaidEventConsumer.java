@@ -1,13 +1,12 @@
 package iuh.fit.CartService.consumer;
 
+import iuh.fit.CartService.domain.dto.OrderPaidEvent;
 import iuh.fit.CartService.service.CartService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
 
 @Component
 public class OrderPaidEventConsumer {
@@ -21,19 +20,19 @@ public class OrderPaidEventConsumer {
     }
 
     @RabbitListener(queues = "order.paid.queue")
-    public void handleOrderPaid(Map<String, Object> event) {
+    public void handleOrderPaid(OrderPaidEvent event) {
         if (event == null) {
             log.error("Received null OrderPaidEvent");
             return;
         }
 
-        Long userId = event.get("userId") != null ? Long.valueOf(event.get("userId").toString()) : null;
+        Long userId = event.getUserId();
         if (userId == null) {
             log.error("OrderPaidEvent has no userId");
             return;
         }
 
-        log.info("Received OrderPaidEvent for userId: {}", userId);
+        log.info("Received OrderPaidEvent for userId: {}, orderId: {}", userId, event.getOrderId());
 
         try {
             cartService.clearCart(userId);

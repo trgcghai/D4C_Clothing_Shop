@@ -17,6 +17,7 @@ public class RabbitMQConfig {
     public static final String PAYMENT_EXCHANGE = "payment.exchange";
     public static final String PAYMENT_CONFIRMED_ROUTING_KEY = "payment.confirmed";
     public static final String PAYMENT_EXPIRED_ROUTING_KEY = "payment.expired";
+    public static final String PAYMENT_CANCELLED_ROUTING_KEY = "payment.cancelled";
 
     @Bean
     public TopicExchange paymentExchange() {

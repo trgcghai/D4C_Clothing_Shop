@@ -364,7 +364,7 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setErrorMessage(e.getMessage());
             notificationRepository.save(notification);
 
-            throw new RuntimeException("Failed to send order created email", e);
+            // Don't throw — message is persisted as FAILED, consumer will ack
         }
     }
 
@@ -415,7 +415,7 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setErrorMessage(e.getMessage());
             notificationRepository.save(notification);
 
-            throw new RuntimeException("Failed to send order paid email", e);
+            // Don't throw — message is persisted as FAILED, consumer will ack
         }
     }
 
@@ -466,7 +466,7 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setErrorMessage(e.getMessage());
             notificationRepository.save(notification);
 
-            throw new RuntimeException("Failed to send order cancelled email", e);
+            // Don't throw — message is persisted as FAILED, consumer will ack
         }
     }
 }

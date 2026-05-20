@@ -1,6 +1,7 @@
 package iuh.fit.PaymentService.service;
 
 import iuh.fit.PaymentService.client.OrderClient;
+import iuh.fit.PaymentService.config.RabbitMQConfig;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.CreatePaymentRequest;
 import iuh.fit.PaymentService.domain.dto.PaymentResponse;
@@ -8,8 +9,10 @@ import iuh.fit.PaymentService.domain.dto.PaymentStatusResponse;
 import iuh.fit.PaymentService.domain.entity.Payment;
 import iuh.fit.PaymentService.domain.enums.PaymentMethod;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
+import iuh.fit.PaymentService.domain.event.PaymentCancelledEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
 import iuh.fit.PaymentService.repository.PaymentRepository;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,9 @@ public class PaymentService {
 
     @Autowired
     private OrderClient orderClient;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
@@ -106,6 +112,24 @@ public class PaymentService {
                     .orElseThrow(() -> new PaymentException("Payment not found"));
             throw new PaymentException("Cannot cancel payment with status: " + payment.getStatus());
         }
+
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment != null) {
+            PaymentCancelledEvent event = new PaymentCancelledEvent(
+                    payment.getId(),
+                    payment.getOrderId(),
+                    payment.getCheckoutOrderId(),
+                    payment.getPaymentCode(),
+                    payment.getAmount(),
+                    Instant.now()
+            );
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.PAYMENT_EXCHANGE,
+                    RabbitMQConfig.PAYMENT_CANCELLED_ROUTING_KEY,
+                    event
+            );
+        }
+
         return new PaymentStatusResponse(paymentId, PaymentStatus.CANCELLED, null);
     }
 
