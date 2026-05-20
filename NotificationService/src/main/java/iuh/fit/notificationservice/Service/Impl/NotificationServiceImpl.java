@@ -370,13 +370,103 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendOrderPaidEmail(OrderStatusEvent event) {
-        // TODO: Implement when order paid notification is needed
-        log.info("Order paid email handler stub - orderId: {}", event.getOrderId());
+        if (event.getEmail() == null) {
+            log.warn("Order event has no email for orderId {}, skipping", event.getOrderId());
+            return;
+        }
+        java.util.Map<String, String> templateVars = new java.util.HashMap<>();
+        templateVars.put("orderId", event.getOrderId() != null ? event.getOrderId().toString() : "N/A");
+
+        Notification notification = Notification.builder()
+                .userId(event.getUserId())
+                .type(NotificationType.ORDER_CONFIRMATION)
+                .subject("Thanh toán thành công - D4C Clothing Shop")
+                .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
+                .status(NotificationStatus.PENDING)
+                .templateName("order-paid")
+                .templateVars(templateVars)
+                .provider(NotificationProvider.SMTP)
+                .retryCount(0)
+                .build();
+
+        notificationRepository.save(notification);
+
+        try {
+            String htmlContent = emailTemplateService.render("order-paid", templateVars);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(event.getEmail());
+            helper.setSubject(notification.getSubject());
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(LocalDateTime.now());
+            notificationRepository.save(notification);
+
+            log.info("Order paid email sent to {} for order {}", event.getEmail(), event.getOrderId());
+
+        } catch (MessagingException e) {
+            log.error("Failed to send order paid email to {}: {}", event.getEmail(), e.getMessage());
+
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setErrorMessage(e.getMessage());
+            notificationRepository.save(notification);
+
+            throw new RuntimeException("Failed to send order paid email", e);
+        }
     }
 
     @Override
     public void sendOrderCancelledEmail(OrderStatusEvent event) {
-        // TODO: Implement when order cancelled notification is needed
-        log.info("Order cancelled email handler stub - orderId: {}", event.getOrderId());
+        if (event.getEmail() == null) {
+            log.warn("Order event has no email for orderId {}, skipping", event.getOrderId());
+            return;
+        }
+        java.util.Map<String, String> templateVars = new java.util.HashMap<>();
+        templateVars.put("orderId", event.getOrderId() != null ? event.getOrderId().toString() : "N/A");
+
+        Notification notification = Notification.builder()
+                .userId(event.getUserId())
+                .type(NotificationType.ORDER_CONFIRMATION)
+                .subject("Đơn hàng đã bị hủy - D4C Clothing Shop")
+                .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
+                .status(NotificationStatus.PENDING)
+                .templateName("order-cancelled")
+                .templateVars(templateVars)
+                .provider(NotificationProvider.SMTP)
+                .retryCount(0)
+                .build();
+
+        notificationRepository.save(notification);
+
+        try {
+            String htmlContent = emailTemplateService.render("order-cancelled", templateVars);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(event.getEmail());
+            helper.setSubject(notification.getSubject());
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(LocalDateTime.now());
+            notificationRepository.save(notification);
+
+            log.info("Order cancelled email sent to {} for order {}", event.getEmail(), event.getOrderId());
+
+        } catch (MessagingException e) {
+            log.error("Failed to send order cancelled email to {}: {}", event.getEmail(), e.getMessage());
+
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setErrorMessage(e.getMessage());
+            notificationRepository.save(notification);
+
+            throw new RuntimeException("Failed to send order cancelled email", e);
+        }
     }
 }
