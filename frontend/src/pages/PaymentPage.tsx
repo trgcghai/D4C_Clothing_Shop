@@ -133,7 +133,7 @@ export default function PaymentPage() {
     return () => {
       if (!paymentCompletedRef.current && paymentId) {
         const pid = parseInt(paymentId, 10);
-        fetch(`/api/payments/${pid}/cancel`, {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/${pid}/cancel`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -147,7 +147,9 @@ export default function PaymentPage() {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
         const pid = parseInt(paymentId, 10);
-        navigator.sendBeacon(`/api/payments/${pid}/cancel`);
+        navigator.sendBeacon(
+          `${import.meta.env.VITE_API_BASE_URL}/api/payments/${pid}/cancel`,
+        );
       }
     };
     window.addEventListener("beforeunload", handler);
