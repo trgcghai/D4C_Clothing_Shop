@@ -125,11 +125,6 @@ public class PaymentService {
         return new PaymentStatusResponse(payment.getId(), PaymentStatus.PAID, now);
     }
 
-    @Transactional
-    public void expirePendingPayments() {
-        paymentRepository.expirePendingPayments(Instant.now());
-    }
-
     @Transactional(readOnly = true)
     public Page<PaymentResponse> getAllPayments(Pageable pageable) {
         return paymentRepository.findAll(pageable).map(this::toResponse);
