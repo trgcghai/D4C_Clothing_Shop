@@ -82,11 +82,18 @@ export default function PaymentPage() {
   const timerMs = payment?.expiresAt
     ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
     : 0;
-  const { countdown } = useCountdownTimer({
+  const { countdown, start } = useCountdownTimer({
     timer: timerMs,
-    autostart: true,
+    autostart: false,
     onExpire: () => handleCancelPayment("expired"),
   });
+
+  // Start countdown only after payment data is loaded
+  useEffect(() => {
+    if (payment && !paymentCompletedRef.current) {
+      start();
+    }
+  }, [payment]);
 
   useEffect(() => {
     const status = paymentStatus?.status;
