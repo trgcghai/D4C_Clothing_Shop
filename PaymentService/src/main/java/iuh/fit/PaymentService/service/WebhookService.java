@@ -3,14 +3,18 @@ package iuh.fit.PaymentService.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import iuh.fit.PaymentService.client.OrderClient;
 import iuh.fit.PaymentService.client.dto.UpdateOrderStatusRequest;
+import iuh.fit.PaymentService.config.RabbitMQConfig;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.SePayWebhookPayload;
+import iuh.fit.PaymentService.domain.entity.Payment;
 import iuh.fit.PaymentService.domain.entity.WebhookLog;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
+import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
 import iuh.fit.PaymentService.repository.WebhookLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +46,9 @@ public class WebhookService {
 
     @Autowired
     private SePayConfig sePayConfig;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -134,15 +141,25 @@ public class WebhookService {
                 log.info("Payment marked as PAID: {} (SePay tx: {})", paymentCode, payload.getId());
 
                 var payment = paymentService.findPaymentByPaymentCodeOrNull(paymentCode);
-                if (payment != null && payment.getCheckoutOrderId() != null) {
-                    try {
-                        orderClient.updateOrderStatus(payment.getOrderId(), new UpdateOrderStatusRequest("PAID", null));
-                        log.info("Order {} updated to PAID", payment.getOrderId());
-                    } catch (Exception e) {
-                        log.error("Failed to update order status for order {}: {}", payment.getOrderId(), e.getMessage());
-                    }
+                if (payment != null) {
+                    PaymentConfirmedEvent event = new PaymentConfirmedEvent(
+                            payment.getId(),
+                            payment.getOrderId(),
+                            payment.getCheckoutOrderId(),
+                            payment.getPaymentCode(),
+                            payment.getAmount(),
+                            payload.getId(),
+                            payload.getGateway(),
+                            Instant.now()
+                    );
+                    rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.PAYMENT_EXCHANGE,
+                            RabbitMQConfig.PAYMENT_CONFIRMED_ROUTING_KEY,
+                            event
+                    );
+                    log.info("Published PaymentConfirmedEvent for payment: {}", payment.getId());
                 } else {
-                    log.warn("Payment found but checkoutOrderId is null for code: {}", paymentCode);
+                    log.warn("Payment found but is null for code: {}", paymentCode);
                 }
             }
         } catch (PaymentException e) {
@@ -231,6 +248,11 @@ public class WebhookService {
             for (var p : pendingPayments) {
                 String storedNormalized = p.getPaymentCode().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
                 if (storedNormalized.equals(normalized) || storedNormalized.contains(normalized) || normalized.contains(storedNormalized)) {
+                    if (transferAmount < p.getAmount()) {
+                        log.warn("Amount mismatch for payment {}: expected={}, received={}",
+                                p.getPaymentCode(), p.getAmount(), transferAmount);
+                        continue;
+                    }
                     log.info("Matched payment by amount+code fuzzy: {} (amount: {})", p.getPaymentCode(), transferAmount);
                     return p.getPaymentCode();
                 }
