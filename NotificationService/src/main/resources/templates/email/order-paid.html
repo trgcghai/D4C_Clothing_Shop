@@ -2,14 +2,74 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Thanh toán thành công</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán thành công - D4C Clothing Shop</title>
 </head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h2 style="color: #16a34a;">Thanh toán thành công!</h2>
-    <p>Xin chào,</p>
-    <p>Thanh toán cho đơn hàng <strong th:text="${orderId}">#{orderId}</strong> đã được xác nhận.</p>
-    <p>Cảm ơn bạn đã mua sắm tại D4C Clothing Shop!</p>
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-    <p style="color: #6b7280; font-size: 14px;">D4C Clothing Shop</p>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #16a34a; padding: 30px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">D4C Clothing Shop</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="color: #16a34a; margin: 0 0 16px 0; font-size: 20px;">
+                                Thanh toán thành công
+                            </h2>
+                            <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                Cảm ơn bạn đã mua sắm tại D4C Clothing Shop. Thanh toán cho đơn hàng của bạn đã được xác nhận thành công.
+                            </p>
+
+                            <!-- Order Info -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto; width: 100%;">
+                                <tr>
+                                    <td style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px 30px;">
+                                        <p style="color: #16a34a; font-size: 12px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Mã đơn hàng</p>
+                                        <p style="color: #1a1a2e; font-size: 24px; font-weight: 700; margin: 0;" th:text="${orderId}">ORD-000000</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Status Badge -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto;">
+                                <tr>
+                                    <td style="background-color: #dcfce7; color: #16a34a; font-size: 14px; font-weight: 600; padding: 8px 20px; border-radius: 20px; text-align: center;">
+                                        Đã thanh toán
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="color: #555555; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
+                                Đơn hàng của bạn đang được xử lý và sẽ được giao sớm nhất có thể.
+                            </p>
+
+                            <p style="color: #888888; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ hỗ trợ.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f8f8; padding: 24px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="color: #888888; font-size: 12px; margin: 0;">
+                                Email này được gửi tự động từ D4C Clothing Shop. Vui lòng không trả lời email này.
+                            </p>
+                            <p style="color: #888888; font-size: 12px; margin: 8px 0 0 0;">
+                                &copy; 2026 D4C Clothing Shop. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
