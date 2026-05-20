@@ -8,6 +8,8 @@ import eurekaClient from "./config/eureka.config.js";
 import { openApiSpec } from "./config/openapi.js";
 import { connectEventPublisher } from "./services/event-publisher.service.js";
 import { close as closeRabbitMQ } from "./config/rabbitmq.publisher.js";
+import { connectConsumer, consumeOrderCancelled, closeConsumer } from "./config/rabbitmq.consumer.js";
+import { handleOrderCancelled } from "./consumers/orderCancelled.consumer.js";
 
 dotenv.config();
 
@@ -41,6 +43,11 @@ app.listen(PORT, () => {
 
   connectEventPublisher();
 
+  // Connect RabbitMQ consumer for order cancelled events
+  connectConsumer().then(() => {
+    consumeOrderCancelled(handleOrderCancelled);
+  });
+
   eurekaClient.start((err) => {
     if (err) {
       console.error("Eureka registration failed", err);
@@ -56,6 +63,7 @@ function gracefulShutdown(signal) {
     console.log("Eureka client stopped");
   });
   closeRabbitMQ().catch(console.error);
+  closeConsumer().catch(console.error);
   process.exit(0);
 }
 

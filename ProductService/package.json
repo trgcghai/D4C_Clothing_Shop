@@ -12,6 +12,7 @@
     "@aws-sdk/client-dynamodb": "^3.556.0",
     "@aws-sdk/client-s3": "^3.556.0",
     "@aws-sdk/lib-dynamodb": "^3.556.0",
+    "amqplib": "^0.10.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "eureka-js-client": "^4.5.0",
@@ -21,7 +22,6 @@
     "nodemon": "^3.1.14",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^9.0.1",
-    "amqplib": "^0.10.4"
+    "uuid": "^9.0.1"
   }
 }
