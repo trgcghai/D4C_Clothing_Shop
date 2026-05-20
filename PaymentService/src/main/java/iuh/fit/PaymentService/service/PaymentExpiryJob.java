@@ -9,6 +9,7 @@ import iuh.fit.PaymentService.repository.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,29 +33,37 @@ public class PaymentExpiryJob {
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void expirePendingPayments() {
+        // Query PENDING payments that are about to expire BEFORE updating
+        // This avoids the race condition of fetching by EXPIRED status (which could include previous runs)
+        List<Payment> expiringPayments = paymentRepository.findByStatus(PaymentStatus.PENDING,
+                PageRequest.of(0, 1000)).getContent().stream()
+                .filter(p -> p.getExpiresAt() != null && p.getExpiresAt().isBefore(Instant.now()))
+                .toList();
+
+        if (expiringPayments.isEmpty()) {
+            return;
+        }
+
+        // Mark them as EXPIRED
         int expired = paymentRepository.expirePendingPayments(Instant.now());
-        if (expired > 0) {
-            log.info("Expired {} pending payments", expired);
+        log.info("Expired {} pending payments", expired);
 
-            List<Payment> expiredPayments = paymentRepository.findByStatus(PaymentStatus.EXPIRED,
-                    org.springframework.data.domain.PageRequest.of(0, expired)).getContent();
-
-            for (Payment payment : expiredPayments) {
-                PaymentExpiredEvent event = new PaymentExpiredEvent(
-                        payment.getId(),
-                        payment.getOrderId(),
-                        payment.getCheckoutOrderId(),
-                        payment.getPaymentCode(),
-                        payment.getAmount(),
-                        Instant.now()
-                );
-                rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.PAYMENT_EXCHANGE,
-                        RabbitMQConfig.PAYMENT_EXPIRED_ROUTING_KEY,
-                        event
-                );
-                log.info("Published PaymentExpiredEvent for payment: {}", payment.getId());
-            }
+        // Publish events for the payments we identified
+        for (Payment payment : expiringPayments) {
+            PaymentExpiredEvent event = new PaymentExpiredEvent(
+                    payment.getId(),
+                    payment.getOrderId(),
+                    payment.getCheckoutOrderId(),
+                    payment.getPaymentCode(),
+                    payment.getAmount(),
+                    Instant.now()
+            );
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.PAYMENT_EXCHANGE,
+                    RabbitMQConfig.PAYMENT_EXPIRED_ROUTING_KEY,
+                    event
+            );
+            log.info("Published PaymentExpiredEvent for payment: {}", payment.getId());
         }
     }
 }

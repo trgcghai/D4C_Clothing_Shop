@@ -1,8 +1,6 @@
 package iuh.fit.PaymentService.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import iuh.fit.PaymentService.client.OrderClient;
-import iuh.fit.PaymentService.client.dto.UpdateOrderStatusRequest;
 import iuh.fit.PaymentService.config.RabbitMQConfig;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.SePayWebhookPayload;
@@ -11,6 +9,7 @@ import iuh.fit.PaymentService.domain.entity.WebhookLog;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
+import iuh.fit.PaymentService.repository.PaymentRepository;
 import iuh.fit.PaymentService.repository.WebhookLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,10 +38,10 @@ public class WebhookService {
     private WebhookLogRepository webhookLogRepository;
 
     @Autowired
-    private PaymentService paymentService;
+    private PaymentRepository paymentRepository;
 
     @Autowired
-    private OrderClient orderClient;
+    private PaymentService paymentService;
 
     @Autowired
     private SePayConfig sePayConfig;
@@ -244,7 +243,7 @@ public class WebhookService {
         }
 
         if (transferAmount != null) {
-            var pendingPayments = paymentService.getPendingPaymentsByAmount(transferAmount);
+            var pendingPayments = paymentRepository.findPendingByAmount(transferAmount);
             for (var p : pendingPayments) {
                 String storedNormalized = p.getPaymentCode().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
                 if (storedNormalized.equals(normalized) || storedNormalized.contains(normalized) || normalized.contains(storedNormalized)) {
