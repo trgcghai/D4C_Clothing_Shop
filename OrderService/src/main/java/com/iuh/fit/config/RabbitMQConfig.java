@@ -19,9 +19,18 @@ public class RabbitMQConfig {
     public static final String ORDER_PAID_ROUTING_KEY = "email.order.paid";
     public static final String ORDER_CANCELLED_ROUTING_KEY = "email.order.cancelled";
 
+    public static final String ORDER_EXCHANGE = "order.exchange";
+    public static final String ORDER_CANCELLED_EVENT_ROUTING_KEY = "order.cancelled";
+    public static final String ORDER_PAID_EVENT_ROUTING_KEY = "order.paid";
+
     @Bean
     public TopicExchange emailExchange() {
         return new TopicExchange(EMAIL_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange orderExchange() {
+        return new TopicExchange(ORDER_EXCHANGE);
     }
 
     @Bean
