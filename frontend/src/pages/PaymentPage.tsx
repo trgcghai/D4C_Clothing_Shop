@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { useCountdownTimer } from "use-countdown-timer";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useCountdownTimer } from "use-countdown-timer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,9 +11,9 @@ import {
   useCancelPayment,
 } from "@/src/hooks/usePayment";
 import { useRemoveCartItemsBulk } from "@/src/hooks/useCart";
-import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
+import { useUserOrderDetail, useCancelOrder } from "@/src/hooks/useUserOrders";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
-import { cancelOrder } from "@/src/services/orderApi";
+import { buildCancelPaymentUrl } from "@/src/services/paymentApi";
 import {
   ArrowLeft,
   Loader2,
@@ -30,12 +30,13 @@ export default function PaymentPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const removeItemIdsParam = searchParams.get("removeItemIds");
-  const removeItemIds = removeItemIdsParam
-    ? removeItemIdsParam
-        .split(",")
-        .map(Number)
-        .filter((n) => !isNaN(n) && n > 0)
-    : [];
+  const removeItemIds = useMemo(() => {
+    if (!removeItemIdsParam) return [];
+    return removeItemIdsParam
+      .split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n) && n > 0);
+  }, [removeItemIdsParam]);
 
   const id = paymentId ? parseInt(paymentId, 10) : null;
 
@@ -46,6 +47,7 @@ export default function PaymentPage() {
   } = usePaymentById(id);
   const { data: paymentStatus } = usePaymentStatus(id, !!id);
   const cancelPaymentMutation = useCancelPayment();
+  const cancelOrderMutation = useCancelOrder();
   const removeItemsBulkMutation = useRemoveCartItemsBulk();
   const { data: order } = useUserOrderDetail(payment?.orderId ?? null);
 
@@ -55,67 +57,68 @@ export default function PaymentPage() {
   const isProcessing =
     cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
 
+  const handleCancelPayment = useCallback(
+    async (reason: "user" | "expired") => {
+      if (paymentCompletedRef.current || !paymentId) return;
+      paymentCompletedRef.current = true;
+
+      try {
+        await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
+        if (order) {
+          await cancelOrderMutation.mutateAsync(order.id);
+        }
+        if (reason === "expired") {
+          toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
+        }
+        navigate("/orders");
+      } catch (error) {
+        paymentCompletedRef.current = false;
+        console.error("Failed to cancel payment:", error);
+      }
+    },
+    [paymentId, order, cancelPaymentMutation, cancelOrderMutation, navigate],
+  );
+
   const timerMs = payment?.expiresAt
     ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
     : 0;
   const { countdown } = useCountdownTimer({
     timer: timerMs,
     autostart: true,
-    onExpire: () => {},
+    onExpire: () => handleCancelPayment("expired"),
   });
 
-  const isCompleted =
-    paymentStatus?.status === "PAID" || paymentStatus?.status === "CANCELLED";
-
   useEffect(() => {
-    if (isCompleted) {
-      paymentCompletedRef.current = true;
-    }
-  }, [isCompleted]);
+    const status = paymentStatus?.status;
+    if (!status || status === "PENDING" || status === "EXPIRED") return;
 
-  useEffect(() => {
-    if (paymentStatus?.status === "PAID") {
-      const cleanupAndNavigate = async () => {
-        if (removeItemIds.length > 0) {
-          try {
-            await removeItemsBulkMutation.mutateAsync({
-              itemIds: removeItemIds,
-            });
-          } catch {
-            toast.warning("Không thể xóa giỏ hàng, vui lòng thử lại");
-          }
-        }
+    paymentCompletedRef.current = true;
+
+    if (status === "PAID") {
+      if (removeItemIds.length > 0) {
+        removeItemsBulkMutation.mutate({ itemIds: removeItemIds }, {
+          onSettled: () => {
+            toast.success("Thanh toán thành công!");
+            navigate(`/orders/${payment?.orderId}`);
+          },
+        });
+      } else {
         toast.success("Thanh toán thành công!");
         navigate(`/orders/${payment?.orderId}`);
-      };
-      cleanupAndNavigate();
-    } else if (paymentStatus?.status === "CANCELLED") {
+      }
+    } else if (status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
     }
-  }, [paymentStatus?.status]);
+  }, [paymentStatus?.status, removeItemIds, payment?.orderId, removeItemsBulkMutation, navigate]);
 
-  useEffect(() => {
-    return () => {
-      if (!paymentCompletedRef.current && paymentId) {
-        const pid = parseInt(paymentId, 10);
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/${pid}/cancel`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }).catch(() => {});
-      }
-    };
-  }, []);
-
+  // Only cancel on actual tab/window close — NOT on component unmount
+  // The previous cleanup effect caused immediate cancellation on React StrictMode double-mount
   useEffect(() => {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
-        const pid = parseInt(paymentId, 10);
-        navigator.sendBeacon(
-          `${import.meta.env.VITE_API_BASE_URL}/api/payments/${pid}/cancel`,
-        );
+        const url = buildCancelPaymentUrl(parseInt(paymentId, 10));
+        navigator.sendBeacon(url);
       }
     };
     window.addEventListener("beforeunload", handler);
@@ -155,17 +158,6 @@ export default function PaymentPage() {
   if (payment.status === "PAID" || payment.status === "CANCELLED") {
     return null;
   }
-
-  const handleCancel = async () => {
-    try {
-      await cancelPaymentMutation.mutateAsync(parseInt(paymentId!, 10));
-      if (order) {
-        await cancelOrder(order.id);
-      }
-      paymentCompletedRef.current = true;
-      navigate("/orders");
-    } catch {}
-  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(payment.paymentCode);
@@ -264,7 +256,7 @@ export default function PaymentPage() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleCancel}
+            onClick={() => handleCancelPayment("user")}
             disabled={isProcessing}
           >
             {isProcessing ? (

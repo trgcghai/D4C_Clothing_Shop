@@ -55,3 +55,8 @@ export const getPaymentByOrderId = (orderId: number) =>
   axiosInstance
     .get<PaymentResponse>("/api/payments", { params: { orderId } })
     .then((res) => res.data);
+
+export const buildCancelPaymentUrl = (paymentId: number): string => {
+  const base = axiosInstance.defaults.baseURL ?? import.meta.env.VITE_API_BASE_URL;
+  return `${base}/api/payments/${paymentId}/cancel`;
+};
