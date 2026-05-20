@@ -1,5 +1,6 @@
 package com.iuh.fit.client;
 
+import com.iuh.fit.client.dto.DeductStockRequest;
 import com.iuh.fit.client.dto.RestoreStockRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,6 +9,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(name = "ProductService")
 public interface ProductClient {
+
+    @PostMapping("/api/products/variants/{variantId}/deduct-stock")
+    void deductStock(
+        @PathVariable("variantId") String variantId,
+        @RequestBody DeductStockRequest request
+    );
 
     @PostMapping("/api/products/variants/{variantId}/restore-stock")
     void restoreStock(
