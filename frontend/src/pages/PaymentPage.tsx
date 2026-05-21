@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useCountdownTimer } from "use-countdown-timer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,9 +11,9 @@ import {
   useCancelPayment,
 } from "@/src/hooks/usePayment";
 import { useRemoveCartItemsBulk } from "@/src/hooks/useCart";
-import { useUserOrderDetail } from "@/src/hooks/useUserOrders";
+import { useUserOrderDetail, useCancelOrder } from "@/src/hooks/useUserOrders";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
-import { cancelOrder } from "@/src/services/orderApi";
+import { buildCancelPaymentUrl } from "@/src/services/paymentApi";
 import {
   ArrowLeft,
   Loader2,
@@ -24,49 +25,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-function useCountdown(expiresAt: string | null, onExpire: () => void) {
-  const [remaining, setRemaining] = useState(0);
-  const expiredRef = useRef(false);
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const end = new Date(expiresAt).getTime();
-    const tick = () => {
-      const left = end - Date.now();
-      if (left <= 0 && !expiredRef.current) {
-        expiredRef.current = true;
-        setRemaining(0);
-        onExpire();
-      } else {
-        setRemaining(Math.max(0, left));
-      }
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [expiresAt, onExpire]);
-
-  return remaining;
-}
-
-function formatTime(ms: number) {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
-
 export default function PaymentPage() {
   const { paymentId } = useParams<{ paymentId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const removeItemIdsParam = searchParams.get("removeItemIds");
-  const removeItemIds = removeItemIdsParam
-    ? removeItemIdsParam
-        .split(",")
-        .map(Number)
-        .filter((n) => !isNaN(n) && n > 0)
-    : [];
+  const removeItemIds = useMemo(() => {
+    if (!removeItemIdsParam) return [];
+    return removeItemIdsParam
+      .split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n) && n > 0);
+  }, [removeItemIdsParam]);
 
   const id = paymentId ? parseInt(paymentId, 10) : null;
 
@@ -77,6 +47,7 @@ export default function PaymentPage() {
   } = usePaymentById(id);
   const { data: paymentStatus } = usePaymentStatus(id, !!id);
   const cancelPaymentMutation = useCancelPayment();
+  const cancelOrderMutation = useCancelOrder();
   const removeItemsBulkMutation = useRemoveCartItemsBulk();
   const { data: order } = useUserOrderDetail(payment?.orderId ?? null);
 
@@ -86,74 +57,75 @@ export default function PaymentPage() {
   const isProcessing =
     cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
 
-  const handleExpire = async () => {
-    if (paymentCompletedRef.current || !paymentId || !order) return;
-    try {
-      await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
-      await cancelOrder(order.id);
-      toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
-      navigate("/orders");
-    } catch {}
-  };
-
-  const remaining = useCountdown(payment?.expiresAt ?? null, handleExpire);
-
-  const isCompleted =
-    paymentStatus?.status === "PAID" || paymentStatus?.status === "CANCELLED";
-
-  useEffect(() => {
-    if (isCompleted) {
+  const handleCancelPayment = useCallback(
+    async (reason: "user" | "expired") => {
+      if (paymentCompletedRef.current || !paymentId) return;
       paymentCompletedRef.current = true;
+
+      try {
+        await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
+        if (order) {
+          await cancelOrderMutation.mutateAsync(order.id);
+        }
+        if (reason === "expired") {
+          toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
+        }
+        navigate("/orders");
+      } catch (error) {
+        paymentCompletedRef.current = false;
+        console.error("Failed to cancel payment:", error);
+      }
+    },
+    [paymentId, order, cancelPaymentMutation, cancelOrderMutation, navigate],
+  );
+
+  const timerMs = payment?.expiresAt
+    ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
+    : 0;
+  const { countdown, start } = useCountdownTimer({
+    timer: timerMs,
+    autostart: false,
+    onExpire: () => handleCancelPayment("expired"),
+  });
+
+  // Start countdown only after payment data is loaded
+  useEffect(() => {
+    if (payment && !paymentCompletedRef.current) {
+      start();
     }
-  }, [isCompleted]);
+  }, [payment]);
 
   useEffect(() => {
-    if (paymentStatus?.status === "PAID") {
-      const cleanupAndNavigate = async () => {
-        if (removeItemIds.length > 0) {
-          try {
-            await removeItemsBulkMutation.mutateAsync({
-              itemIds: removeItemIds,
-            });
-          } catch {
-            toast.warning("Không thể xóa giỏ hàng, vui lòng thử lại");
-          }
-        }
+    const status = paymentStatus?.status;
+    if (!status || status === "PENDING" || status === "EXPIRED") return;
+
+    paymentCompletedRef.current = true;
+
+    if (status === "PAID") {
+      if (removeItemIds.length > 0) {
+        removeItemsBulkMutation.mutate({ itemIds: removeItemIds }, {
+          onSettled: () => {
+            toast.success("Thanh toán thành công!");
+            navigate(`/orders/${payment?.orderId}`);
+          },
+        });
+      } else {
         toast.success("Thanh toán thành công!");
         navigate(`/orders/${payment?.orderId}`);
-      };
-      cleanupAndNavigate();
-    } else if (paymentStatus?.status === "CANCELLED") {
+      }
+    } else if (status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
     }
-  }, [paymentStatus?.status]);
+  }, [paymentStatus?.status, removeItemIds, payment?.orderId, removeItemsBulkMutation, navigate]);
 
-  useEffect(() => {
-    return () => {
-      if (!paymentCompletedRef.current && paymentId) {
-        const pid = parseInt(paymentId, 10);
-        fetch(
-          `${import.meta.env.VITE_PAYMENT_SERVICE_URL}/api/payments/${pid}/cancel`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          },
-        ).catch(() => {});
-      }
-    };
-  }, []);
-
+  // Only cancel on actual tab/window close — NOT on component unmount
+  // The previous cleanup effect caused immediate cancellation on React StrictMode double-mount
   useEffect(() => {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
-        const pid = parseInt(paymentId, 10);
-        navigator.sendBeacon(
-          `${import.meta.env.VITE_PAYMENT_SERVICE_URL}/api/payments/${pid}/cancel`,
-        );
+        const url = buildCancelPaymentUrl(parseInt(paymentId, 10));
+        navigator.sendBeacon(url);
       }
     };
     window.addEventListener("beforeunload", handler);
@@ -193,17 +165,6 @@ export default function PaymentPage() {
   if (payment.status === "PAID" || payment.status === "CANCELLED") {
     return null;
   }
-
-  const handleCancel = async () => {
-    try {
-      await cancelPaymentMutation.mutateAsync(parseInt(paymentId!, 10));
-      if (order) {
-        await cancelOrder(order.id);
-      }
-      paymentCompletedRef.current = true;
-      navigate("/orders");
-    } catch {}
-  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(payment.paymentCode);
@@ -268,11 +229,11 @@ export default function PaymentPage() {
 
           <Separator />
 
-          {remaining > 0 && (
+          {countdown > 0 && (
             <div className="flex items-center justify-center gap-2 text-amber-600">
               <Clock className="h-4 w-4" />
               <span className="font-mono font-semibold text-lg">
-                {formatTime(remaining)}
+                {`${Math.floor(countdown / 60000).toString().padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000).toString().padStart(2, "0")}`}
               </span>
               <span className="text-sm">còn lại để thanh toán</span>
             </div>
@@ -302,7 +263,7 @@ export default function PaymentPage() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleCancel}
+            onClick={() => handleCancelPayment("user")}
             disabled={isProcessing}
           >
             {isProcessing ? (

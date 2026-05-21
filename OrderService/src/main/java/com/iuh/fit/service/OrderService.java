@@ -1,6 +1,7 @@
 package com.iuh.fit.service;
 
 import com.iuh.fit.client.ProductClient;
+import com.iuh.fit.client.dto.DeductStockRequest;
 import com.iuh.fit.client.dto.RestoreStockRequest;
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
@@ -63,6 +64,9 @@ public class OrderService {
             throw new BadRequestException(
                     "Total amount mismatch. expected=" + calculatedTotal + ", actual=" + requestTotal);
         }
+
+        // Deduct stock BEFORE creating order
+        deductStockForOrder(request.getItems());
 
         Order order = new Order();
         order.setUserId(userId);
@@ -191,6 +195,14 @@ public class OrderService {
                 } catch (Exception e) {
                     log.error("Error calling ProductService to restore stock for variant {}: {}", item.getVariantId(), e.getMessage());
                 }
+            }
+        }
+    }
+
+    private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
+        for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : items) {
+            if (itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank()) {
+                productClient.deductStock(itemDto.getVariantId(), new DeductStockRequest(itemDto.getQuantity()));
             }
         }
     }

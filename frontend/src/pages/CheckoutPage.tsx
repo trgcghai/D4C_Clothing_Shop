@@ -10,15 +10,11 @@ import {
   useRemoveCartItemsBulk,
 } from "@/src/hooks/useCart";
 import { useCreatePayment } from "@/src/hooks/usePayment";
-import { deductStock, restoreStock } from "@/src/services/productApi";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { ArrowLeft, Loader2, QrCode, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
-import {
-  useCancelOrder,
-  useCreateOrderFromCheckout,
-} from "@/src/hooks/useUserOrders";
+import { useCreateOrderFromCheckout } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
 import type { PaymentMethod } from "@/src/services/paymentApi";
 import AddressForm from "@/src/components/profile/AddressForm";
@@ -29,7 +25,6 @@ export default function CheckoutPage() {
   const partialCheckoutMutation = usePartialCheckout();
   const removeItemsBulkMutation = useRemoveCartItemsBulk();
   const createOrderFromCheckoutMutation = useCreateOrderFromCheckout();
-  const cancelOrderMutation = useCancelOrder();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
 
@@ -133,10 +128,6 @@ export default function CheckoutPage() {
   const handleConfirm = async () => {
     if (isProcessing) return;
 
-    const deductedItems: { variantId: string; quantity: number }[] = [];
-    let orderCreated = false;
-    let createdOrderId: number | null = null;
-
     if (!user) return;
     if (itemIdsForCheckout.length === 0) return;
 
@@ -150,25 +141,6 @@ export default function CheckoutPage() {
         itemIds: itemIdsForCheckout,
       });
 
-      for (const item of checkoutData.items) {
-        try {
-          await deductStock(item.variantId, item.quantity);
-          deductedItems.push({
-            variantId: item.variantId,
-            quantity: item.quantity,
-          });
-        } catch (deductError) {
-          if (isAxiosError(deductError)) {
-            const msg =
-              deductError.response?.data?.message || "Không đủ tồn kho";
-            toast.error(msg);
-          } else {
-            toast.error("Không đủ tồn kho");
-          }
-          return;
-        }
-      }
-
       const order = await createOrderFromCheckoutMutation.mutateAsync({
         orderId: checkoutData.orderId,
         items: checkoutData.items,
@@ -178,8 +150,6 @@ export default function CheckoutPage() {
         shippingWard: user.ward || "",
         shippingProvince: user.province || "",
       });
-      orderCreated = true;
-      createdOrderId = order.id;
 
       if (method === "QR") {
         try {
@@ -189,19 +159,10 @@ export default function CheckoutPage() {
             amount: checkoutData.totalAmount,
             method: "QR",
           });
-          // Pass item IDs to PaymentPage so it can remove them on success
           const idsParam = itemIdsForCheckout.join(",");
           navigate(`/payment/${payment.paymentId}?removeItemIds=${idsParam}`);
         } catch (paymentError) {
-          await Promise.allSettled(
-            deductedItems.map((item) =>
-              restoreStock(item.variantId, item.quantity),
-            ),
-          );
-          await cancelOrderMutation.mutateAsync(order.id);
-          toast.error(
-            "Tạo thanh toán thất bại, đơn hàng đã được hủy và tồn kho đã hoàn",
-          );
+          toast.error("Tạo thanh toán thất bại, vui lòng thử lại");
           return;
         }
       } else {
@@ -212,14 +173,6 @@ export default function CheckoutPage() {
         navigate(`/orders/${order.id}`);
       }
     } catch (error) {
-      if (orderCreated && createdOrderId) {
-        await Promise.allSettled(
-          deductedItems.map((item) =>
-            restoreStock(item.variantId, item.quantity),
-          ),
-        );
-        await cancelOrderMutation.mutateAsync(createdOrderId);
-      }
       if (isAxiosError(error)) {
         const msg = error.response?.data?.message || "Thanh toán thất bại";
         toast.error(msg);
@@ -286,7 +239,9 @@ export default function CheckoutPage() {
             {hasAddress ? (
               <div className="rounded-lg border p-4 text-sm space-y-1">
                 <p>{user?.street}</p>
-                <p>{user?.ward}, {user?.province}</p>
+                <p>
+                  {user?.ward}, {user?.province}
+                </p>
               </div>
             ) : (
               <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
@@ -298,7 +253,7 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div className="rounded-lg border p-6 space-y-4">
+          <div className="rounded-lg border p-6 space-y-4 h-fit">
             <h2 className="text-lg font-semibold">Đơn hàng</h2>
             <Separator />
             <div className="space-y-2 max-h-48 overflow-y-auto">

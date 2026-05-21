@@ -1,4 +1,4 @@
-package com.iuh.fit.config;
+package iuh.fit.PaymentService.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,23 +14,14 @@ public class RabbitMQConfig {
 
     private static final Logger log = LoggerFactory.getLogger(RabbitMQConfig.class);
 
-    public static final String EMAIL_EXCHANGE = "email.exchange";
-    public static final String ORDER_CREATED_ROUTING_KEY = "email.order.created";
-    public static final String ORDER_PAID_ROUTING_KEY = "email.order.paid";
-    public static final String ORDER_CANCELLED_ROUTING_KEY = "email.order.cancelled";
-
-    public static final String ORDER_EXCHANGE = "order.exchange";
-    public static final String ORDER_CANCELLED_EVENT_ROUTING_KEY = "order.cancelled";
-    public static final String ORDER_PAID_EVENT_ROUTING_KEY = "order.paid";
+    public static final String PAYMENT_EXCHANGE = "payment.exchange";
+    public static final String PAYMENT_CONFIRMED_ROUTING_KEY = "payment.confirmed";
+    public static final String PAYMENT_EXPIRED_ROUTING_KEY = "payment.expired";
+    public static final String PAYMENT_CANCELLED_ROUTING_KEY = "payment.cancelled";
 
     @Bean
-    public TopicExchange emailExchange() {
-        return new TopicExchange(EMAIL_EXCHANGE);
-    }
-
-    @Bean
-    public TopicExchange orderExchange() {
-        return new TopicExchange(ORDER_EXCHANGE);
+    public TopicExchange paymentExchange() {
+        return new TopicExchange(PAYMENT_EXCHANGE);
     }
 
     @Bean
