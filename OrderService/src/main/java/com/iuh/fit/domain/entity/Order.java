@@ -14,6 +14,10 @@ import java.util.List;
 @Entity
 @Table(name = "orders", uniqueConstraints = {
         @UniqueConstraint(name = "uk_orders_user_checkout_order_id", columnNames = { "user_id", "checkout_order_id" })
+}, indexes = {
+        @Index(name = "idx_order_status", columnList = "status"),
+        @Index(name = "idx_order_checkout_order_id", columnList = "checkout_order_id"),
+        @Index(name = "idx_order_user_id", columnList = "user_id")
 })
 @Getter
 @Setter

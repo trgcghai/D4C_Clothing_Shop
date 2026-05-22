@@ -12,7 +12,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "unmatched_payments", indexes = {
-    @Index(name = "idx_unresolved", columnList = "resolved, received_at")
+    @Index(name = "idx_unresolved", columnList = "resolved, received_at"),
+    @Index(name = "idx_sepay_tx_id", columnList = "sepay_transaction_id")
 })
 @Getter
 @Setter

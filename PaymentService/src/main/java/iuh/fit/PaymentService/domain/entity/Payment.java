@@ -7,7 +7,12 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = {
+    @Index(name = "idx_payment_status", columnList = "status"),
+    @Index(name = "idx_payment_expires_at", columnList = "expires_at"),
+    @Index(name = "idx_payment_checkout_order_id", columnList = "checkout_order_id"),
+    @Index(name = "idx_payment_order_id", columnList = "order_id")
+})
 public class Payment {
 
     @Id
