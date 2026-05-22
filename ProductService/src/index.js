@@ -4,6 +4,7 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
+import stockRoutes from "./routes/stock.routes.js";
 import eurekaClient from "./config/eureka.config.js";
 import { openApiSpec } from "./config/openapi.js";
 import { connectEventPublisher } from "./services/event-publisher.service.js";
@@ -26,6 +27,7 @@ app.get("/openapi.json", (req, res) => {
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.use("/api/products", productRoutes);
+app.use("/api/products/stock", stockRoutes);
 app.use("/api/categories", categoryRoutes);
 
 app.get("/health", (req, res) => {

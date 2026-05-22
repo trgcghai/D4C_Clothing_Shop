@@ -1,19 +1,26 @@
 package iuh.fit.PaymentService.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import iuh.fit.PaymentService.client.OrderClient;
 import iuh.fit.PaymentService.config.RabbitMQConfig;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.CreatePaymentRequest;
 import iuh.fit.PaymentService.domain.dto.PaymentResponse;
 import iuh.fit.PaymentService.domain.dto.PaymentStatusResponse;
+import iuh.fit.PaymentService.domain.entity.OutboxEvent;
 import iuh.fit.PaymentService.domain.entity.Payment;
 import iuh.fit.PaymentService.domain.enums.PaymentMethod;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentCancelledEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
+import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import iuh.fit.PaymentService.repository.PaymentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +28,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -36,6 +46,15 @@ public class PaymentService {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private OutboxEventRepository outboxRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Value("${feature.outbox.enabled:false}")
+    private boolean outboxEnabled;
 
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
@@ -123,14 +142,34 @@ public class PaymentService {
                     payment.getAmount(),
                     Instant.now()
             );
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.PAYMENT_EXCHANGE,
-                    RabbitMQConfig.PAYMENT_CANCELLED_ROUTING_KEY,
-                    event
-            );
+            publishEvent(event, "PAYMENT_CANCELLED", payment.getId(),
+                    RabbitMQConfig.PAYMENT_EXCHANGE, RabbitMQConfig.PAYMENT_CANCELLED_ROUTING_KEY);
         }
 
         return new PaymentStatusResponse(paymentId, PaymentStatus.CANCELLED, null);
+    }
+
+    private void publishEvent(Object event, String eventType, Long aggregateId, String exchange, String routingKey) {
+        if (outboxEnabled) {
+            try {
+                String payload = objectMapper.writeValueAsString(event);
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .eventType(eventType)
+                        .eventId(UUID.randomUUID().toString())
+                        .aggregateId(aggregateId)
+                        .payload(payload)
+                        .exchange(exchange)
+                        .routingKey(routingKey)
+                        .build();
+                outboxRepository.save(outboxEvent);
+                log.debug("Saved {} event to outbox for aggregateId={}", eventType, aggregateId);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize {} event for aggregateId={}: {}", eventType, aggregateId, e.getMessage());
+            }
+        } else {
+            rabbitTemplate.convertAndSend(exchange, routingKey, event);
+            log.info("Published event to exchange={}, routingKey={}", exchange, routingKey);
+        }
     }
 
     @Transactional

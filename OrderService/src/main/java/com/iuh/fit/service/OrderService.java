@@ -1,8 +1,8 @@
 package com.iuh.fit.service;
 
 import com.iuh.fit.client.ProductClient;
-import com.iuh.fit.client.dto.DeductStockRequest;
-import com.iuh.fit.client.dto.RestoreStockRequest;
+import com.iuh.fit.client.dto.BatchStockRequest;
+import com.iuh.fit.client.dto.BatchStockResponse;
 import com.iuh.fit.domain.dto.CreateOrderFromCheckoutRequest;
 import com.iuh.fit.domain.dto.OrderResponse;
 import com.iuh.fit.domain.dto.PagedResponse;
@@ -14,6 +14,9 @@ import com.iuh.fit.exception.BadRequestException;
 import com.iuh.fit.exception.ResourceNotFoundException;
 import com.iuh.fit.repository.OrderRepository;
 import com.iuh.fit.service.OrderEventPublisher;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -188,23 +191,68 @@ public class OrderService {
     }
 
     private void restoreStockForOrder(Order order) {
-        for (OrderItem item : order.getItems()) {
-            if (item.getVariantId() != null && !item.getVariantId().isBlank()) {
-                try {
-                    productClient.restoreStock(item.getVariantId(), new RestoreStockRequest(item.getQuantity()));
-                } catch (Exception e) {
-                    log.error("Error calling ProductService to restore stock for variant {}: {}", item.getVariantId(), e.getMessage());
-                }
-            }
+        List<BatchStockRequest> items = order.getItems().stream()
+                .filter(item -> item.getVariantId() != null && !item.getVariantId().isBlank())
+                .map(item -> new BatchStockRequest(item.getVariantId(), item.getQuantity()))
+                .collect(Collectors.toList());
+
+        if (items.isEmpty()) {
+            return;
         }
+
+        batchRestoreStock(items);
     }
 
     private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
-        for (CreateOrderFromCheckoutRequest.CheckoutItemDto itemDto : items) {
-            if (itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank()) {
-                productClient.deductStock(itemDto.getVariantId(), new DeductStockRequest(itemDto.getQuantity()));
-            }
+        List<BatchStockRequest> batchItems = items.stream()
+                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
+                .collect(Collectors.toList());
+
+        if (batchItems.isEmpty()) {
+            return;
         }
+
+        batchDeductStock(batchItems);
+    }
+
+    @CircuitBreaker(name = "productService", fallbackMethod = "deductStockFallback")
+    @Retry(name = "productService")
+    @Bulkhead(name = "productService")
+    public void batchDeductStock(List<BatchStockRequest> items) {
+        BatchStockResponse response = productClient.batchDeductStock(items);
+        if (!response.success() && response.failedItems() != null && !response.failedItems().isEmpty()) {
+            String failedDetails = response.failedItems().stream()
+                    .map(f -> f.variantId() + ": " + f.reason())
+                    .collect(Collectors.joining(", "));
+            throw new BadRequestException("Không thể xử lý đặt hàng: " + failedDetails);
+        }
+    }
+
+    public void deductStockFallback(List<BatchStockRequest> items, Throwable t) {
+        log.error("Stock deduction failed: {}", t.getMessage());
+        throw new BadRequestException("Không thể xử lý đặt hàng, vui lòng thử lại");
+    }
+
+    @CircuitBreaker(name = "productService", fallbackMethod = "restoreStockFallback")
+    @Retry(name = "productService")
+    @Bulkhead(name = "productService")
+    public void batchRestoreStock(List<BatchStockRequest> items) {
+        try {
+            BatchStockResponse response = productClient.batchRestoreStock(items);
+            if (!response.success() && response.failedItems() != null && !response.failedItems().isEmpty()) {
+                String failedDetails = response.failedItems().stream()
+                        .map(f -> f.variantId() + ": " + f.reason())
+                        .collect(Collectors.joining(", "));
+                log.error("Stock restoration partially failed: {}", failedDetails);
+            }
+        } catch (Exception e) {
+            log.error("Stock restoration failed: {}", e.getMessage());
+        }
+    }
+
+    public void restoreStockFallback(List<BatchStockRequest> items, Throwable t) {
+        log.error("Stock restoration failed after retries: {}", t.getMessage());
     }
 
     @Transactional(readOnly = true)
