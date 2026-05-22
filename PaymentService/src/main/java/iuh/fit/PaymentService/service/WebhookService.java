@@ -252,35 +252,36 @@ public class WebhookService {
 
     private String resolvePaymentCode(String webhookCode, Long transferAmount) {
         String normalized = webhookCode.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        if (normalized.isEmpty()) {
+            log.warn("Empty payment code after normalization");
+            return null;
+        }
 
         var payment = paymentService.findPaymentByPaymentCodeOrNull(normalized);
         if (payment != null && payment.getStatus() == PaymentStatus.PENDING) {
+            if (!payment.getAmount().equals(transferAmount)) {
+                log.warn("Amount mismatch for code={}: expected={}, received={}",
+                        normalized, payment.getAmount(), transferAmount);
+                return null;
+            }
             log.info("Matched payment by normalized code: {}", normalized);
             return payment.getPaymentCode();
         }
 
-        payment = paymentService.findPaymentByPaymentCodeOrNull(webhookCode);
-        if (payment != null && payment.getStatus() == PaymentStatus.PENDING) {
-            log.info("Matched payment by exact code: {}", webhookCode);
-            return payment.getPaymentCode();
-        }
-
-        if (transferAmount != null) {
-            var pendingPayments = paymentRepository.findPendingByAmount(transferAmount);
-            for (var p : pendingPayments) {
-                String storedNormalized = p.getPaymentCode().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-                if (storedNormalized.equals(normalized) || storedNormalized.contains(normalized) || normalized.contains(storedNormalized)) {
-                    if (transferAmount < p.getAmount()) {
-                        log.warn("Amount mismatch for payment {}: expected={}, received={}",
-                                p.getPaymentCode(), p.getAmount(), transferAmount);
-                        continue;
-                    }
-                    log.info("Matched payment by amount+code fuzzy: {} (amount: {})", p.getPaymentCode(), transferAmount);
-                    return p.getPaymentCode();
+        if (!webhookCode.equals(normalized)) {
+            payment = paymentService.findPaymentByPaymentCodeOrNull(webhookCode);
+            if (payment != null && payment.getStatus() == PaymentStatus.PENDING) {
+                if (!payment.getAmount().equals(transferAmount)) {
+                    log.warn("Amount mismatch for code={}: expected={}, received={}",
+                            webhookCode, payment.getAmount(), transferAmount);
+                    return null;
                 }
+                log.info("Matched payment by exact code: {}", webhookCode);
+                return payment.getPaymentCode();
             }
         }
 
+        log.warn("No matching pending payment for code: {}", webhookCode);
         return null;
     }
 

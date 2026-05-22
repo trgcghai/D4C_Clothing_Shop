@@ -58,7 +58,12 @@ public class PaymentService {
     private boolean outboxEnabled;
 
     @Transactional
-    public PaymentResponse createPayment(CreatePaymentRequest request) {
+    public PaymentResponse createPayment(CreatePaymentRequest request, Long requestingUserId) {
+        Long orderUserId = orderClient.getOrderUserId(request.getOrderId());
+        if (!orderUserId.equals(requestingUserId)) {
+            throw new PaymentException("Access denied: you do not own this order");
+        }
+
         Payment existing = paymentRepository.findByCheckoutOrderId(request.getCheckoutOrderId())
                 .orElse(null);
         if (existing != null) {

@@ -25,8 +25,10 @@ public class PaymentController {
 
     @PostMapping
     @Operation(summary = "Create a new payment", description = "Create payment record and return QR URL for QR method")
-    public ResponseEntity<PaymentResponse> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
-        PaymentResponse response = paymentService.createPayment(request);
+    public ResponseEntity<PaymentResponse> createPayment(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody CreatePaymentRequest request) {
+        PaymentResponse response = paymentService.createPayment(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
