@@ -88,6 +88,7 @@ export const checkout = () =>
 
 export interface CartItemsPayload {
   itemIds: number[];
+  idempotencyKey?: string;
 }
 
 export const partialCheckout = async (
