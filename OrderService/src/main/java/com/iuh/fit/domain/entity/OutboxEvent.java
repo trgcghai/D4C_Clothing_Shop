@@ -3,8 +3,9 @@ package com.iuh.fit.domain.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
@@ -13,7 +14,8 @@ import java.time.Instant;
 @Table(name = "outbox_events", indexes = {
     @Index(name = "idx_status_created", columnList = "status, created_at")
 })
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
