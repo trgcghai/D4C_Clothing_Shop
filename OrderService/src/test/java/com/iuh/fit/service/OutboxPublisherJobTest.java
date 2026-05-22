@@ -4,14 +4,11 @@ import com.iuh.fit.domain.entity.OutboxEvent;
 import com.iuh.fit.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -27,12 +24,11 @@ class OutboxPublisherJobTest {
     @Mock
     private RabbitTemplate rabbitTemplate;
 
-    @InjectMocks
     private OutboxPublisherJob outboxPublisherJob;
 
     @Test
     void shouldDoNothingWhenOutboxDisabled() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", false);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, false);
 
         outboxPublisherJob.publishPendingEvents();
 
@@ -42,7 +38,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
         when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxPublisherJob.publishPendingEvents();
@@ -54,7 +50,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldPublishPendingEventsAndMarkAsPublished() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(1L)
@@ -77,7 +73,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldIncrementRetryCountOnPublishFailure() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(2L)
@@ -105,7 +101,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldMarkAsFailedAfterMaxRetriesExceeded() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(3L)
@@ -133,7 +129,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldProcessMultipleEventsInBatch() {
-        ReflectionTestUtils.setField(outboxPublisherJob, "outboxEnabled", true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
 
         OutboxEvent event1 = OutboxEvent.builder()
                 .id(10L)

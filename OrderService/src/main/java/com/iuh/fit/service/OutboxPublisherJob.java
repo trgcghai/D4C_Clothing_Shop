@@ -22,45 +22,54 @@ public class OutboxPublisherJob {
 
     private final OutboxEventRepository outboxRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final boolean outboxEnabled;
 
-    @Value("${feature.outbox.enabled:false}")
-    private boolean outboxEnabled;
-
-    public OutboxPublisherJob(OutboxEventRepository outboxRepository, RabbitTemplate rabbitTemplate) {
+    public OutboxPublisherJob(OutboxEventRepository outboxRepository,
+                              RabbitTemplate rabbitTemplate,
+                              @Value("${feature.outbox.enabled:false}") boolean outboxEnabled) {
         this.outboxRepository = outboxRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.outboxEnabled = outboxEnabled;
     }
 
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     public void publishPendingEvents() {
-        if (!outboxEnabled) return;
+        if (!outboxEnabled) {
+            return;
+        }
 
         List<OutboxEvent> events = outboxRepository.findPendingEvents(PageRequest.of(0, BATCH_SIZE));
-        if (events.isEmpty()) return;
+        if (events.isEmpty()) {
+            return;
+        }
 
         log.info("Publishing {} pending outbox events", events.size());
 
         for (OutboxEvent event : events) {
-            try {
-                rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
-                event.setStatus("PUBLISHED");
-                event.setPublishedAt(Instant.now());
+            publishSingleEvent(event);
+        }
+    }
+
+    @Transactional
+    public void publishSingleEvent(OutboxEvent event) {
+        try {
+            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
+            event.setStatus("PUBLISHED");
+            event.setPublishedAt(Instant.now());
+            outboxRepository.save(event);
+            log.debug("Published outbox event id={}", event.getId());
+        } catch (Exception e) {
+            event.setRetryCount(event.getRetryCount() + 1);
+            event.setErrorMessage(e.getMessage());
+            if (event.getRetryCount() >= event.getMaxRetries()) {
+                event.setStatus("FAILED");
                 outboxRepository.save(event);
-                log.debug("Published outbox event id={}", event.getId());
-            } catch (Exception e) {
-                event.setRetryCount(event.getRetryCount() + 1);
-                event.setErrorMessage(e.getMessage());
-                if (event.getRetryCount() >= event.getMaxRetries()) {
-                    event.setStatus("FAILED");
-                    outboxRepository.save(event);
-                    log.error("Outbox event id={} failed after {} retries: {}",
-                        event.getId(), event.getRetryCount(), e.getMessage());
-                } else {
-                    outboxRepository.save(event);
-                    log.warn("Outbox event id={} publish failed (attempt {}/{}): {}",
-                        event.getId(), event.getRetryCount(), event.getMaxRetries(), e.getMessage());
-                }
+                log.error("Outbox event id={} failed after {} retries: {}",
+                    event.getId(), event.getRetryCount(), e.getMessage());
+            } else {
+                outboxRepository.save(event);
+                log.warn("Outbox event id={} publish failed (attempt {}/{}): {}",
+                    event.getId(), event.getRetryCount(), event.getMaxRetries(), e.getMessage());
             }
         }
     }
