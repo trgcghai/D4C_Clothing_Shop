@@ -52,6 +52,9 @@ public class Payment {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Column(name = "reconciliation_status", length = 30)
+    private String reconciliationStatus;
+
     public Payment() {}
 
     public Long getId() { return id; }
@@ -80,6 +83,8 @@ public class Payment {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getReconciliationStatus() { return reconciliationStatus; }
+    public void setReconciliationStatus(String reconciliationStatus) { this.reconciliationStatus = reconciliationStatus; }
 
     @PrePersist
     protected void onCreate() {

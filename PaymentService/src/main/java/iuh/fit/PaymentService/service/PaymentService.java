@@ -13,6 +13,7 @@ import iuh.fit.PaymentService.domain.entity.Payment;
 import iuh.fit.PaymentService.domain.enums.PaymentMethod;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentCancelledEvent;
+import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import iuh.fit.PaymentService.repository.PaymentRepository;
@@ -172,6 +173,9 @@ public class PaymentService {
         }
     }
 
+    @Value("${payment.webhook.grace-period-seconds:3600}")
+    private long gracePeriodSeconds;
+
     @Transactional
     public PaymentStatusResponse markAsPaid(String paymentCode, Long sepayTxId, String gateway) {
         Instant now = Instant.now();
@@ -182,9 +186,53 @@ public class PaymentService {
             if (payment.getStatus() == PaymentStatus.PAID) {
                 return new PaymentStatusResponse(payment.getId(), PaymentStatus.PAID, payment.getPaidAt());
             }
+
+            if (payment.getStatus() == PaymentStatus.EXPIRED) {
+                Instant gracePeriodEnd = payment.getExpiresAt().plusSeconds(gracePeriodSeconds);
+                if (now.isBefore(gracePeriodEnd)) {
+                    payment.setStatus(PaymentStatus.PAID);
+                    payment.setSepayTransactionId(sepayTxId);
+                    payment.setSepayGateway(gateway);
+                    payment.setPaidAt(now);
+                    paymentRepository.save(payment);
+                    log.info("Late webhook accepted for payment {} within grace period", paymentCode);
+
+                    payment.setReconciliationStatus("PAID_NEEDS_RECONCILE");
+                    paymentRepository.save(payment);
+                    log.error("Payment {} PAID but was EXPIRED — requires reconciliation", paymentCode);
+
+                    PaymentConfirmedEvent event = new PaymentConfirmedEvent(
+                            payment.getId(),
+                            payment.getOrderId(),
+                            payment.getCheckoutOrderId(),
+                            payment.getPaymentCode(),
+                            payment.getAmount(),
+                            sepayTxId,
+                            gateway,
+                            now
+                    );
+                    publishEvent(event, "PAYMENT_CONFIRMED", payment.getId(),
+                            RabbitMQConfig.PAYMENT_EXCHANGE, RabbitMQConfig.PAYMENT_CONFIRMED_ROUTING_KEY);
+
+                    return new PaymentStatusResponse(payment.getId(), PaymentStatus.PAID, now);
+                }
+            }
+
             throw new PaymentException("Payment already " + payment.getStatus());
         }
         Payment payment = paymentRepository.findByPaymentCode(paymentCode).orElseThrow();
+        PaymentConfirmedEvent event = new PaymentConfirmedEvent(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getCheckoutOrderId(),
+                payment.getPaymentCode(),
+                payment.getAmount(),
+                sepayTxId,
+                gateway,
+                now
+        );
+        publishEvent(event, "PAYMENT_CONFIRMED", payment.getId(),
+                RabbitMQConfig.PAYMENT_EXCHANGE, RabbitMQConfig.PAYMENT_CONFIRMED_ROUTING_KEY);
         return new PaymentStatusResponse(payment.getId(), PaymentStatus.PAID, now);
     }
 

@@ -7,12 +7,14 @@ import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.SePayWebhookPayload;
 import iuh.fit.PaymentService.domain.entity.OutboxEvent;
 import iuh.fit.PaymentService.domain.entity.Payment;
+import iuh.fit.PaymentService.domain.entity.UnmatchedPayment;
 import iuh.fit.PaymentService.domain.entity.WebhookLog;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import iuh.fit.PaymentService.repository.PaymentRepository;
+import iuh.fit.PaymentService.repository.UnmatchedPaymentRepository;
 import iuh.fit.PaymentService.repository.WebhookLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +58,9 @@ public class WebhookService {
 
     @Autowired
     private OutboxEventRepository outboxRepository;
+
+    @Autowired
+    private UnmatchedPaymentRepository unmatchedPaymentRepository;
 
     @Value("${feature.outbox.enabled:false}")
     private boolean outboxEnabled;
@@ -136,6 +141,17 @@ public class WebhookService {
         String paymentCode = resolvePaymentCode(webhookCode, payload.getTransferAmount());
         if (paymentCode == null) {
             log.warn("No matching pending payment found for webhook code: {}", webhookCode);
+            try {
+                String payloadJson = objectMapper.writeValueAsString(payload);
+                UnmatchedPayment unmatched = UnmatchedPayment.builder()
+                        .sepayTransactionId(String.valueOf(payload.getId()))
+                        .payload(payloadJson)
+                        .build();
+                unmatchedPaymentRepository.save(unmatched);
+                log.info("Saved unmatched webhook transaction {} for reconciliation", payload.getId());
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize unmatched webhook payload: {}", e.getMessage());
+            }
             return true;
         }
 
