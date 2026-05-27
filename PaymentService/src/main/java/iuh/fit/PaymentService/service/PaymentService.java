@@ -15,6 +15,7 @@ import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentCancelledEvent;
 import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
+import iuh.fit.PaymentService.exception.ServiceUnavailableException;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import iuh.fit.PaymentService.repository.PaymentRepository;
 import org.slf4j.Logger;
@@ -30,6 +31,10 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
 import java.util.UUID;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 
 @Service
 public class PaymentService {
@@ -58,6 +63,9 @@ public class PaymentService {
     private boolean outboxEnabled;
 
     @Transactional
+    @CircuitBreaker(name = "orderService", fallbackMethod = "getOrderUserIdFallback")
+    @Retry(name = "orderService")
+    @Bulkhead(name = "orderService")
     public PaymentResponse createPayment(CreatePaymentRequest request, Long requestingUserId) {
         Long orderUserId = orderClient.getOrderUserId(request.getOrderId());
         if (!orderUserId.equals(requestingUserId)) {
@@ -112,6 +120,9 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
+    @CircuitBreaker(name = "orderService", fallbackMethod = "getOrderUserIdFallbackForPayment")
+    @Retry(name = "orderService")
+    @Bulkhead(name = "orderService")
     public PaymentResponse getPaymentByOrderId(Long orderId, Long requestingUserId) {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentException("Payment not found for orderId: " + orderId));
@@ -153,6 +164,16 @@ public class PaymentService {
         }
 
         return new PaymentStatusResponse(paymentId, PaymentStatus.CANCELLED, null);
+    }
+
+    private PaymentResponse getOrderUserIdFallback(CreatePaymentRequest request, Long requestingUserId, Throwable t) {
+        log.error("[CircuitBreaker] PaymentService: OrderService unavailable calling getOrderUserId({}): {}", request.getOrderId(), t.getMessage());
+        throw new ServiceUnavailableException("Không thể xác thực đơn hàng, vui lòng thử lại sau");
+    }
+
+    private PaymentResponse getOrderUserIdFallbackForPayment(Long orderId, Long requestingUserId, Throwable t) {
+        log.error("[CircuitBreaker] PaymentService: OrderService unavailable calling getOrderUserId({}): {}", orderId, t.getMessage());
+        throw new ServiceUnavailableException("Không thể xác thực đơn hàng, vui lòng thử lại sau");
     }
 
     private void publishEvent(Object event, String eventType, Long aggregateId, String exchange, String routingKey) {
