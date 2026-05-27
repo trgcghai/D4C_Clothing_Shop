@@ -32,7 +32,9 @@ public class RateLimiterFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        String ip = remoteAddress.getAddress().getHostAddress();
+        String ip = remoteAddress.getAddress() != null 
+            ? remoteAddress.getAddress().getHostAddress() 
+            : remoteAddress.getHostName();
         String key = KEY_PREFIX + ip;
         long now = System.currentTimeMillis();
         long windowStart = now - WINDOW_MS;
@@ -50,7 +52,7 @@ public class RateLimiterFilter implements GlobalFilter, Ordered {
                     }
                     return chain.filter(exchange);
                 })
-                .doOnSuccess(v -> redisTemplate.expire(key, Duration.ofSeconds(60)).subscribe());
+                .doFinally(signalType -> redisTemplate.expire(key, Duration.ofSeconds(60)).subscribe());
     }
 
     @Override
