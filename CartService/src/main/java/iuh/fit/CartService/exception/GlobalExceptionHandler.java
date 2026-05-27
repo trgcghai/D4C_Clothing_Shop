@@ -1,6 +1,5 @@
 package iuh.fit.CartService.exception;
 
-import iuh.fit.CartService.exception.ServiceUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
