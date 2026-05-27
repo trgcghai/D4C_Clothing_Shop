@@ -4,11 +4,14 @@ import iuh.fit.CartService.client.ProductServiceClient;
 import iuh.fit.CartService.domain.dto.*;
 import iuh.fit.CartService.domain.entity.Cart;
 import iuh.fit.CartService.domain.entity.CartItem;
+import iuh.fit.CartService.exception.ServiceUnavailableException;
 import iuh.fit.CartService.repository.CartItemRepository;
 import iuh.fit.CartService.repository.CartRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -152,12 +155,7 @@ public class CartService {
             return response;
         }
 
-        ProductDto product;
-        try {
-            product = productServiceClient.getProductById(item.getProductId());
-        } catch (Exception e) {
-            throw new RuntimeException("Cannot fetch product info from ProductService");
-        }
+        ProductDto product = getProductWithCircuitBreaker(item.getProductId());
 
         VariantDto variant = product.getVariants().stream()
                 .filter(v -> v.getId().equals(item.getVariantId()))
@@ -230,54 +228,46 @@ public class CartService {
         List<ValidationResponse.ValidationError> errors = new ArrayList<>();
 
         for (CartItem item : items) {
-            try {
-                ProductDto product = productServiceClient.getProductById(item.getProductId());
-                VariantDto variant = product.getVariants().stream()
-                        .filter(v -> v.getId().equals(item.getVariantId()))
-                        .findFirst()
-                        .orElse(null);
+            ProductDto product = getProductWithCircuitBreaker(item.getProductId());
+            VariantDto variant = product.getVariants().stream()
+                    .filter(v -> v.getId().equals(item.getVariantId()))
+                    .findFirst()
+                    .orElse(null);
 
-                if (variant == null) {
-                    errors.add(ValidationResponse.ValidationError.builder()
-                            .variantId(item.getVariantId())
-                            .reason("VARIANT_NOT_FOUND")
-                            .message("Variant '" + item.getVariantId() + "' không tồn tại")
-                            .build());
-                    continue;
-                }
-
-                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
-                    errors.add(ValidationResponse.ValidationError.builder()
-                            .variantId(item.getVariantId())
-                            .reason("PRODUCT_INACTIVE")
-                            .message("Product '" + product.getName() + "' không còn hoạt động")
-                            .build());
-                    continue;
-                }
-
-                if (variant.getQuantity() < item.getQuantity()) {
-                    errors.add(ValidationResponse.ValidationError.builder()
-                            .variantId(item.getVariantId())
-                            .reason("OUT_OF_STOCK")
-                            .message("Variant '" + variant.getColor() + "/" + variant.getSize()
-                                    + "' không đủ hàng (cần: " + item.getQuantity()
-                                    + ", có: " + variant.getQuantity() + ")")
-                            .build());
-                }
-
-                if (product.getPrice().compareTo(item.getPrice()) != 0) {
-                    errors.add(ValidationResponse.ValidationError.builder()
-                            .variantId(item.getVariantId())
-                            .reason("PRICE_CHANGED")
-                            .message("Giá đã thay đổi từ " + item.getPrice()
-                                    + " → " + product.getPrice())
-                            .build());
-                }
-            } catch (Exception e) {
+            if (variant == null) {
                 errors.add(ValidationResponse.ValidationError.builder()
                         .variantId(item.getVariantId())
-                        .reason("PRODUCT_UNAVAILABLE")
-                        .message("Không thể lấy thông tin product từ ProductService")
+                        .reason("VARIANT_NOT_FOUND")
+                        .message("Variant '" + item.getVariantId() + "' không tồn tại")
+                        .build());
+                continue;
+            }
+
+            if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("PRODUCT_INACTIVE")
+                        .message("Product '" + product.getName() + "' không còn hoạt động")
+                        .build());
+                continue;
+            }
+
+            if (variant.getQuantity() < item.getQuantity()) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("OUT_OF_STOCK")
+                        .message("Variant '" + variant.getColor() + "/" + variant.getSize()
+                                + "' không đủ hàng (cần: " + item.getQuantity()
+                                + ", có: " + variant.getQuantity() + ")")
+                        .build());
+            }
+
+            if (product.getPrice().compareTo(item.getPrice()) != 0) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("PRICE_CHANGED")
+                        .message("Giá đã thay đổi từ " + item.getPrice()
+                                + " → " + product.getPrice())
                         .build());
             }
         }
@@ -404,32 +394,28 @@ public class CartService {
     private List<String> validateCartItems(List<CartItem> items) {
         List<String> validationErrors = new ArrayList<>();
         for (CartItem item : items) {
-            try {
-                ProductDto product = productServiceClient.getProductById(item.getProductId());
-                if (product == null) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
-                    continue;
-                }
-                if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
-                    validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
-                    continue;
-                }
-                VariantDto variant = product.getVariants().stream()
-                        .filter(v -> v.getId().equals(item.getVariantId()))
-                        .findFirst()
-                        .orElse(null);
-                if (variant == null) {
-                    validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
-                    continue;
-                }
-                if (variant.getQuantity() < item.getQuantity()) {
-                    validationErrors.add("Sản phẩm '" + item.getProductName()
-                            + "' (" + item.getColor() + ", " + item.getSize()
-                            + ") chỉ còn " + variant.getQuantity()
-                            + ", bạn cần " + item.getQuantity());
-                }
-            } catch (Exception e) {
-                validationErrors.add("Không thể kiểm tra tồn kho sản phẩm '" + item.getProductName() + "'");
+            ProductDto product = getProductWithCircuitBreaker(item.getProductId());
+            if (product == null) {
+                validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
+                continue;
+            }
+            if ("INACTIVE".equalsIgnoreCase(product.getStatus())) {
+                validationErrors.add("Sản phẩm '" + product.getName() + "' không còn hoạt động");
+                continue;
+            }
+            VariantDto variant = product.getVariants().stream()
+                    .filter(v -> v.getId().equals(item.getVariantId()))
+                    .findFirst()
+                    .orElse(null);
+            if (variant == null) {
+                validationErrors.add("Variant '" + item.getVariantId() + "' không tồn tại");
+                continue;
+            }
+            if (variant.getQuantity() < item.getQuantity()) {
+                validationErrors.add("Sản phẩm '" + item.getProductName()
+                        + "' (" + item.getColor() + ", " + item.getSize()
+                        + ") chỉ còn " + variant.getQuantity()
+                        + ", bạn cần " + item.getQuantity());
             }
         }
 
@@ -503,5 +489,17 @@ public class CartService {
     public CartResponse addItemFallback(Long userId, AddCartItemRequest request, Throwable t) {
         log.error("ProductService unavailable when adding item for user {}: {}", userId, t.getMessage());
         throw new RuntimeException("Không thể thêm sản phẩm vào giỏ hàng, vui lòng thử lại sau");
+    }
+
+    @CircuitBreaker(name = "productService", fallbackMethod = "getProductByIdFallback")
+    @Retry(name = "productService")
+    @Bulkhead(name = "productService")
+    public ProductDto getProductWithCircuitBreaker(String productId) {
+        return productServiceClient.getProductById(productId);
+    }
+
+    public ProductDto getProductByIdFallback(String productId, Throwable t) {
+        log.error("[CircuitBreaker] CartService: ProductService unavailable calling getProductById({}): {}", productId, t.getMessage());
+        throw new ServiceUnavailableException("Không thể kiểm tra sản phẩm, vui lòng thử lại sau");
     }
 }
