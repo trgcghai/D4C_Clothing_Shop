@@ -8,6 +8,7 @@ import iuh.fit.CartService.repository.CartItemRepository;
 import iuh.fit.CartService.repository.CartRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -68,6 +69,7 @@ public class CartService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "productService", fallbackMethod = "addItemFallback")
     public CartResponse addItem(Long userId, AddCartItemRequest request) {
         ProductDto product;
         try {
@@ -496,5 +498,10 @@ public class CartService {
             log.warn("Failed to deserialize cached cart: {}", e.getMessage());
             return null;
         }
+    }
+
+    public CartResponse addItemFallback(Long userId, AddCartItemRequest request, Throwable t) {
+        log.error("ProductService unavailable when adding item for user {}: {}", userId, t.getMessage());
+        throw new RuntimeException("Không thể thêm sản phẩm vào giỏ hàng, vui lòng thử lại sau");
     }
 }

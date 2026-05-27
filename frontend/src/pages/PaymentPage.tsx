@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { useCountdownTimer } from "use-countdown-timer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +58,7 @@ export default function PaymentPage() {
     cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
 
   const handleCancelPayment = useCallback(
-    async (reason: "user" | "expired") => {
+    async (reason: "user" | "expired", skipNavigate = false) => {
       if (paymentCompletedRef.current || !paymentId) return;
       paymentCompletedRef.current = true;
 
@@ -70,7 +70,9 @@ export default function PaymentPage() {
         if (reason === "expired") {
           toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
         }
-        navigate("/orders");
+        if (!skipNavigate) {
+          navigate("/orders");
+        }
       } catch (error) {
         paymentCompletedRef.current = false;
         console.error("Failed to cancel payment:", error);
@@ -78,6 +80,25 @@ export default function PaymentPage() {
     },
     [paymentId, order, cancelPaymentMutation, cancelOrderMutation, navigate],
   );
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !paymentCompletedRef.current &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const confirmed = window.confirm(
+        "Bạn đang trong quá trình thanh toán. Nếu rời đi, đơn hàng sẽ bị hủy sau 5 phút. Tiếp tục?"
+      );
+      if (confirmed) {
+        handleCancelPayment("user", true).then(() => blocker.proceed());
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker.state, blocker.proceed, blocker.reset, handleCancelPayment]);
 
   const timerMs = payment?.expiresAt
     ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())

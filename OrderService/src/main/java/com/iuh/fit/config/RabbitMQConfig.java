@@ -5,9 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Map;
 
 @Configuration
 public class RabbitMQConfig {
@@ -31,6 +33,31 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(ORDER_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange orderDlx() {
+        return new TopicExchange("order.dlx");
+    }
+
+    @Bean
+    public Queue orderPaidDlq() {
+        return QueueBuilder.durable("order.paid.dlq").build();
+    }
+
+    @Bean
+    public Binding orderPaidDlqBinding() {
+        return BindingBuilder.bind(orderPaidDlq()).to(orderDlx()).with("order.paid.dlq");
+    }
+
+    @Bean
+    public Queue orderCancelledDlq() {
+        return QueueBuilder.durable("order.cancelled.dlq").build();
+    }
+
+    @Bean
+    public Binding orderCancelledDlqBinding() {
+        return BindingBuilder.bind(orderCancelledDlq()).to(orderDlx()).with("order.cancelled.dlq");
     }
 
     @Bean

@@ -2,9 +2,13 @@ package iuh.fit.PaymentService.domain.dto;
 
 import iuh.fit.PaymentService.domain.enums.PaymentMethod;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
 
+@Getter
+@Setter
 public class PaymentResponse {
 
     private Long paymentId;
@@ -22,31 +26,4 @@ public class PaymentResponse {
     private Instant paidAt;
 
     public PaymentResponse() {}
-
-    public Long getPaymentId() { return paymentId; }
-    public void setPaymentId(Long paymentId) { this.paymentId = paymentId; }
-    public Long getOrderId() { return orderId; }
-    public void setOrderId(Long orderId) { this.orderId = orderId; }
-    public String getCheckoutOrderId() { return checkoutOrderId; }
-    public void setCheckoutOrderId(String checkoutOrderId) { this.checkoutOrderId = checkoutOrderId; }
-    public String getPaymentCode() { return paymentCode; }
-    public void setPaymentCode(String paymentCode) { this.paymentCode = paymentCode; }
-    public Long getAmount() { return amount; }
-    public void setAmount(Long amount) { this.amount = amount; }
-    public PaymentMethod getMethod() { return method; }
-    public void setMethod(PaymentMethod method) { this.method = method; }
-    public PaymentStatus getStatus() { return status; }
-    public void setStatus(PaymentStatus status) { this.status = status; }
-    public String getQrUrl() { return qrUrl; }
-    public void setQrUrl(String qrUrl) { this.qrUrl = qrUrl; }
-    public Instant getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Long getSepayTransactionId() { return sepayTransactionId; }
-    public void setSepayTransactionId(Long sepayTransactionId) { this.sepayTransactionId = sepayTransactionId; }
-    public String getSepayGateway() { return sepayGateway; }
-    public void setSepayGateway(String sepayGateway) { this.sepayGateway = sepayGateway; }
-    public Instant getPaidAt() { return paidAt; }
-    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
 }

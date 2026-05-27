@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -18,6 +18,8 @@ import { useCreateOrderFromCheckout } from "@/src/hooks/useUserOrders";
 import { useStore } from "@/src/store";
 import type { PaymentMethod } from "@/src/services/paymentApi";
 import AddressForm from "@/src/components/profile/AddressForm";
+import { isTokenExpiringSoon } from "@/src/lib/auth";
+import { refreshToken } from "@/src/services/authApi";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -27,6 +29,8 @@ export default function CheckoutPage() {
   const createOrderFromCheckoutMutation = useCreateOrderFromCheckout();
   const createPaymentMutation = useCreatePayment();
   const [method, setMethod] = useState<PaymentMethod>("QR");
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const checkoutAttemptedRef = useRef(false);
 
   const isProcessing =
     partialCheckoutMutation.isPending ||
@@ -127,6 +131,7 @@ export default function CheckoutPage() {
 
   const handleConfirm = async () => {
     if (isProcessing) return;
+    if (checkoutAttemptedRef.current) return;
 
     if (!user) return;
     if (itemIdsForCheckout.length === 0) return;
@@ -136,9 +141,22 @@ export default function CheckoutPage() {
       return;
     }
 
+    const { token } = useStore.getState();
+    if (token && isTokenExpiringSoon(token, 120)) {
+      try {
+        await refreshToken();
+      } catch {
+        toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+        return;
+      }
+    }
+
+    checkoutAttemptedRef.current = true;
+
     try {
       const checkoutData = await partialCheckoutMutation.mutateAsync({
         itemIds: itemIdsForCheckout,
+        idempotencyKey,
       });
 
       const order = await createOrderFromCheckoutMutation.mutateAsync({

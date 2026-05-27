@@ -3,11 +3,20 @@ package iuh.fit.PaymentService.domain.entity;
 import iuh.fit.PaymentService.domain.enums.PaymentMethod;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = {
+    @Index(name = "idx_payment_status", columnList = "status"),
+    @Index(name = "idx_payment_expires_at", columnList = "expires_at"),
+    @Index(name = "idx_payment_checkout_order_id", columnList = "checkout_order_id"),
+    @Index(name = "idx_payment_order_id", columnList = "order_id")
+})
+@Getter
+@Setter
 public class Payment {
 
     @Id
@@ -52,34 +61,10 @@ public class Payment {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public Payment() {}
+    @Column(name = "reconciliation_status", length = 30)
+    private String reconciliationStatus;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getOrderId() { return orderId; }
-    public void setOrderId(Long orderId) { this.orderId = orderId; }
-    public String getCheckoutOrderId() { return checkoutOrderId; }
-    public void setCheckoutOrderId(String checkoutOrderId) { this.checkoutOrderId = checkoutOrderId; }
-    public String getPaymentCode() { return paymentCode; }
-    public void setPaymentCode(String paymentCode) { this.paymentCode = paymentCode; }
-    public Long getAmount() { return amount; }
-    public void setAmount(Long amount) { this.amount = amount; }
-    public PaymentMethod getMethod() { return method; }
-    public void setMethod(PaymentMethod method) { this.method = method; }
-    public PaymentStatus getStatus() { return status; }
-    public void setStatus(PaymentStatus status) { this.status = status; }
-    public Long getSepayTransactionId() { return sepayTransactionId; }
-    public void setSepayTransactionId(Long sepayTransactionId) { this.sepayTransactionId = sepayTransactionId; }
-    public String getSepayGateway() { return sepayGateway; }
-    public void setSepayGateway(String sepayGateway) { this.sepayGateway = sepayGateway; }
-    public Instant getPaidAt() { return paidAt; }
-    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
-    public Instant getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public Payment() {}
 
     @PrePersist
     protected void onCreate() {
