@@ -21,9 +21,11 @@ export const rateLimiter = async (req, res, next) => {
     await redisClient.expire(key, 60);
 
     if (count > LIMIT) {
+      const retryAfter = Math.ceil((windowStart + WINDOW_MS - Date.now()) / 1000);
+      res.setHeader("Retry-After", Math.max(retryAfter, 1));
       return res.status(429).json({
         error: "Too many requests. Please try again later.",
-        retryAfter: 30,
+        retryAfter: Math.max(retryAfter, 1),
       });
     }
   } catch (err) {
