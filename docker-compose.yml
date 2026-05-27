@@ -96,7 +96,7 @@ services:
     ports:
       - "8081:8081"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8081/v3/api-docs"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -112,6 +112,8 @@ services:
     hostname: productservice
     depends_on:
       discovery-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     env_file:
       - ./ProductService/.env
@@ -144,11 +146,33 @@ services:
     ports:
       - "8083:8083"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8083/v3/api-docs"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 45s
+    networks:
+      - d4c-net
+
+  recommendationservice:
+    build:
+      context: ./RecommendationService
+      dockerfile: Dockerfile
+    container_name: recommendationservice
+    hostname: recommendationservice
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    env_file:
+      - ./RecommendationService/.env
+    ports:
+      - "8087:8087"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     networks:
       - d4c-net
 
@@ -168,7 +192,31 @@ services:
     ports:
       - "8085:8085"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8085/v3/api-docs"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - d4c-net
+
+  paymentservice:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: paymentservice
+    hostname: paymentservice
+    env_file:
+      - ./PaymentService/.env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8086/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -202,6 +250,30 @@ services:
     networks:
       - d4c-net
 
+  aiservice:
+    build:
+      context: ./AIService
+      dockerfile: Dockerfile
+    container_name: aiservice
+    hostname: aiservice
+    env_file:
+      - ./AIService/.env
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/api/ai/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - d4c-net
+
   api-gateway:
     build:
       context: ./Api-Gateway
@@ -221,7 +293,17 @@ services:
         condition: service_healthy
       orderservice:
         condition: service_healthy
+      paymentservice:
+        condition: service_healthy
       cartservice:
+        condition: service_healthy
+      recommendationservice:
+        condition: service_healthy
+      aiservice:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      searchservice:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -231,6 +313,106 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    networks:
+      - d4c-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - d4c-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_BASEPATH=
+      - XPACK_SECURITY_ENABLED=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'curl -sf http://localhost:5601/api/status | grep -q ''"level":"available"''',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    networks:
+      - d4c-net
+
+  typesense:
+    image: typesense/typesense:30.2
+    container_name: typesense
+    restart: unless-stopped
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - d4c-net
+
+  searchservice:
+    build:
+      context: ./SearchService
+      dockerfile: Dockerfile
+    container_name: searchservice
+    hostname: searchservice
+    env_file:
+      - ./SearchService/.env
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      typesense:
+        condition: service_healthy
+    ports:
+      - "8089:8089"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     networks:
       - d4c-net
 
@@ -267,6 +449,8 @@ volumes:
   mariadb_data:
   redis_data:
   rabbitmq_data:
+  elasticsearch_data:
+  typesense-data:
 
 networks:
   d4c-net:

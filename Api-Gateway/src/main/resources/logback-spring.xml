@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!--
+        logback-spring.xml – Api-Gateway
+        ──────────────────────────────────────────────────────────
+        • CONSOLE appender   → plain text for local dev / Docker stdout
+        • JSON_FILE appender → newline-delimited JSON (NDJSON) written to
+                               /logs/api-gateway-audit.json inside the container.
+                               A Filebeat sidecar (or Docker log driver) ships
+                               these lines to Elasticsearch.
+        ──────────────────────────────────────────────────────────
+    -->
+
+    <!-- ── 1. Console: human-readable, coloured output ────────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%cyan(%thread)] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ── 2. JSON file: one JSON object per line (NDJSON) ────────────────── -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/api-gateway-audit.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Roll daily; keep 30 days of history; max total 1 GB -->
+            <fileNamePattern>logs/api-gateway-audit.%d{yyyy-MM-dd}.json.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!--
+                LogstashEncoder emits standard fields:
+                  @timestamp, level, logger_name, thread_name, message, stack_trace
+                StructuredArguments.kv() values are added automatically as top-level fields.
+            -->
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            <!-- Strip Authorization / Cookie values from any accidentally logged MDC keys -->
+            <excludeMdcKeyName>authorization</excludeMdcKeyName>
+            <excludeMdcKeyName>cookie</excludeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- ── 3. Async wrapper so file I/O never blocks event-loop threads ───── -->
+    <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>4096</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="JSON_FILE"/>
+    </appender>
+
+    <!-- ── 4. Logger configuration ────────────────────────────────────────── -->
+
+    <!-- Audit logger: goes to both console and async JSON file -->
+    <logger name="iuh.fit.apigateway.audit" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_JSON"/>
+    </logger>
+
+    <!-- Gateway framework noise → WARN in prod -->
+    <logger name="org.springframework.cloud.gateway" level="WARN"/>
+    <logger name="reactor.netty"                     level="WARN"/>
+
+    <!-- Root: INFO to console only -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

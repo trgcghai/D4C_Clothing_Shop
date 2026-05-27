@@ -1,26 +1,26 @@
 package iuh.fit.UserService.Controller;
 
-import iuh.fit.UserService.Repository.UserRepository;
+import iuh.fit.UserService.Service.UserService;
 import iuh.fit.UserService.domain.dto.ChangePasswordRequest;
 import iuh.fit.UserService.domain.dto.UpdateProfileRequest;
-import iuh.fit.UserService.domain.dto.UserResponse;
-import iuh.fit.UserService.domain.entity.User;
+import iuh.fit.UserService.domain.dto.AddressRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -30,11 +30,11 @@ import java.util.Map;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserService userService;
 
-    @Autowired
-    private PasswordEncoder encoder;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -48,10 +48,7 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return ResponseEntity.ok(toUserResponse(user));
+        return ResponseEntity.ok(userService.getCurrentUser(username));
     }
 
     @PutMapping("/me")
@@ -67,15 +64,7 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setFullName(request.getFullName());
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setAvatar(request.getAvatar());
-        userRepository.save(user);
-
-        return ResponseEntity.ok(toUserResponse(user));
+        return ResponseEntity.ok(userService.updateProfile(username, request));
     }
 
     @PutMapping("/me/password")
@@ -91,17 +80,39 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("message", userService.changePassword(username, request)));
+    }
 
-        if (!encoder.matches(request.getOldPassword(), user.getPassword())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Old password is incorrect"));
+    @PostMapping("/me/avatar")
+    @Operation(summary = "Upload user avatar to S3")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Avatar uploaded successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid file"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<?> uploadAvatar(@RequestParam("avatar") MultipartFile file) {
+        String username = getCurrentUsername();
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
 
-        user.setPassword(encoder.encode(request.getNewPassword()));
-        userRepository.save(user);
+        return ResponseEntity.ok(userService.uploadAvatar(username, file));
+    }
 
-        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+    @PutMapping("/me/address")
+    @Operation(summary = "Update current user address")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Address updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<?> updateAddress(@Valid @RequestBody AddressRequest request) {
+        String username = getCurrentUsername();
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+
+        return ResponseEntity.ok(userService.updateAddress(username, request));
     }
 
     private String getCurrentUsername() {
@@ -111,17 +122,5 @@ public class UserController {
         }
 
         return authentication.getName();
-    }
-
-    private UserResponse toUserResponse(User user) {
-        return new UserResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getPhoneNumber(),
-                user.getAvatar(),
-                user.getRole()
-        );
     }
 }

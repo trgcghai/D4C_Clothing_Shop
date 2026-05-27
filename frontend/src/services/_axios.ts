@@ -4,6 +4,7 @@ import { useStore } from "@/src/store";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -108,6 +109,9 @@ axiosInstance.interceptors.response.use(
             fullName: data.fullName,
             phoneNumber: data.phoneNumber,
             avatar: data.avatar,
+            street: data.street,
+            ward: data.ward,
+            province: data.province,
             role: data.role,
           },
           data.token,

@@ -197,7 +197,7 @@ export default function CategoryManagement() {
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="size-full object-contain"
+                      className="size-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Button
@@ -296,7 +296,7 @@ export default function CategoryManagement() {
               </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+            <DialogFooter className="px-6 py-4 pb-8 border-t bg-muted/20">
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 Hủy
               </Button>

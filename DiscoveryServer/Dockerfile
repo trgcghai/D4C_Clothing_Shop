@@ -1,4 +1,4 @@
-FROM gradle:8.8-jdk21-alpine AS build
+FROM gradle:8.11-jdk21-alpine AS build
 WORKDIR /workspace
 COPY build.gradle settings.gradle ./
 COPY src ./src

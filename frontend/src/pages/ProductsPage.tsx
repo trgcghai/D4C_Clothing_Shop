@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
+import { useSearchResults } from "@/src/hooks/useSearchResults";
 import { useCategories } from "../hooks/useCategories";
 import type { ProductFilters } from "../services/productApi";
+import type { SearchOptions } from "../services/searchApi";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/src/lib/utils";
@@ -41,6 +43,8 @@ const ProductsPage = () => {
 
   const { data: categories = [] } = useCategories();
 
+  const searchQuery = searchParams.get("search") || undefined;
+
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 12;
   const categoryId = searchParams.get("categoryId") || undefined;
@@ -64,7 +68,32 @@ const ProductsPage = () => {
     sort_order: sortOrder as "asc" | "desc",
   };
 
-  const { data, isLoading } = useProducts(filters);
+  const { data: dataFromProducts, isLoading: isLoadingFromProducts } =
+    useProducts(filters);
+
+  const searchOptions: SearchOptions = useMemo(
+    () => ({
+      page,
+      limit,
+      category: categoryId
+        ? categories.find((c) => c.id === categoryId)?.name
+        : undefined,
+      brand,
+      size,
+      color,
+      gender,
+      sort_by: sort,
+    }),
+    [page, limit, sort, categoryId, categories, brand, size, color, gender],
+  );
+
+  const { data: searchData, isLoading: searchLoading } = useSearchResults(
+    searchQuery ?? "",
+    searchOptions,
+  );
+
+  const data = searchQuery ? searchData : dataFromProducts;
+  const isLoading = searchQuery ? searchLoading : isLoadingFromProducts;
 
   const updateFilter = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams);
@@ -140,28 +169,53 @@ const ProductsPage = () => {
   return (
     <main className="page-wrap px-4 pb-10 pt-8">
       <div className="mb-4">
-        <h1 className="text-3xl font-bold">Tất cả sản phẩm</h1>
+        <h1 className="text-3xl font-bold">
+          {searchQuery
+            ? `Kết quả tìm kiếm cho "${searchQuery}"`
+            : "Tất cả sản phẩm"}
+        </h1>
         <p className="text-muted-foreground mt-1">
           {data?.total ?? 0} sản phẩm
+          {searchQuery && data && "searchTimeMs" in data && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              ({data.searchTimeMs}ms)
+            </span>
+          )}
         </p>
       </div>
 
       <div
         className={cn(
           "mb-4 flex flex-wrap items-center gap-3",
-          hasFilters ? "justify-between" : "justify-end",
+          hasFilters || searchQuery ? "justify-between" : "justify-end",
         )}
       >
-        {hasFilters && (
+        {(hasFilters || searchQuery) && (
           <div className="flex items-center flex-wrap gap-2">
-            <Button
-              variant="destructive"
-              onClick={clearAllFilters}
-              className="gap-1 text-destructive hover:text-destructive"
-            >
-              <X className="size-3.5" />
-              Xóa bộ lọc
-            </Button>
+            {searchQuery && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const params = new URLSearchParams(searchParams);
+                  params.delete("search");
+                  setSearchParams(params);
+                }}
+                className="gap-1"
+              >
+                <X className="size-3.5" />
+                Xóa tìm kiếm
+              </Button>
+            )}
+            {hasFilters && (
+              <Button
+                variant="destructive"
+                onClick={clearAllFilters}
+                className="gap-1 text-destructive hover:text-destructive"
+              >
+                <X className="size-3.5" />
+                Xóa bộ lọc
+              </Button>
+            )}
 
             {categoryId && (
               <FilterChip
@@ -376,20 +430,39 @@ const ProductsPage = () => {
             </>
           ) : (
             <div className="py-20 text-center">
-              <h2 className="text-xl font-semibold">
-                Không tìm thấy sản phẩm nào.
-              </h2>
-              <p className="mt-2 text-muted-foreground">
-                Vui lòng thử điều chỉnh bộ lọc của bạn.
-              </p>
-              {hasFilters && (
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={clearAllFilters}
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
+              {searchQuery ? (
+                <>
+                  <h2 className="text-xl font-semibold">
+                    Không tìm thấy sản phẩm nào cho "{searchQuery}"
+                  </h2>
+                  <p className="mt-2 text-muted-foreground">
+                    Thử tìm với từ khóa khác hoặc{" "}
+                    <Link
+                      to="/products"
+                      className="text-primary hover:underline"
+                    >
+                      xem tất cả sản phẩm
+                    </Link>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-semibold">
+                    Không tìm thấy sản phẩm nào.
+                  </h2>
+                  <p className="mt-2 text-muted-foreground">
+                    Vui lòng thử điều chỉnh bộ lọc của bạn.
+                  </p>
+                  {hasFilters && (
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={clearAllFilters}
+                    >
+                      Xóa tất cả bộ lọc
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}

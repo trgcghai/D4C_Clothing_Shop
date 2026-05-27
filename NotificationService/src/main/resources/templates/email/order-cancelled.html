@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đơn hàng đã bị hủy - D4C Clothing Shop</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #dc2626; padding: 30px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">D4C Clothing Shop</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h2 style="color: #dc2626; margin: 0 0 16px 0; font-size: 20px;">
+                                Đơn hàng đã bị hủy
+                            </h2>
+                            <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                Đơn hàng của bạn đã bị hủy. Số tiền (nếu đã thanh toán) sẽ được hoàn lại trong thời gian sớm nhất.
+                            </p>
+
+                            <!-- Order Info -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto; width: 100%;">
+                                <tr>
+                                    <td style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px 30px;">
+                                        <p style="color: #dc2626; font-size: 12px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Mã đơn hàng</p>
+                                        <p style="color: #1a1a2e; font-size: 24px; font-weight: 700; margin: 0;" th:text="${orderId}">ORD-000000</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Status Badge -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto;">
+                                <tr>
+                                    <td style="background-color: #fee2e2; color: #dc2626; font-size: 14px; font-weight: 600; padding: 8px 20px; border-radius: 20px; text-align: center;">
+                                        Đã hủy
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="color: #555555; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
+                                Nếu bạn không yêu cầu hủy đơn hàng này hoặc có thắc mắc, vui lòng liên hệ hỗ trợ.
+                            </p>
+
+                            <p style="color: #888888; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Bạn có thể đặt hàng lại bất cứ lúc nào tại D4C Clothing Shop.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f8f8; padding: 24px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="color: #888888; font-size: 12px; margin: 0;">
+                                Email này được gửi tự động từ D4C Clothing Shop. Vui lòng không trả lời email này.
+                            </p>
+                            <p style="color: #888888; font-size: 12px; margin: 8px 0 0 0;">
+                                &copy; 2026 D4C Clothing Shop. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

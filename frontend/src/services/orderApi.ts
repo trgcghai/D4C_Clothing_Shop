@@ -1,3 +1,4 @@
+import type { PaymentMethod } from "@/src/services/paymentApi";
 import axiosInstance from "./_axios";
 
 export interface CheckoutSnapshot {
@@ -12,6 +13,7 @@ export interface CheckoutItem {
   size: string;
   price: number;
   quantity: number;
+  variantId: string;
   snapshot: CheckoutSnapshot;
 }
 
@@ -19,10 +21,15 @@ export interface CreateOrderPayload {
   orderId: string;
   items: CheckoutItem[];
   totalAmount: number;
+  paymentMethod: PaymentMethod;
+  shippingStreet: string;
+  shippingWard: string;
+  shippingProvince: string;
 }
 
 export interface OrderItemResponse {
   id: number;
+  productId: number;
   productName: string;
   color: string;
   size: string;
@@ -40,6 +47,10 @@ export interface OrderResponse {
   checkoutOrderId: string;
   status: string;
   totalAmount: number;
+  paymentMethod: PaymentMethod;
+  shippingStreet: string;
+  shippingWard: string;
+  shippingProvince: string;
   items: OrderItemResponse[];
   createdAt: string;
   updatedAt: string;
@@ -69,9 +80,10 @@ export interface UserOrdersPaginatedResponse {
   last: boolean;
 }
 
-export const getOrdersByUserPaginated = async (
-  params: { page: number; size: number },
-): Promise<UserOrdersPaginatedResponse> => {
+export const getOrdersByUserPaginated = async (params: {
+  page: number;
+  size: number;
+}): Promise<UserOrdersPaginatedResponse> => {
   return axiosInstance.get("/api/orders", { params }).then((res) => res.data);
 };
 
@@ -79,4 +91,10 @@ export const getUserOrderDetail = async (
   orderId: number,
 ): Promise<OrderResponse> => {
   return axiosInstance.get(`/api/orders/${orderId}`).then((res) => res.data);
+};
+
+export const cancelOrder = async (orderId: number): Promise<OrderResponse> => {
+  return axiosInstance
+    .patch(`/api/orders/${orderId}/status`, { status: "CANCELLED" })
+    .then((res) => res.data);
 };

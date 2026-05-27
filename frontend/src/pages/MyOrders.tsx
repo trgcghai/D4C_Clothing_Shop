@@ -10,33 +10,16 @@ import {
   EmptyContent,
 } from "@/components/ui/empty";
 import { useUserOrders } from "@/src/hooks/useUserOrders";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
+import { formatDateTime } from "@/src/lib/dateTimeFormatter";
 import type { OrderResponse } from "@/src/services/orderApi";
 import { Loader2, Package } from "lucide-react";
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value);
-
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
-
-const getStatusBadgeVariant = (status: string) => {
-  if (status === "PAID") return "default";
-  if (status === "CANCELLED") return "destructive";
-  return "secondary";
-};
-
-const getStatusLabel = (status: string) => {
-  if (status === "PENDING_PAYMENT") return "Chờ thanh toán";
-  if (status === "PAID") return "Đã thanh toán";
-  if (status === "CANCELLED") return "Đã hủy";
-  return status;
-};
+import {
+  getPaymentMethodBadgeVariant,
+  getPaymentMethodLabel,
+  getStatusBadgeVariant,
+  getStatusLabel,
+} from "@/src/lib/orderStyleGetter";
 
 function OrderCard({ order }: { order: OrderResponse }) {
   const navigate = useNavigate();
@@ -53,6 +36,9 @@ function OrderCard({ order }: { order: OrderResponse }) {
             <span className="font-semibold">#{order.id}</span>
             <Badge variant={getStatusBadgeVariant(order.status)}>
               {getStatusLabel(order.status)}
+            </Badge>
+            <Badge variant={getPaymentMethodBadgeVariant(order.paymentMethod)}>
+              {getPaymentMethodLabel(order.paymentMethod)}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">

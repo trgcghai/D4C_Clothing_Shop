@@ -227,3 +227,56 @@ export const deductStock = async (
     .post(`/api/products/variants/${variantId}/deduct-stock`, { quantity })
     .then((res) => res.data);
 };
+
+export interface RestoreStockResponse {
+  success: boolean;
+  variantId: string;
+  restored: number;
+  current: number;
+}
+
+export const restoreStock = async (
+  variantId: string,
+  quantity: number,
+): Promise<RestoreStockResponse> => {
+  return axiosInstance
+    .post(`/api/products/variants/${variantId}/restore-stock`, { quantity })
+    .then((res) => res.data);
+};
+
+// ─── Recommendation & Behavior ────────────────────────────────────────────────
+
+export type BehaviorEventType =
+  | "view"
+  | "add_to_cart"
+  | "buy_now"
+  | "purchased";
+
+/**
+ * POST /api/recommendations/behaviors
+ * Record a user behavior event for recommendation scoring.
+ */
+export const recordBehavior = async (
+  userId: string,
+  productId: string,
+  eventType: BehaviorEventType,
+): Promise<void> => {
+  return axiosInstance
+    .post("/api/recommendations/behaviors", { userId, productId, eventType })
+    .then(() => undefined)
+    .catch(() => undefined); // fire-and-forget, never block UI
+};
+
+/**
+ * GET /api/recommendations?userId=&limit=
+ * Get personalised product recommendations for a user.
+ */
+export const getRecommendations = async (
+  userId: string,
+  limit = 10,
+): Promise<Product[]> => {
+  return axiosInstance
+    .get("/api/recommendations", { params: { userId, limit } })
+    .then((res) => res.data)
+    .catch(() => []); // fallback to empty list on error
+};

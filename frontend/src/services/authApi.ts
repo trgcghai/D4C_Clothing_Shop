@@ -30,6 +30,9 @@ export interface JwtResponse {
   fullName: string;
   phoneNumber: string;
   avatar: string;
+  street?: string;
+  ward?: string;
+  province?: string;
   role: Role;
 }
 
@@ -40,6 +43,9 @@ export interface UserResponse {
   fullName: string;
   phoneNumber: string;
   avatar: string;
+  street?: string;
+  ward?: string;
+  province?: string;
   role: Role;
 }
 
@@ -47,6 +53,12 @@ export interface UpdateProfileRequest {
   fullName?: string;
   phoneNumber?: string;
   avatar?: string;
+}
+
+export interface UpdateAddressRequest {
+  street?: string;
+  ward?: string;
+  province?: string;
 }
 
 export interface ChangePasswordRequest {
@@ -154,5 +166,31 @@ export const changePassword = async (
 ): Promise<ErrorResponse> => {
   return axiosInstance
     .put("/api/users/me/password", payload)
+    .then((res) => res.data);
+};
+
+/**
+ * POST /api/users/me/avatar
+ * Upload avatar image via multipart form data.
+ */
+export const uploadAvatar = async (file: File): Promise<UserResponse> => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  return axiosInstance
+    .post("/api/users/me/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((res) => res.data);
+};
+
+/**
+ * PUT /api/users/me/address
+ * Update current user's address.
+ */
+export const updateAddress = async (
+  payload: UpdateAddressRequest,
+): Promise<UserResponse> => {
+  return axiosInstance
+    .put("/api/users/me/address", payload)
     .then((res) => res.data);
 };

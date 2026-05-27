@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ProductPagination from "@/src/components/CustomPagination";
 import {
   Plus,
@@ -39,6 +40,7 @@ import {
   X,
   Image as ImageIcon,
   Package,
+  Sparkles,
 } from "lucide-react";
 import {
   useProducts,
@@ -47,11 +49,13 @@ import {
   useDeleteProduct,
 } from "@/src/hooks/useProducts";
 import { useCategories } from "@/src/hooks/useCategories";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import type {
   Product,
   ProductCreatePayload,
   Variant,
 } from "@/src/services/productApi";
+import { generateProductTags } from "@/src/services/aiApi";
 
 const PAGE_SIZE = 10;
 const GENDERS = ["Nam", "Nữ", "Unisex"];
@@ -90,6 +94,7 @@ export default function ProductManagement() {
   const [imagePreview, setImagePreview] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [imageError, setImageError] = useState<string | undefined>();
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
   const { data: categoriesData = [] } = useCategories();
   const { data, isLoading } = useProducts({
@@ -228,6 +233,39 @@ export default function ProductManagement() {
     }
   };
 
+  const handleGenerateTags = async () => {
+    if (!form.name) {
+      alert("Vui lòng nhập tên sản phẩm trước khi tạo tags bằng AI.");
+      return;
+    }
+    
+    setIsGeneratingTags(true);
+    try {
+      const categoryName = categoriesData.find(c => c.id === form.categoryId)?.name;
+      const res = await generateProductTags({
+        productData: {
+          name: form.name,
+          description: form.description,
+          categoryName,
+          brand: form.brand,
+          gender: form.gender,
+        }
+      });
+      
+      if (res.success && res.data?.tags) {
+        const newTags = res.data.tags;
+        const currentTags = form.tags || [];
+        const merged = Array.from(new Set([...currentTags, ...newTags]));
+        setForm({ ...form, tags: merged });
+      }
+    } catch (error) {
+      console.error("Lỗi khi tạo tags:", error);
+      alert("Đã có lỗi xảy ra khi tạo tags bằng AI.");
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  };
+
   const totalStock = (p: Product) =>
     (p.variants || []).reduce((s, v) => s + Number(v.quantity), 0);
 
@@ -258,433 +296,506 @@ export default function ProductManagement() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="w-[96vw] max-w-275 max-h-[92vh] overflow-y-auto p-0 gap-0">
+          <DialogContent className="sm:max-w-225 max-h-[90vh] p-0 gap-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <DialogTitle className="text-xl">
+              <DialogTitle className="text-xl font-semibold">
                 {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_300px] min-h-0">
-              <div className="border-r p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Hình ảnh
-                </h3>
-                {imagePreview ? (
-                  <div className="relative aspect-square w-full overflow-hidden rounded-lg border">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="size-full object-cover"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute right-2 top-2 size-7"
-                      onClick={() => {
-                        if (imagePreview.startsWith("blob:"))
-                          URL.revokeObjectURL(imagePreview);
-                        setImage(null);
-                        setImagePreview(editingProduct?.imageUrl || "");
-                      }}
-                    >
-                      <X className="size-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragOver(true);
-                    }}
-                    onDragLeave={() => setIsDragOver(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragOver(false);
-                      const f = e.dataTransfer.files?.[0];
-                      if (f) validateAndSetImage(f);
-                    }}
-                    className={`flex aspect-square w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:bg-accent"}`}
-                  >
-                    <ImageIcon className="mb-2 size-10 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Kéo thả ảnh vào đây
-                    </p>
-                    <label className="mt-2 cursor-pointer text-sm font-medium text-primary hover:underline">
-                      Hoặc chọn tệp
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) validateAndSetImage(f);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      JPG, PNG, WebP · Max 5MB
-                    </p>
-                  </div>
-                )}
-                {imageError && (
-                  <p className="text-sm text-destructive">{imageError}</p>
-                )}
-              </div>
-
-              <div className="border-r p-5 space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Thông tin sản phẩm
-                </h3>
-
-                <div className="grid gap-1.5">
-                  <Label htmlFor="pm-name">
-                    Tên sản phẩm <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="pm-name"
-                    placeholder="Ví dụ: Áo Thun Basic Nike"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="grid gap-1.5">
-                  <Label htmlFor="pm-price">
-                    Giá bán (VNĐ) <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="pm-price"
-                    type="number"
-                    min="0"
-                    step="1000"
-                    placeholder="250000"
-                    value={form.price}
-                    onChange={(e) =>
-                      setForm({ ...form, price: Number(e.target.value) })
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label>
-                      Danh mục <span className="text-destructive">*</span>
-                    </Label>
-                    <Link
-                      to="/admin/categories"
-                      className="text-[10px] text-primary hover:underline font-medium"
-                    >
-                      Quản lý danh mục
-                    </Link>
-                  </div>
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(val) =>
-                      setForm({ ...form, categoryId: val })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn danh mục..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoriesData.length === 0 ? (
-                        <SelectItem value="__empty__" disabled>
-                          Đang tải danh mục...
-                        </SelectItem>
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)] [scrollbar-width:thin] [scrollbar-color:hsl(var(--muted-foreground)/0.28)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/35">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <ImageIcon className="size-4 text-muted-foreground" />
+                        Hình ảnh sản phẩm
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {imagePreview ? (
+                        <div className="relative aspect-square w-full overflow-hidden rounded-lg border">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="size-full object-cover"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute right-2 top-2 size-8 shadow-lg"
+                            onClick={() => {
+                              if (imagePreview.startsWith("blob:"))
+                                URL.revokeObjectURL(imagePreview);
+                              setImage(null);
+                              setImagePreview(editingProduct?.imageUrl || "");
+                            }}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
                       ) : (
-                        categoriesData.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(true);
+                          }}
+                          onDragLeave={() => setIsDragOver(false)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(false);
+                            const f = e.dataTransfer.files?.[0];
+                            if (f) validateAndSetImage(f);
+                          }}
+                          className={`flex aspect-square w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${isDragOver ? "border-primary bg-primary/5 scale-[1.02]" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50"}`}
+                        >
+                          <div className="rounded-full bg-muted p-3 mb-3">
+                            <ImageIcon className="size-6 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground">
+                            Kéo thả ảnh vào đây
+                          </p>
+                          <label className="mt-2 cursor-pointer text-sm text-primary hover:underline font-medium">
+                            Hoặc chọn tệp
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) validateAndSetImage(f);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            JPG, PNG, WebP · Tối đa 5MB
+                          </p>
+                        </div>
                       )}
-                    </SelectContent>
-                  </Select>
-                  {categoriesData.length === 0 && (
-                    <p className="text-xs text-amber-600">
-                      ⚠️ Không tải được danh mục — kiểm tra kết nối server
-                    </p>
-                  )}
-                </div>
+                      {imageError && (
+                        <p className="mt-2 text-sm text-destructive flex items-center gap-1">
+                          <span className="text-base">⚠</span> {imageError}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-1.5">
-                    <Label>
-                      Thương hiệu <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={form.brand}
-                      onValueChange={(val) => setForm({ ...form, brand: val })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BRANDS.map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>Giới tính</Label>
-                    <Select
-                      value={form.gender}
-                      onValueChange={(val) => setForm({ ...form, gender: val })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid gap-1.5">
-                  <Label htmlFor="pm-desc">Mô tả sản phẩm</Label>
-                  <Textarea
-                    id="pm-desc"
-                    rows={5}
-                    placeholder="Mô tả chi tiết về chất liệu, kiểu dáng, phù hợp dịp nào..."
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="pm-featured"
-                    checked={!!form.isFeatured}
-                    onCheckedChange={(c: boolean) =>
-                      setForm({ ...form, isFeatured: c })
-                    }
-                  />
-                  <Label htmlFor="pm-featured" className="cursor-pointer">
-                    Đánh dấu sản phẩm nổi bật
-                  </Label>
-                </div>
-              </div>
-
-              <div className="p-5 space-y-5">
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                    Biến thể <span className="text-destructive">*</span>
-                  </h3>
-
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="grid gap-1">
-                        <Label className="text-xs">Màu sắc</Label>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Package className="size-4 text-muted-foreground" />
+                        Thông tin sản phẩm
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="pm-name">
+                          Tên sản phẩm{" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
                         <Input
-                          placeholder="Đen, Trắng..."
-                          value={variantInput.color}
+                          id="pm-name"
+                          placeholder="Ví dụ: Áo Thun Basic Nike"
+                          value={form.name}
                           onChange={(e) =>
-                            setVariantInput({
-                              ...variantInput,
-                              color: e.target.value,
-                            })
+                            setForm({ ...form, name: e.target.value })
                           }
-                          onKeyDown={(e) => e.key === "Enter" && addVariant()}
                         />
                       </div>
-                      <div className="grid gap-1">
-                        <Label className="text-xs">Kích thước</Label>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="pm-price">
+                          Giá bán (VNĐ){" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="pm-price"
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder="250000"
+                          value={form.price}
+                          onChange={(e) =>
+                            setForm({ ...form, price: Number(e.target.value) })
+                          }
+                        />
+                      </div>
+
+                      <div className="grid gap-2">
+                        <div className="flex items-center justify-between">
+                          <Label>
+                            Danh mục <span className="text-destructive">*</span>
+                          </Label>
+                          <Link
+                            to="/admin/categories"
+                            className="text-xs text-primary hover:underline font-medium"
+                          >
+                            Quản lý danh mục
+                          </Link>
+                        </div>
                         <Select
-                          value={variantInput.size}
-                          onValueChange={(v) =>
-                            setVariantInput({ ...variantInput, size: v })
+                          value={form.categoryId}
+                          onValueChange={(val) =>
+                            setForm({ ...form, categoryId: val })
                           }
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Size..." />
+                            <SelectValue placeholder="Chọn danh mục..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {SIZES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s}
+                            {categoriesData.length === 0 ? (
+                              <SelectItem value="__empty__" disabled>
+                                Đang tải danh mục...
                               </SelectItem>
-                            ))}
+                            ) : (
+                              categoriesData.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id}>
+                                  {cat.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
+                        {categoriesData.length === 0 && (
+                          <p className="text-xs text-amber-600">
+                            ⚠️ Không tải được danh mục — kiểm tra kết nối server
+                          </p>
+                        )}
                       </div>
-                      <div className="grid gap-1">
-                        <Label className="text-xs">Số lượng</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={variantInput.quantity || ""}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-2">
+                          <Label>
+                            Thương hiệu{" "}
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          <Select
+                            value={form.brand}
+                            onValueChange={(val) =>
+                              setForm({ ...form, brand: val })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BRANDS.map((b) => (
+                                <SelectItem key={b} value={b}>
+                                  {b}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Giới tính</Label>
+                          <Select
+                            value={form.gender}
+                            onValueChange={(val) =>
+                              setForm({ ...form, gender: val })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GENDERS.map((g) => (
+                                <SelectItem key={g} value={g}>
+                                  {g}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="pm-desc">Mô tả sản phẩm</Label>
+                        <Textarea
+                          id="pm-desc"
+                          rows={4}
+                          placeholder="Mô tả chi tiết về chất liệu, kiểu dáng, phù hợp dịp nào..."
+                          value={form.description}
                           onChange={(e) =>
-                            setVariantInput({
-                              ...variantInput,
-                              quantity: Number(e.target.value),
-                            })
+                            setForm({ ...form, description: e.target.value })
                           }
                         />
                       </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-background"
-                      onClick={addVariant}
-                      disabled={
-                        !variantInput.color.trim() || !variantInput.size.trim()
-                      }
-                    >
-                      <Plus className="mr-1.5 size-3.5" />
-                      Thêm biến thể
-                    </Button>
-                  </div>
 
-                  {form.variants.length > 0 ? (
-                    <div className="mt-2 rounded-lg border overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="py-1.5 text-xs h-auto">
-                              Màu
-                            </TableHead>
-                            <TableHead className="py-1.5 text-xs h-auto">
-                              Size
-                            </TableHead>
-                            <TableHead className="py-1.5 text-xs h-auto">
-                              SL
-                            </TableHead>
-                            <TableHead className="py-1.5 w-8 h-auto"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.variants.map((v, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="py-1 text-xs">
-                                {v.color}
-                              </TableCell>
-                              <TableCell className="py-1">
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0"
-                                >
-                                  {v.size}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="py-1 text-xs font-medium">
-                                {v.quantity}
-                              </TableCell>
-                              <TableCell className="py-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-5"
-                                  onClick={() => removeVariant(i)}
-                                >
-                                  <Trash2 className="size-3 text-destructive" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      <div className="bg-muted/30 px-3 py-1 text-xs text-muted-foreground border-t flex justify-between">
-                        <span>{form.variants.length} biến thể</span>
-                        <span className="font-medium">
-                          Tổng:{" "}
-                          {form.variants.reduce(
-                            (s, v) => s + Number(v.quantity),
-                            0,
-                          )}{" "}
-                          sp
-                        </span>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Checkbox
+                          id="pm-featured"
+                          checked={!!form.isFeatured}
+                          onCheckedChange={(c: boolean) =>
+                            setForm({ ...form, isFeatured: c })
+                          }
+                        />
+                        <Label
+                          htmlFor="pm-featured"
+                          className="cursor-pointer text-sm"
+                        >
+                          Đánh dấu sản phẩm nổi bật
+                        </Label>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-center text-xs text-muted-foreground py-4 border rounded-lg border-dashed">
-                      Chưa có biến thể. Thêm ít nhất 1 biến thể.
-                    </p>
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                    Tags
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Từ khoá tìm kiếm cho sản phẩm
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      className="text-sm"
-                      placeholder="Nhập tag..."
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && (e.preventDefault(), addTag())
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addTag}
-                      disabled={!tagInput.trim()}
-                    >
-                      +
-                    </Button>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {form.tags?.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs"
-                      >
-                        {t}
-                        <button
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">
+                        Biến thể <span className="text-destructive">*</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="grid gap-1.5">
+                            <Label className="text-xs font-medium">
+                              Màu sắc
+                            </Label>
+                            <Input
+                              placeholder="Đen, Trắng..."
+                              value={variantInput.color}
+                              onChange={(e) =>
+                                setVariantInput({
+                                  ...variantInput,
+                                  color: e.target.value,
+                                })
+                              }
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && addVariant()
+                              }
+                            />
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label className="text-xs font-medium">
+                              Kích thước
+                            </Label>
+                            <Select
+                              value={variantInput.size}
+                              onValueChange={(v) =>
+                                setVariantInput({ ...variantInput, size: v })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Size..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SIZES.map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    {s}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label className="text-xs font-medium">
+                              Số lượng
+                            </Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={variantInput.quantity || ""}
+                              onChange={(e) =>
+                                setVariantInput({
+                                  ...variantInput,
+                                  quantity: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <Button
                           type="button"
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              tags: form.tags?.filter((x) => x !== t) || [],
-                            })
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={addVariant}
+                          disabled={
+                            !variantInput.color.trim() ||
+                            !variantInput.size.trim()
                           }
-                          className="text-muted-foreground hover:text-foreground"
                         >
-                          <X className="size-2.5" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
+                          <Plus className="mr-1.5 size-3.5" />
+                          Thêm biến thể
+                        </Button>
+                      </div>
+
+                      {form.variants.length > 0 ? (
+                        <div className="rounded-lg border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="py-2 text-xs font-medium">
+                                  Màu
+                                </TableHead>
+                                <TableHead className="py-2 text-xs font-medium">
+                                  Size
+                                </TableHead>
+                                <TableHead className="py-2 text-xs font-medium">
+                                  SL
+                                </TableHead>
+                                <TableHead className="py-2 w-10"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {form.variants.map((v, i) => (
+                                <TableRow key={i} className="hover:bg-muted/30">
+                                  <TableCell className="py-2.5 text-sm">
+                                    {v.color}
+                                  </TableCell>
+                                  <TableCell className="py-2.5">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs font-medium"
+                                    >
+                                      {v.size}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-2.5 text-sm font-medium tabular-nums">
+                                    {v.quantity}
+                                  </TableCell>
+                                  <TableCell className="py-2.5">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7 text-muted-foreground hover:text-destructive"
+                                      onClick={() => removeVariant(i)}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                          <div className="bg-muted/30 px-4 py-2 text-xs text-muted-foreground border-t flex justify-between font-medium">
+                            <span>{form.variants.length} biến thể</span>
+                            <span className="tabular-nums">
+                              Tổng:{" "}
+                              {form.variants.reduce(
+                                (s, v) => s + Number(v.quantity),
+                                0,
+                              )}{" "}
+                              sản phẩm
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 border rounded-lg border-dashed border-muted-foreground/25">
+                          <Package className="size-8 text-muted-foreground/50 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Chưa có biến thể nào
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Thêm ít nhất 1 biến thể để tiếp tục
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">
+                        Tags
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Từ khoá tìm kiếm cho sản phẩm
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          className="text-sm"
+                          placeholder="Nhập tag và nhấn Enter..."
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && (e.preventDefault(), addTag())
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addTag}
+                          disabled={!tagInput.trim()}
+                        >
+                          <Plus className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleGenerateTags}
+                          disabled={isGeneratingTags || !form.name}
+                          title="Tự động tạo tags bằng AI dựa trên thông tin sản phẩm"
+                          className="gap-1.5 font-medium whitespace-nowrap bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800 dark:hover:bg-indigo-900/50"
+                        >
+                          {isGeneratingTags ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="size-4" />
+                          )}
+                          Tạo bằng AI
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 min-h-8">
+                        {form.tags?.map((t) => (
+                          <Badge
+                            key={t}
+                            variant="secondary"
+                            className="text-xs gap-1.5 pr-1.5"
+                          >
+                            {t}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm({
+                                  ...form,
+                                  tags: form.tags?.filter((x) => x !== t) || [],
+                                })
+                              }
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {(!form.tags || form.tags.length === 0) && (
+                          <span className="text-xs text-muted-foreground italic">
+                            Chưa có tag nào
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t">
-              <div className="flex items-center gap-3 mr-auto text-sm">
+            <DialogFooter className="px-6 py-4 pb-8 border-t bg-muted/30">
+              <div className="flex items-center gap-4 mr-auto">
                 {form.variants.length === 0 && (
-                  <span className="text-destructive text-xs">
-                    ⚠ Cần ít nhất 1 biến thể
+                  <span className="text-destructive text-xs font-medium flex items-center gap-1">
+                    <span>⚠</span> Cần ít nhất 1 biến thể
                   </span>
                 )}
                 {!form.categoryId && (
-                  <span className="text-destructive text-xs">
-                    ⚠ Cần chọn danh mục
+                  <span className="text-destructive text-xs font-medium flex items-center gap-1">
+                    <span>⚠</span> Cần chọn danh mục
                   </span>
                 )}
                 {!form.name && (
-                  <span className="text-destructive text-xs">
-                    ⚠ Cần nhập tên
+                  <span className="text-destructive text-xs font-medium flex items-center gap-1">
+                    <span>⚠</span> Cần nhập tên
                   </span>
                 )}
               </div>
@@ -774,10 +885,7 @@ export default function ProductManagement() {
                   </TableCell>
                   <TableCell className="text-sm">{p.brand}</TableCell>
                   <TableCell className="tabular-nums text-sm">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(p.price)}
+                    {formatCurrency(p.price)}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {p.variants?.length ?? 0} biến thể

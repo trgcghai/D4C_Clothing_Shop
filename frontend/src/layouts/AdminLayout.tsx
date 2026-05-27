@@ -10,6 +10,7 @@ import { cn } from "../lib/utils";
 import { Package, LayoutGrid, Users, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/src/hooks/useAuth";
+import AIChatBubble from "@/src/components/ai/AIChatBubble";
 
 const navItems = [
   { to: "/admin/products", label: "Quản lý sản phẩm", icon: Package },
@@ -72,7 +73,7 @@ const AdminLayout = () => {
             onClick={handleSignOut}
             className="w-full"
           >
-            Dang xuat
+            Đăng xuất
           </Button>
         </div>
       </aside>
@@ -80,6 +81,7 @@ const AdminLayout = () => {
       <main className="ml-64 flex-1">
         <Outlet />
       </main>
+      <AIChatBubble />
     </div>
   );
 };

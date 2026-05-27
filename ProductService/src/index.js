@@ -4,8 +4,13 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
+import stockRoutes from "./routes/stock.routes.js";
 import eurekaClient from "./config/eureka.config.js";
 import { openApiSpec } from "./config/openapi.js";
+import { connectEventPublisher } from "./services/event-publisher.service.js";
+import { close as closeRabbitMQ } from "./config/rabbitmq.publisher.js";
+import { connectConsumer, consumeOrderCancelled, closeConsumer } from "./config/rabbitmq.consumer.js";
+import { handleOrderCancelled } from "./consumers/orderCancelled.consumer.js";
 
 dotenv.config();
 
@@ -22,6 +27,7 @@ app.get("/openapi.json", (req, res) => {
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.use("/api/products", productRoutes);
+app.use("/api/products/stock", stockRoutes);
 app.use("/api/categories", categoryRoutes);
 
 app.get("/health", (req, res) => {
@@ -37,6 +43,13 @@ app.listen(PORT, () => {
     `API documentation available at http://localhost:${PORT}/api-docs`,
   );
 
+  connectEventPublisher();
+
+  // Connect RabbitMQ consumer for order cancelled events
+  connectConsumer().then(() => {
+    consumeOrderCancelled(handleOrderCancelled);
+  });
+
   eurekaClient.start((err) => {
     if (err) {
       console.error("Eureka registration failed", err);
@@ -46,9 +59,15 @@ app.listen(PORT, () => {
   });
 });
 
-process.on("SIGINT", () => {
+function gracefulShutdown(signal) {
+  console.log(`${signal} received, shutting down...`);
   eurekaClient.stop(() => {
     console.log("Eureka client stopped");
-    process.exit();
   });
-});
+  closeRabbitMQ().catch(console.error);
+  closeConsumer().catch(console.error);
+  process.exit(0);
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

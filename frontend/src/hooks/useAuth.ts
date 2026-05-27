@@ -6,11 +6,14 @@ import {
   signOut,
   getCurrentUser,
   updateProfile,
+  uploadAvatar,
+  updateAddress,
   changePassword,
   verifyEmail,
   type LoginRequest,
   type SignupRequest,
   type UpdateProfileRequest,
+  type UpdateAddressRequest,
   type ChangePasswordRequest,
   type VerifyEmailRequest,
   type UserResponse,
@@ -52,6 +55,9 @@ export function useSignIn() {
         fullName: data.fullName,
         phoneNumber: data.phoneNumber,
         avatar: data.avatar,
+        street: data.street,
+        ward: data.ward,
+        province: data.province,
         role: data.role,
       };
       setAuth(user, data.token);
@@ -80,6 +86,9 @@ export function useRefreshToken() {
         fullName: data.fullName,
         phoneNumber: data.phoneNumber,
         avatar: data.avatar,
+        street: data.street,
+        ward: data.ward,
+        province: data.province,
         role: data.role,
       };
       setUser(user);
@@ -118,6 +127,32 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (payload: ChangePasswordRequest) => changePassword(payload),
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  const setUser = useStore((state) => state.setUser);
+
+  return useMutation({
+    mutationFn: (file: File) => uploadAvatar(file),
+    onSuccess: (data) => {
+      queryClient.setQueryData(authKeys.me(), data);
+      setUser(data);
+    },
+  });
+}
+
+export function useUpdateAddress() {
+  const queryClient = useQueryClient();
+  const setUser = useStore((state) => state.setUser);
+
+  return useMutation({
+    mutationFn: (payload: UpdateAddressRequest) => updateAddress(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(authKeys.me(), data);
+      setUser(data);
+    },
   });
 }
 

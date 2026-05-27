@@ -8,6 +8,7 @@ import iuh.fit.CartService.repository.CartItemRepository;
 import iuh.fit.CartService.repository.CartRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -68,6 +69,7 @@ public class CartService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "productService", fallbackMethod = "addItemFallback")
     public CartResponse addItem(Long userId, AddCartItemRequest request) {
         ProductDto product;
         try {
@@ -121,6 +123,7 @@ public class CartService {
                     .price(product.getPrice())
                     .quantity(request.getQuantity())
                     .sku(variant.getSku())
+                    .imageUrl(product.getImageUrl())
                     .build();
             cartItemRepository.save(newItem);
         }
@@ -285,6 +288,72 @@ public class CartService {
                 .build();
     }
 
+    /**
+     * Creates an order draft for selected cart items only.
+     * Does NOT remove items from cart — caller must call removeItemsBulk
+     * after successful order creation.
+     */
+    @Transactional
+    public CheckoutResponse partialCheckout(Long userId, List<Long> itemIds) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        List<CartItem> items = cartItemRepository.findAllByIdInAndCartId(itemIds, cart.getId());
+        if (items.isEmpty()) {
+            throw new RuntimeException("No valid items found in cart");
+        }
+
+        if (items.size() != itemIds.size()) {
+            throw new RuntimeException("Some items do not belong to your cart");
+        }
+
+        List<String> validationErrors = validateCartItems(items);
+
+        if (!validationErrors.isEmpty()) {
+            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
+        }
+
+        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
+
+        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
+                .map(item -> CheckoutResponse.CheckoutItem.builder()
+                        .variantId(item.getVariantId())
+                        .productId(item.getProductId())
+                        .productName(item.getProductName())
+                        .color(item.getColor())
+                        .size(item.getSize())
+                        .price(item.getPrice())
+                        .quantity(item.getQuantity())
+                        .snapshot(CheckoutResponse.Snapshot.builder()
+                                .priceAtCheckout(item.getPrice())
+                                .productName(item.getProductName())
+                                .variantSku(item.getSku())
+                                .build())
+                        .build())
+                .collect(Collectors.toList());
+
+        BigDecimal totalAmount = checkoutItems.stream()
+                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return CheckoutResponse.builder()
+                .orderId(orderId)
+                .status("PENDING")
+                .items(checkoutItems)
+                .totalAmount(totalAmount)
+                .build();
+    }
+
+    @Transactional
+    public CartResponse removeItemsBulk(Long userId, List<Long> itemIds) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        cartItemRepository.deleteAllByIdInAndCartId(itemIds, cart.getId());
+        invalidateCache(userId);
+        return buildCartResponse(cart);
+    }
+
     @Transactional
     public CheckoutResponse checkout(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
@@ -295,6 +364,44 @@ public class CartService {
             throw new RuntimeException("Cart is empty");
         }
 
+        List<String> validationErrors = validateCartItems(items);
+
+        if (!validationErrors.isEmpty()) {
+            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
+        }
+
+        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
+
+        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
+                .map(item -> CheckoutResponse.CheckoutItem.builder()
+                        .variantId(item.getVariantId())
+                        .productId(item.getProductId())
+                        .productName(item.getProductName())
+                        .color(item.getColor())
+                        .size(item.getSize())
+                        .price(item.getPrice())
+                        .quantity(item.getQuantity())
+                        .snapshot(CheckoutResponse.Snapshot.builder()
+                                .priceAtCheckout(item.getPrice())
+                                .productName(item.getProductName())
+                                .variantSku(item.getSku())
+                                .build())
+                        .build())
+                .collect(Collectors.toList());
+
+        BigDecimal totalAmount = checkoutItems.stream()
+                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return CheckoutResponse.builder()
+                .orderId(orderId)
+                .status("PENDING")
+                .items(checkoutItems)
+                .totalAmount(totalAmount)
+                .build();
+    }
+
+    private List<String> validateCartItems(List<CartItem> items) {
         List<String> validationErrors = new ArrayList<>();
         for (CartItem item : items) {
             try {
@@ -326,42 +433,7 @@ public class CartService {
             }
         }
 
-        if (!validationErrors.isEmpty()) {
-            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
-        }
-
-        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
-
-        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
-                .map(item -> {
-                    CheckoutResponse.CheckoutItem ci = new CheckoutResponse.CheckoutItem();
-                    ci.setVariantId(item.getVariantId());
-                    ci.setProductName(item.getProductName());
-                    ci.setColor(item.getColor());
-                    ci.setSize(item.getSize());
-                    ci.setPrice(item.getPrice());
-                    ci.setQuantity(item.getQuantity());
-
-                    CheckoutResponse.Snapshot snap = new CheckoutResponse.Snapshot();
-                    snap.setPriceAtCheckout(item.getPrice());
-                    snap.setProductName(item.getProductName());
-                    snap.setVariantSku(item.getSku());
-                    ci.setSnapshot(snap);
-
-                    return ci;
-                })
-                .collect(Collectors.toList());
-
-        BigDecimal totalAmount = checkoutItems.stream()
-                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return CheckoutResponse.builder()
-                .orderId(orderId)
-                .status("PENDING")
-                .items(checkoutItems)
-                .totalAmount(totalAmount)
-                .build();
+        return validationErrors;
     }
 
     private CartResponse buildCartResponse(Cart cart) {
@@ -371,6 +443,7 @@ public class CartService {
                 .map(item -> CartResponse.CartItemDto.builder()
                         .id(item.getId())
                         .variantId(item.getVariantId())
+                        .productId(item.getProductId())
                         .productName(item.getProductName())
                         .color(item.getColor())
                         .size(item.getSize())
@@ -378,6 +451,7 @@ public class CartService {
                         .quantity(item.getQuantity())
                         .subtotal(item.getSubtotal())
                         .sku(item.getSku())
+                        .imageUrl(item.getImageUrl())
                         .build())
                 .collect(Collectors.toList());
 
@@ -424,5 +498,10 @@ public class CartService {
             log.warn("Failed to deserialize cached cart: {}", e.getMessage());
             return null;
         }
+    }
+
+    public CartResponse addItemFallback(Long userId, AddCartItemRequest request, Throwable t) {
+        log.error("ProductService unavailable when adding item for user {}: {}", userId, t.getMessage());
+        throw new RuntimeException("Không thể thêm sản phẩm vào giỏ hàng, vui lòng thử lại sau");
     }
 }

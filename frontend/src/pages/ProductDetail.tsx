@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import { useProductById, useRelatedProducts } from "../hooks/useProducts";
 import { useAddToCart } from "../hooks/useCart";
+import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { useAuth } from "../store";
 import { Shirt, Minus, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { recordBehavior } from "../services/productApi";
 
 const ProductDetail = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -42,9 +44,16 @@ const ProductDetail = () => {
 
 function ProductDetailContent({ productId }: { productId: string }) {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { data: product, isLoading, isError } = useProductById(productId);
   const addToCart = useAddToCart();
+
+  // Ghi behavior "view" khi user đã đăng nhập và trang đã load xong
+  useEffect(() => {
+    if (isAuthenticated && user?.id && product?.id) {
+      recordBehavior(String(user.id), product.id, "view");
+    }
+  }, [isAuthenticated, user?.id, product?.id]);
 
   const allColors = useMemo(
     () => Array.from(new Set(product?.variants?.map((v) => v.color) || [])),
@@ -142,7 +151,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           </Badge>
           <h1 className="text-3xl font-bold">{product.name}</h1>
           <p className="text-2xl font-semibold mt-2 tabular-nums">
-            {product.price.toLocaleString("vi-VN")}₫
+            {formatCurrency(product.price)}
           </p>
         </div>
 
@@ -295,6 +304,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   navigate("/signin");
                   return;
                 }
+                if (user?.id) recordBehavior(String(user.id), productId, "add_to_cart");
                 addToCart.mutate(
                   {
                     productId,
@@ -331,6 +341,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   navigate("/signin");
                   return;
                 }
+                if (user?.id) recordBehavior(String(user.id), productId, "buy_now");
                 addToCart.mutate(
                   {
                     productId,
@@ -338,9 +349,19 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     quantity: purchaseQty,
                   },
                   {
-                    onSuccess: () => {
+                    onSuccess: (cart) => {
                       setPurchaseQty(1);
-                      navigate("/cart");
+                      const addedItem = cart.items.find(
+                        (item) => item.variantId === selectedVariant.id,
+                      );
+                      if (addedItem) {
+                        navigate(`/checkout?buyNowItemId=${addedItem.id}&buyNowQty=${purchaseQty}`);
+                      } else {
+                        toast.error(
+                          "Không thể xác định sản phẩm để mua ngay. Vui lòng kiểm tra giỏ hàng.",
+                        );
+                        navigate("/cart");
+                      }
                     },
                   },
                 );

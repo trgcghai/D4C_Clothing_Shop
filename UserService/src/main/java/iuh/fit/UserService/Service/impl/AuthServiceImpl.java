@@ -79,16 +79,19 @@ public class AuthServiceImpl implements AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String jwt = jwtUtils.generateToken(userDetails, user.getId());
-        String refreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId());
+        String jwt = jwtUtils.generateToken(userDetails, user.getId(), user.getEmail());
+        String refreshToken = jwtUtils.generateRefreshToken(userDetails, user.getId(), user.getEmail());
 
         persistRefreshToken(user, refreshToken);
 
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
         JwtResponse jwtResponse = new JwtResponse(jwt, "Bearer", user.getId(), userDetails.getUsername(),
-                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(), role,
-                user.getEmailVerification());
+                user.getEmail(), user.getFullName(), user.getPhoneNumber(), user.getAvatar(),
+                user.getAddress() != null ? user.getAddress().getStreet() : null,
+                user.getAddress() != null ? user.getAddress().getWard() : null,
+                user.getAddress() != null ? user.getAddress().getProvince() : null,
+                role, user.getEmailVerification());
 
         return new LoginResult(jwtResponse, refreshToken);
     }

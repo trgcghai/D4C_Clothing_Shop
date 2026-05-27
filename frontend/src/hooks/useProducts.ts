@@ -9,6 +9,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getRecommendations,
   type ProductFilters,
   type SearchOptions,
   type ProductCreatePayload,
@@ -29,6 +30,8 @@ export const productKeys = {
   details: () => [...productKeys.all, "detail"] as const,
   detail: (id: string) => [...productKeys.details(), id] as const,
   related: (id: string) => [...productKeys.detail(id), "related"] as const,
+  recommendations: (userId: string, limit: number) =>
+    [...productKeys.all, "recommendations", userId, limit] as const,
 };
 
 // Queries
@@ -37,7 +40,6 @@ export function useProducts(filters?: ProductFilters) {
   return useQuery({
     queryKey: productKeys.list(filters ?? {}),
     queryFn: () => getProducts(filters),
-    staleTime: 60_000,
   });
 }
 
@@ -45,7 +47,6 @@ export function useFeaturedProducts() {
   return useQuery({
     queryKey: productKeys.featured(),
     queryFn: getFeaturedProducts,
-    staleTime: 5 * 60_000,
   });
 }
 
@@ -53,7 +54,6 @@ export function useNewArrivals(limit = 8) {
   return useQuery({
     queryKey: productKeys.newArrivals(limit),
     queryFn: () => getNewArrivals(limit),
-    staleTime: 5 * 60_000,
   });
 }
 
@@ -62,7 +62,6 @@ export function useSearchProducts(query: string, options?: SearchOptions) {
     queryKey: productKeys.search(query, options),
     queryFn: () => searchProducts(query, options),
     enabled: query.length > 0,
-    staleTime: 30_000,
   });
 }
 
@@ -70,7 +69,7 @@ export function useProductById(id: string) {
   return useQuery({
     queryKey: productKeys.detail(id),
     queryFn: () => getProductById(id),
-    staleTime: 60_000,
+    enabled: !!id,
   });
 }
 
@@ -78,7 +77,16 @@ export function useRelatedProducts(id: string) {
   return useQuery({
     queryKey: productKeys.related(id),
     queryFn: () => getRelatedProducts(id),
-    staleTime: 5 * 60_000,
+    enabled: !!id,
+  });
+}
+
+export function useRecommendations(userId: string | null, limit = 10) {
+  return useQuery({
+    queryKey: productKeys.recommendations(userId ?? "", limit),
+    queryFn: () => getRecommendations(userId!, limit),
+    enabled: !!userId,
+    staleTime: 2 * 60_000,
   });
 }
 

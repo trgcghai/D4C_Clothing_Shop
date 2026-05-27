@@ -21,7 +21,11 @@ import OrderManagement from "./pages/admin/OrderManagement";
 import CartPage from "./pages/CartPage";
 import MyOrders from "./pages/MyOrders";
 import OrderDetail from "./pages/OrderDetail";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentPage from "./pages/PaymentPage";
+import RecommendationsPage from "./pages/RecommendationsPage";
 import { Toaster } from "@/components/ui/sonner";
+import { useSyncUser } from "./hooks/useSyncUser";
 
 export const router = createBrowserRouter([
   {
@@ -31,9 +35,12 @@ export const router = createBrowserRouter([
       { path: "/products", element: <ProductsPage /> },
       { path: "/products/:productId", element: <ProductDetail /> },
       { path: "/cart", element: <CartPage /> },
+      { path: "/checkout", element: <CheckoutPage /> },
+      { path: "/payment/:paymentId", element: <PaymentPage /> },
       { path: "/profile", element: <Profile /> },
       { path: "/orders", element: <MyOrders /> },
       { path: "/orders/:orderId", element: <OrderDetail /> },
+      { path: "/recommendations", element: <RecommendationsPage /> },
     ],
   },
   {
@@ -63,6 +70,8 @@ export const router = createBrowserRouter([
 const queryClient = new QueryClient();
 
 function App() {
+  useSyncUser();
+
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-right" />
