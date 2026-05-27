@@ -87,4 +87,42 @@ class PaymentServiceTest {
         assertThrows(ServiceUnavailableException.class,
                 () -> paymentService.getPaymentByOrderId(1L, 1L));
     }
+
+    @Test
+    void createPayment_whenOrderServiceHealthy_createsPaymentSuccessfully() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setOrderId(1L);
+        request.setCheckoutOrderId("ORD-123");
+        request.setAmount(100000L);
+
+        when(orderClient.getOrderUserId(1L)).thenReturn(1L);
+        when(paymentRepository.findByCheckoutOrderId("ORD-123")).thenReturn(Optional.empty());
+        when(sePayConfig.generatePaymentCode()).thenReturn("PAY-001");
+        when(paymentRepository.save(any())).thenAnswer(invocation -> {
+            var p = invocation.getArgument(0, iuh.fit.PaymentService.domain.entity.Payment.class);
+            p.setId(1L);
+            p.setCreatedAt(java.time.Instant.now());
+            return p;
+        });
+
+        PaymentResponse response = paymentService.createPayment(request, 1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getOrderId());
+    }
+
+    @Test
+    void getPaymentByOrderId_whenOrderServiceHealthy_returnsPayment() {
+        var payment = new iuh.fit.PaymentService.domain.entity.Payment();
+        payment.setId(1L);
+        payment.setOrderId(1L);
+
+        when(paymentRepository.findByOrderId(1L)).thenReturn(Optional.of(payment));
+        when(orderClient.getOrderUserId(1L)).thenReturn(1L);
+
+        PaymentResponse response = paymentService.getPaymentByOrderId(1L, 1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getOrderId());
+    }
 }
