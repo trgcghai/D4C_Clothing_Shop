@@ -1,5 +1,6 @@
 import axios from "axios";
 import eurekaClient from "./eureka.config.js";
+import CircuitBreaker from "opossum";
 
 let currentIndex = 0;
 
@@ -18,14 +19,43 @@ function getBaseUrl() {
   return `http://${instance.hostName}:${instance.port.$}`;
 }
 
-const productServiceClient = axios.create({
-  timeout: 10000,
-});
+const axiosInstance = axios.create({ timeout: 10000 });
 
-productServiceClient.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config) => {
   const baseUrl = getBaseUrl();
   config.url = baseUrl + config.url;
   return config;
 });
 
-export { productServiceClient };
+const circuitBreaker = new CircuitBreaker(
+  async (config) => {
+    return await axiosInstance(config);
+  },
+  {
+    timeout: 3000,
+    errorThresholdPercentage: 50,
+    resetTimeout: 30000,
+    rollingCountTimeout: 10000,
+    rollingCountBuckets: 10,
+    name: "ProductService"
+  }
+);
+
+circuitBreaker.fallback(() => null);
+
+circuitBreaker.on("open", () => console.warn("[CB] ProductService circuit opened"));
+circuitBreaker.on("close", () => console.info("[CB] ProductService circuit closed"));
+circuitBreaker.on("reject", () => console.warn("[CB] Call rejected for ProductService (circuit open)"));
+circuitBreaker.on("fallback", () => console.warn("[CB] Fallback invoked for ProductService"));
+
+export function getProductServiceClient() {
+  return {
+    get: (url, config = {}) => circuitBreaker.fire({ method: "get", url, ...config }),
+  };
+}
+
+export function getCircuitBreakerStats() {
+  return circuitBreaker.stats;
+}
+
+export { circuitBreaker };
