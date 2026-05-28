@@ -26,7 +26,6 @@ export function useCart() {
     queryKey: cartKeys.detail(),
     queryFn: getCart,
     staleTime: 30_000,
-    retry: false,
   });
 }
 

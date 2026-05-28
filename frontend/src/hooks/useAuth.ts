@@ -35,7 +35,6 @@ export function useCurrentUser() {
     queryKey: authKeys.me(),
     queryFn: getCurrentUser,
     staleTime: 5 * 60_000,
-    retry: false,
   });
 }
 

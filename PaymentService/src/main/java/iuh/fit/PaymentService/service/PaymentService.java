@@ -15,6 +15,7 @@ import iuh.fit.PaymentService.domain.enums.PaymentStatus;
 import iuh.fit.PaymentService.domain.event.PaymentCancelledEvent;
 import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
+import iuh.fit.PaymentService.exception.ServiceUnavailableException;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import iuh.fit.PaymentService.repository.PaymentRepository;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,10 +33,18 @@ import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.UUID;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+
 @Service
 public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+    @Lazy
+    @Autowired
+    private PaymentService self;
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -59,7 +69,7 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request, Long requestingUserId) {
-        Long orderUserId = orderClient.getOrderUserId(request.getOrderId());
+        Long orderUserId = self.getOrderUserIdWithCB(request.getOrderId());
         if (!orderUserId.equals(requestingUserId)) {
             throw new PaymentException("Access denied: you do not own this order");
         }
@@ -116,7 +126,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentException("Payment not found for orderId: " + orderId));
 
-        Long orderUserId = orderClient.getOrderUserId(orderId);
+        Long orderUserId = self.getOrderUserIdWithCB(orderId);
         if (!orderUserId.equals(requestingUserId)) {
             throw new PaymentException("Access denied: you do not own this order");
         }
@@ -153,6 +163,28 @@ public class PaymentService {
         }
 
         return new PaymentStatusResponse(paymentId, PaymentStatus.CANCELLED, null);
+    }
+
+    private PaymentResponse getOrderUserIdFallback(CreatePaymentRequest request, Long requestingUserId, Throwable t) {
+        log.error("[CircuitBreaker] PaymentService: OrderService unavailable calling getOrderUserId({}): {}", request.getOrderId(), t.getMessage());
+        throw new ServiceUnavailableException("Không thể xác thực đơn hàng, vui lòng thử lại sau");
+    }
+
+    private PaymentResponse getOrderUserIdFallbackForPayment(Long orderId, Long requestingUserId, Throwable t) {
+        log.error("[CircuitBreaker] PaymentService: OrderService unavailable calling getOrderUserId({}): {}", orderId, t.getMessage());
+        throw new ServiceUnavailableException("Không thể xác thực đơn hàng, vui lòng thử lại sau");
+    }
+
+    @CircuitBreaker(name = "orderService", fallbackMethod = "getOrderUserIdFallbackForPaymentCB")
+    @Retry(name = "orderService")
+    @Bulkhead(name = "orderService")
+    Long getOrderUserIdWithCB(Long orderId) {
+        return orderClient.getOrderUserId(orderId);
+    }
+
+    private Long getOrderUserIdFallbackForPaymentCB(Long orderId, Throwable t) {
+        log.error("[CircuitBreaker] PaymentService: OrderService unavailable calling getOrderUserId({}): {}", orderId, t.getMessage());
+        throw new ServiceUnavailableException("Không thể xác thực đơn hàng, vui lòng thử lại sau");
     }
 
     private void publishEvent(Object event, String eventType, Long aggregateId, String exchange, String routingKey) {

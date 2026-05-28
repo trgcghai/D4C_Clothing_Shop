@@ -16,6 +16,7 @@
     "eureka-js-client": "^4.5.0",
     "express": "^4.19.2",
     "morgan": "^1.10.1",
+    "opossum": "^5.0.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

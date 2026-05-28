@@ -1,5 +1,6 @@
 import axios from "axios";
 import eurekaClient from "./eureka.config.js";
+import { createCircuitBreaker } from "./circuit-breaker.js";
 
 // Fallback URLs from environment variables
 const FALLBACK_URLS = {
@@ -24,7 +25,6 @@ function resolveServiceUrl(appName) {
   if (!instances || instances.length === 0) {
     const fallback = FALLBACK_URLS[appName];
     if (fallback) {
-      // Strip path suffix (e.g. "/api/v1") to get base URL
       return fallback.replace(/\/api\/v1$/, "");
     }
     throw new Error(`${appName} not found in Eureka and no fallback URL configured`);
@@ -41,19 +41,27 @@ function resolveServiceUrl(appName) {
 }
 
 /**
- * Create an axios client that resolves service URLs via Eureka at request time.
+ * Create an axios client that resolves service URLs via Eureka at request time,
+ * wrapped in a circuit breaker.
  * @param {string} appName - Eureka app name
  * @param {string} [basePath=""] - Base path to prepend (e.g. "/api/v1")
- * @returns {import("axios").AxiosInstance}
+ * @returns {object} Wrapped client with get, post, put, delete methods
  */
 export function createServiceClient(appName, basePath = "") {
-  const client = axios.create({ timeout: 10000 });
+  const axiosInstance = axios.create({ timeout: 10000 });
 
-  client.interceptors.request.use((config) => {
+  axiosInstance.interceptors.request.use((config) => {
     const baseUrl = resolveServiceUrl(appName);
     config.url = baseUrl + basePath + config.url;
     return config;
   });
 
-  return client;
+  const breaker = createCircuitBreaker(appName, axiosInstance);
+
+  return {
+    get: (url, config = {}) => breaker.fire({ method: "get", url, ...config }),
+    post: (url, data = {}, config = {}) => breaker.fire({ method: "post", url, data, ...config }),
+    put: (url, data = {}, config = {}) => breaker.fire({ method: "put", url, data, ...config }),
+    delete: (url, config = {}) => breaker.fire({ method: "delete", url, ...config }),
+  };
 }
