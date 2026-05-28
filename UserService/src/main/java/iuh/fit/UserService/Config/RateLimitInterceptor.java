@@ -69,20 +69,18 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private String extractEmailFromBody(HttpServletRequest request) {
-        if (!(request instanceof ContentCachingRequestWrapper wrapper)) {
-            log.debug("[RateLimiter] Request not wrapped, skipping body email extraction");
-            return null;
-        }
         try {
-            byte[] content = wrapper.getContentAsByteArray();
-            if (content.length == 0) {
-                content = request.getInputStream().readAllBytes();
-            }
-            if (content.length == 0) {
+            if (!(request instanceof ContentCachingRequestWrapper)) {
                 return null;
             }
-            String body = new String(content, request.getCharacterEncoding());
 
+            ContentCachingRequestWrapper wrapper = (ContentCachingRequestWrapper) request;
+            byte[] content = wrapper.getContentAsByteArray();
+            if (content == null || content.length == 0) {
+                return null;
+            }
+
+            String body = new String(content, request.getCharacterEncoding());
             JsonNode jsonNode = objectMapper.readTree(body);
             JsonNode emailNode = jsonNode.get("email");
 

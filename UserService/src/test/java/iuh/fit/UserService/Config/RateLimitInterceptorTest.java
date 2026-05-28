@@ -38,7 +38,7 @@ class RateLimitInterceptorTest {
         return request;
     }
 
-    private ContentCachingRequestWrapper createSignupRequest(String email) {
+    private ContentCachingRequestWrapper createSignupRequest(String email) throws Exception {
         MockHttpServletRequest mock = createPostRequest("/api/auth/signup");
         mock.setCharacterEncoding("UTF-8");
         mock.setContent(("{" +
@@ -48,7 +48,9 @@ class RateLimitInterceptorTest {
                 "\"fullName\":\"Test User\"," +
                 "\"phoneNumber\":\"0123456789\"" +
                 "}").getBytes());
-        return new ContentCachingRequestWrapper(mock);
+        ContentCachingRequestWrapper wrapper = new ContentCachingRequestWrapper(mock);
+        wrapper.getInputStream().readAllBytes();
+        return wrapper;
     }
 
     @Test
