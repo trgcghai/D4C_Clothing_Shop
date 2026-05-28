@@ -8,17 +8,17 @@
 
 ## Scorecard
 
-| Area | Status | Severity |
-|---|---|---|
-| Service Boundaries | ✅ Good | Low |
-| Checkout Flow (Idempotency, Saga) | ⚠️ Idempotent but no Saga | **High** |
-| Communication (HTTP + MQ) | ✅ Good mix | Low |
-| Message Queue (Outbox, DLQ, Retry) | ⚠️ DLQ has no consumers | **High** |
-| Fault Tolerance (CB, Retry, Rate Limit) | ✅ Well covered | Medium |
-| Security (JWT, Auth, Input Validation) | ⚠️ Node.js services unprotected | **High** |
-| Observability (Tracing, Metrics, Logging) | ❌ No tracing, no metrics | **Critical** |
-| Data Consistency | ⚠️ No reconciliation | Medium |
-| Deployment & Operations | ✅ Docker Compose, no CI/CD | Medium |
+| Area                                      | Status                      | Severity     |
+| ----------------------------------------- | --------------------------- | ------------ |
+| Service Boundaries                        | ✅ Good                     | Low          |
+| Checkout Flow (Idempotency, Saga)         | ⚠️ Idempotent but no Saga   | **High**     |
+| Communication (HTTP + MQ)                 | ✅ Good mix                 | Low          |
+| Message Queue (Outbox, DLQ, Retry)        | ⚠️ DLQ has no consumers     | **High**     |
+| Fault Tolerance (CB, Retry, Rate Limit)   | ✅ Well covered             | Medium       |
+| Security (JWT, Auth, Input Validation)    | ⚠️ Partial coverage         | Medium       |
+| Observability (Tracing, Metrics, Logging) | ❌ No tracing, no metrics   | **Critical** |
+| Data Consistency                          | ⚠️ No reconciliation        | Medium       |
+| Deployment & Operations                   | ✅ Docker Compose, no CI/CD | Medium       |
 
 ---
 
@@ -57,7 +57,7 @@ Frontend → POST /api/orders/checkout
 
 ### ❌ Critical Gaps
 
-- **No Saga compensation for stock deduction**: Stock is deducted via Feign call *inside* `@Transactional`. If stock succeeds but DB transaction rolls back, inventory is permanently lost. `batchRestoreStock` fallback swallows errors silently (`OrderService.java:249-251`).
+- **No Saga compensation for stock deduction**: Stock is deducted via Feign call _inside_ `@Transactional`. If stock succeeds but DB transaction rolls back, inventory is permanently lost. `batchRestoreStock` fallback swallows errors silently (`OrderService.java:249-251`).
 
 ```
 Current flow (risky):
@@ -76,23 +76,23 @@ Current flow (risky):
 
 ### Sync (HTTP/Feign) — 6 call patterns
 
-| Caller → Target | Purpose | Resilience |
-|---|---|---|
-| OrderService → ProductService | Stock deduct/restore | ✅ CB + Retry + Bulkhead |
-| PaymentService → OrderService | Verify ownership | ✅ CB + Retry + Bulkhead |
-| CartService → ProductService | Product lookup | ✅ CB + Retry + Bulkhead |
-| AIService → 5 services | AI tool calls | ✅ CB (opossum) |
-| RecommendationService → ProductService | Product lookup | ✅ CB (opossum) |
-| SearchService → ProductService | Data sync | ❌ No CB |
+| Caller → Target                        | Purpose              | Resilience               |
+| -------------------------------------- | -------------------- | ------------------------ |
+| OrderService → ProductService          | Stock deduct/restore | ✅ CB + Retry + Bulkhead |
+| PaymentService → OrderService          | Verify ownership     | ✅ CB + Retry + Bulkhead |
+| CartService → ProductService           | Product lookup       | ✅ CB + Retry + Bulkhead |
+| AIService → 5 services                 | AI tool calls        | ✅ CB (opossum)          |
+| RecommendationService → ProductService | Product lookup       | ✅ CB (opossum)          |
+| SearchService → ProductService         | Data sync            | ❌ No CB                 |
 
 ### Async (RabbitMQ) — 4 producers, 8+ queues
 
-| Producer | Events | Consumers | Exchange |
-|---|---|---|---|
-| OrderService | ORDER_CREATED, ORDER_PAID, ORDER_CANCELLED | Notification, Cart, Product | Topic |
-| PaymentService | PAYMENT_CONFIRMED, PAYMENT_EXPIRED, PAYMENT_CANCELLED | OrderService | Topic |
-| UserService | EMAIL_VERIFICATION, ACCOUNT_LOCKED | NotificationService | Topic |
-| ProductService | product.created/updated/deleted | SearchService | Topic |
+| Producer       | Events                                                | Consumers                   | Exchange |
+| -------------- | ----------------------------------------------------- | --------------------------- | -------- |
+| OrderService   | ORDER_CREATED, ORDER_PAID, ORDER_CANCELLED            | Notification, Cart, Product | Topic    |
+| PaymentService | PAYMENT_CONFIRMED, PAYMENT_EXPIRED, PAYMENT_CANCELLED | OrderService                | Topic    |
+| UserService    | EMAIL_VERIFICATION, ACCOUNT_LOCKED                    | NotificationService         | Topic    |
+| ProductService | product.created/updated/deleted                       | SearchService               | Topic    |
 
 ### ⚠️ Concerns
 
@@ -147,14 +147,18 @@ Current flow (risky):
 - **JWT validation at Gateway** with JWKS from UserService
 - **Gateway strips Authorization** → forwards `X-User-Id`, `X-User-Roles` headers
 - **GatewayIdentityFilter** in Java services validates internal requests
+- **Node.js services have `auth.middleware.js`** — ProductService, RecommendationService, AIService all validate `X-User-Id` header:
+  - **ProductService**: `requireAuth` on stock operations, `requireAdmin` on CRUD. Public GET routes (browse, search, featured) intentionally open.
+  - **RecommendationService**: `requireAuth` on personalized recommendations and behavior tracking.
+  - **AIService**: `requireAuth` on all chat endpoints.
 - **Admin role filter** on `/api/admin/**` routes
 - **Rate limiting** on login (brute force protection)
 - **Sensitive headers stripped** from audit logs
 
-### ❌ Critical Gaps
+### ⚠️ Concerns
 
-- **Node.js services have NO auth middleware** — ProductService, RecommendationService, AIService, SearchService can be called directly without auth
-- **GatewayIdentityFilter trusts any header value** — no cryptographic verification headers came from gateway
+- **SearchService has NO auth middleware** — all search routes are fully open. Acceptable for public search but worth noting.
+- **GatewayIdentityFilter trusts any header value** — no cryptographic verification headers came from gateway. An attacker on the internal network can forge `X-User-Id` headers.
 - **No CSRF protection** — cookie-based refresh tokens vulnerable without `SameSite=Strict`
 - **SePay webhook is publicly accessible** — no signature verification, no API key
 - **No HTTPS** in development
@@ -217,13 +221,12 @@ Current flow (risky):
 
 ## 🎯 Top 5 Priority Fixes
 
-| # | Fix | Why | Effort |
-|---|---|---|---|
-| 1 | **Enable outbox by default + add ShedLock** | Event loss = data integrity risk. Orders/Payments can be silently lost. | Medium |
-| 2 | **Add DLQ consumers with retry** | Dead letters accumulate forever. Failed messages are never retried. | Medium |
-| 3 | **Implement Saga compensation for stock** | Inventory permanently lost on order creation failure. Unacceptable for e-commerce. | High |
-| 4 | **Add distributed tracing (OpenTelemetry)** | Currently impossible to debug cross-service issues. | Medium |
-| 5 | **Secure Node.js services with auth middleware** | Direct calls bypass all security. Any service can be attacked directly. | Medium |
+| #   | Fix                                       | Why                                                                                                                              | Effort |
+| --- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | **Enable outbox by default**              | Event loss = data integrity risk. Orders/Payments can be silently lost.                                                          | Medium |
+| 2   | **Add DLQ consumers with retry**          | Dead letters accumulate forever. Failed messages are never retried.                                                              | Medium |
+| 3   | **Implement Saga compensation for stock** | Inventory permanently lost on order creation failure. Unacceptable for e-commerce.                                               | High   |
+| 4   | **Add data reconciliation jobs**          | No periodic check for inconsistencies between services (stock vs orders, search vs products). Silent data drift goes undetected. | Medium |
 
 ---
 
@@ -231,8 +234,7 @@ Current flow (risky):
 
 **Solid foundation** for a microservices e-commerce platform. The idempotency, outbox pattern, circuit breakers, and rate limiting show good architectural thinking. The critical gaps are:
 
-1. **Observability** — no distributed tracing or metrics makes debugging cross-service issues nearly impossible
-2. **DLQ handling** — configured but unused, dead letters accumulate forever
-3. **Saga compensation** — inventory loss risk on order creation failure
-4. **Node.js security** — services are unprotected from direct access
-5. **Outbox disabled by default** — event loss is a real data integrity risk
+1. **DLQ handling** — configured but unused, dead letters accumulate forever
+2. **Saga compensation** — inventory loss risk on order creation failure
+3. **Outbox disabled by default** — event loss is a real data integrity risk
+4. **No data reconciliation** — stock, search, and order data can silently drift between services with no detection
