@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -37,17 +38,17 @@ class RateLimitInterceptorTest {
         return request;
     }
 
-    private MockHttpServletRequest createSignupRequest(String email) {
-        MockHttpServletRequest request = createPostRequest("/api/auth/signup");
-        request.setCharacterEncoding("UTF-8");
-        request.setContent(("{" +
+    private ContentCachingRequestWrapper createSignupRequest(String email) {
+        MockHttpServletRequest mock = createPostRequest("/api/auth/signup");
+        mock.setCharacterEncoding("UTF-8");
+        mock.setContent(("{" +
                 "\"username\":\"testuser\"," +
                 "\"email\":\"" + email + "\"," +
                 "\"password\":\"Test123!\"," +
                 "\"fullName\":\"Test User\"," +
                 "\"phoneNumber\":\"0123456789\"" +
                 "}").getBytes());
-        return request;
+        return new ContentCachingRequestWrapper(mock);
     }
 
     @Test
@@ -96,7 +97,7 @@ class RateLimitInterceptorTest {
     void signupIp_Allowed_WhenUnderLimit() throws Exception {
         when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(2L);
 
-        MockHttpServletRequest request = createSignupRequest("test@example.com");
+        ContentCachingRequestWrapper request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
@@ -110,7 +111,7 @@ class RateLimitInterceptorTest {
     void signupIp_Blocked_WhenOverLimit() throws Exception {
         when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(4L);
 
-        MockHttpServletRequest request = createSignupRequest("test@example.com");
+        ContentCachingRequestWrapper request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
@@ -128,7 +129,7 @@ class RateLimitInterceptorTest {
                 .thenReturn(1L)
                 .thenReturn(3L);
 
-        MockHttpServletRequest request = createSignupRequest("test@example.com");
+        ContentCachingRequestWrapper request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
@@ -146,7 +147,7 @@ class RateLimitInterceptorTest {
                 .thenReturn(1L)
                 .thenReturn(1L);
 
-        MockHttpServletRequest request = createSignupRequest("test@example.com");
+        ContentCachingRequestWrapper request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
@@ -158,7 +159,7 @@ class RateLimitInterceptorTest {
     void signupEmail_LowercasesEmailForKey() throws Exception {
         when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(1L);
 
-        MockHttpServletRequest request = createSignupRequest("Test@Example.COM");
+        ContentCachingRequestWrapper request = createSignupRequest("Test@Example.COM");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
@@ -199,7 +200,7 @@ class RateLimitInterceptorTest {
         when(zSetOps.count(anyString(), anyDouble(), anyDouble()))
                 .thenThrow(new RuntimeException("Redis connection refused"));
 
-        MockHttpServletRequest request = createSignupRequest("test@example.com");
+        ContentCachingRequestWrapper request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean result = interceptor.preHandle(request, response, null);
