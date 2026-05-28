@@ -17,8 +17,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitInterceptor.class);
     private final RedisTemplate<String, String> redisTemplate;
-    private static final String KEY_PREFIX = "ratelimit:userservice:signin:";
-    private static final int LIMIT = 5;
+    private static final String SIGNIN_KEY_PREFIX = "ratelimit:userservice:signin:";
+    private static final int SIGNIN_LIMIT = 5;
     private static final long WINDOW_MS = 60000;
 
     public RateLimitInterceptor(RedisTemplate<String, String> redisTemplate) {
@@ -32,7 +32,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String ip = request.getRemoteAddr();
-        String key = KEY_PREFIX + ip;
+        String key = SIGNIN_KEY_PREFIX + ip;
         long now = System.currentTimeMillis();
         long windowStart = now - WINDOW_MS;
 
@@ -42,7 +42,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             Long count = redisTemplate.opsForZSet().count(key, windowStart, now);
             redisTemplate.expire(key, 60, TimeUnit.SECONDS);
 
-            if (count != null && count > LIMIT) {
+            if (count != null && count > SIGNIN_LIMIT) {
                 response.setStatus(429);
                 response.setHeader("Retry-After", "30");
                 response.setHeader("Content-Type", "application/json");
