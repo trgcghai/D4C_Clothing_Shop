@@ -23,6 +23,9 @@ class RateLimitInterceptorTest {
         redisTemplate = mock(RedisTemplate.class);
         zSetOps = mock(ZSetOperations.class);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOps);
+        lenient().when(zSetOps.add(anyString(), anyString(), anyDouble())).thenReturn(true);
+        lenient().when(zSetOps.removeRangeByScore(anyString(), anyDouble(), anyDouble())).thenReturn(0L);
+        lenient().when(redisTemplate.expire(anyString(), anyLong(), any())).thenReturn(true);
         interceptor = new RateLimitInterceptor(redisTemplate, new ObjectMapper());
     }
 
@@ -58,6 +61,7 @@ class RateLimitInterceptorTest {
 
         assertTrue(result);
         assertEquals(200, response.getStatus());
+        verify(zSetOps).count(eq("ratelimit:userservice:signin:192.168.1.100"), anyDouble(), anyDouble());
     }
 
     @Test
@@ -73,6 +77,19 @@ class RateLimitInterceptorTest {
         assertEquals(429, response.getStatus());
         assertEquals("30", response.getHeader("Retry-After"));
         assertTrue(response.getContentAsString().contains("Too many login attempts"));
+        verify(zSetOps).count(eq("ratelimit:userservice:signin:192.168.1.100"), anyDouble(), anyDouble());
+    }
+
+    @Test
+    void signin_Allowed_AtExactLimit() throws Exception {
+        when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(5L);
+
+        MockHttpServletRequest request = createPostRequest("/api/auth/signin");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean result = interceptor.preHandle(request, response, null);
+
+        assertTrue(result);
     }
 
     @Test
@@ -86,6 +103,7 @@ class RateLimitInterceptorTest {
 
         assertTrue(result);
         assertEquals(200, response.getStatus());
+        verify(zSetOps).count(eq("ratelimit:userservice:signup:ip:192.168.1.100"), anyDouble(), anyDouble());
     }
 
     @Test
@@ -100,6 +118,8 @@ class RateLimitInterceptorTest {
         assertFalse(result);
         assertEquals(429, response.getStatus());
         assertTrue(response.getContentAsString().contains("Too many signup attempts"));
+        assertEquals("30", response.getHeader("Retry-After"));
+        verify(zSetOps).count(eq("ratelimit:userservice:signup:ip:192.168.1.100"), anyDouble(), anyDouble());
     }
 
     @Test
@@ -115,11 +135,16 @@ class RateLimitInterceptorTest {
 
         assertFalse(result);
         assertEquals(429, response.getStatus());
+        verify(zSetOps, times(2)).count(anyString(), anyDouble(), anyDouble());
+        verify(zSetOps).count(eq("ratelimit:userservice:signup:ip:192.168.1.100"), anyDouble(), anyDouble());
+        verify(zSetOps).count(eq("ratelimit:userservice:signup:email:test@example.com"), anyDouble(), anyDouble());
     }
 
     @Test
     void signupEmail_Allowed_WhenUnderLimit() throws Exception {
-        when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(1L);
+        when(zSetOps.count(anyString(), anyDouble(), anyDouble()))
+                .thenReturn(1L)
+                .thenReturn(1L);
 
         MockHttpServletRequest request = createSignupRequest("test@example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -127,6 +152,19 @@ class RateLimitInterceptorTest {
         boolean result = interceptor.preHandle(request, response, null);
 
         assertTrue(result);
+    }
+
+    @Test
+    void signupEmail_LowercasesEmailForKey() throws Exception {
+        when(zSetOps.count(anyString(), anyDouble(), anyDouble())).thenReturn(1L);
+
+        MockHttpServletRequest request = createSignupRequest("Test@Example.COM");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean result = interceptor.preHandle(request, response, null);
+
+        assertTrue(result);
+        verify(zSetOps).count(eq("ratelimit:userservice:signup:email:test@example.com"), anyDouble(), anyDouble());
     }
 
     @Test
