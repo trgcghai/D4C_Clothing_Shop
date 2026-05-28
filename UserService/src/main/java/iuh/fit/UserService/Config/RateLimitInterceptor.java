@@ -19,6 +19,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final RedisTemplate<String, String> redisTemplate;
     private static final String SIGNIN_KEY_PREFIX = "ratelimit:userservice:signin:";
     private static final int SIGNIN_LIMIT = 5;
+    private static final String SIGNUP_IP_KEY_PREFIX = "ratelimit:userservice:signup:ip:";
+    private static final String SIGNUP_EMAIL_KEY_PREFIX = "ratelimit:userservice:signup:email:";
+    private static final int SIGNUP_IP_LIMIT = 3;
+    private static final int SIGNUP_EMAIL_LIMIT = 2;
     private static final long WINDOW_MS = 60000;
 
     public RateLimitInterceptor(RedisTemplate<String, String> redisTemplate) {
@@ -47,6 +51,37 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 response.setHeader("Retry-After", "30");
                 response.setHeader("Content-Type", "application/json");
                 response.getWriter().write("{\"error\":\"Too many login attempts. Please try again later.\",\"retryAfter\":30}");
+                return false;
+            }
+        } catch (IOException e) {
+            log.error("[RateLimiter] Failed to write rate limit response: {}", e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.warn("[RateLimiter] Redis unavailable, allowing request through: {}", e.getMessage());
+            return true;
+        }
+
+        return true;
+    }
+
+    private boolean checkRateLimit(String key, int limit, HttpServletResponse response, String errorType) {
+        long now = System.currentTimeMillis();
+        long windowStart = now - WINDOW_MS;
+
+        try {
+            redisTemplate.opsForZSet().add(key, UUID.randomUUID().toString(), (double) now);
+            redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
+            Long count = redisTemplate.opsForZSet().count(key, windowStart, now);
+            redisTemplate.expire(key, 60, TimeUnit.SECONDS);
+
+            if (count != null && count > limit) {
+                response.setStatus(429);
+                response.setHeader("Retry-After", "30");
+                response.setHeader("Content-Type", "application/json");
+                String message = "signup".equals(errorType)
+                        ? "Too many signup attempts. Please try again later."
+                        : "Too many login attempts. Please try again later.";
+                response.getWriter().write("{\"error\":\"" + message + "\",\"retryAfter\":30}");
                 return false;
             }
         } catch (IOException e) {
