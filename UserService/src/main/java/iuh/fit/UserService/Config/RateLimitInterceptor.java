@@ -1,5 +1,7 @@
 package iuh.fit.UserService.Config;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitInterceptor.class);
     private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
     private static final String SIGNIN_KEY_PREFIX = "ratelimit:userservice:signin:";
     private static final int SIGNIN_LIMIT = 5;
     private static final String SIGNUP_IP_KEY_PREFIX = "ratelimit:userservice:signup:ip:";
@@ -25,8 +28,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private static final int SIGNUP_EMAIL_LIMIT = 2;
     private static final long WINDOW_MS = 60000;
 
-    public RateLimitInterceptor(RedisTemplate<String, String> redisTemplate) {
+    public RateLimitInterceptor(RedisTemplate<String, String> redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -65,24 +69,21 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private String extractEmailFromBody(HttpServletRequest request) {
         try {
-            request.getInputStream().mark(Integer.MAX_VALUE);
-            String body = new String(request.getInputStream().readAllBytes());
-            request.getInputStream().reset();
+            byte[] content = request.getInputStream().readAllBytes();
+            if (content.length == 0) {
+                return null;
+            }
+            String body = new String(content, request.getCharacterEncoding());
 
-            int emailStart = body.indexOf("\"email\"");
-            if (emailStart == -1) return null;
+            JsonNode jsonNode = objectMapper.readTree(body);
+            JsonNode emailNode = jsonNode.get("email");
 
-            int colonIndex = body.indexOf(':', emailStart);
-            if (colonIndex == -1) return null;
+            if (emailNode == null || emailNode.isNull()) {
+                return null;
+            }
 
-            int quoteStart = body.indexOf('"', colonIndex + 1);
-            if (quoteStart == -1) return null;
-
-            int quoteEnd = body.indexOf('"', quoteStart + 1);
-            if (quoteEnd == -1) return null;
-
-            return body.substring(quoteStart + 1, quoteEnd);
-        } catch (IOException e) {
+            return emailNode.asText(null);
+        } catch (Exception e) {
             log.warn("[RateLimiter] Failed to parse email from request body: {}", e.getMessage());
             return null;
         }
