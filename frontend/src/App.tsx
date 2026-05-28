@@ -72,6 +72,10 @@ const queryClient = new QueryClient({
     queries: {
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 2000),
+      retryCondition: (error) => {
+        if (!error.response) return true; // Network error
+        return error.response.status >= 500;
+      },
     },
   },
 });
