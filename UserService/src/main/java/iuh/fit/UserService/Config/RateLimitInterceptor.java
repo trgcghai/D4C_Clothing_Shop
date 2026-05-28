@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
@@ -68,8 +69,15 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private String extractEmailFromBody(HttpServletRequest request) {
+        if (!(request instanceof ContentCachingRequestWrapper wrapper)) {
+            log.debug("[RateLimiter] Request not wrapped, skipping body email extraction");
+            return null;
+        }
         try {
-            byte[] content = request.getInputStream().readAllBytes();
+            byte[] content = wrapper.getContentAsByteArray();
+            if (content.length == 0) {
+                content = request.getInputStream().readAllBytes();
+            }
             if (content.length == 0) {
                 return null;
             }
