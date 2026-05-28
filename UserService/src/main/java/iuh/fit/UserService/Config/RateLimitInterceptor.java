@@ -64,7 +64,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private boolean checkRateLimit(String key, int limit, HttpServletResponse response, String errorType) {
+    private boolean checkRateLimit(String key, int limit, String errorMessage, HttpServletResponse response) {
         long now = System.currentTimeMillis();
         long windowStart = now - WINDOW_MS;
 
@@ -78,10 +78,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 response.setStatus(429);
                 response.setHeader("Retry-After", "30");
                 response.setHeader("Content-Type", "application/json");
-                String message = "signup".equals(errorType)
-                        ? "Too many signup attempts. Please try again later."
-                        : "Too many login attempts. Please try again later.";
-                response.getWriter().write("{\"error\":\"" + message + "\",\"retryAfter\":30}");
+                response.getWriter().write("{\"error\":\"" + errorMessage + "\",\"retryAfter\":30}");
                 return false;
             }
         } catch (IOException e) {
