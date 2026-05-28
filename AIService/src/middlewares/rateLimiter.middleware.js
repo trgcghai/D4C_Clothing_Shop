@@ -1,4 +1,5 @@
 import redisClient from "../config/redis.config.js";
+import crypto from "crypto";
 
 const KEY_PREFIX = "ratelimit:aiservice:chat:user:";
 const LIMIT = 10;
@@ -15,17 +16,17 @@ export const rateLimiter = async (req, res, next) => {
   const windowStart = now - WINDOW_MS;
 
   try {
-    await redisClient.zadd(key, now, `${now}`);
+    await redisClient.zadd(key, now, `${now}:${crypto.randomUUID()}`);
     await redisClient.zremrangebyscore(key, 0, windowStart);
     const count = await redisClient.zcount(key, windowStart, now);
     await redisClient.expire(key, 60);
 
     if (count > LIMIT) {
-      const retryAfter = Math.ceil((windowStart + WINDOW_MS - Date.now()) / 1000);
-      res.setHeader("Retry-After", Math.max(retryAfter, 1));
+      const retryAfter = 60;
+      res.setHeader("Retry-After", retryAfter);
       return res.status(429).json({
         error: "Too many requests. Please try again later.",
-        retryAfter: Math.max(retryAfter, 1),
+        retryAfter,
       });
     }
   } catch (err) {
