@@ -11,42 +11,33 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         service:
           - name: discovery-server
             dir: DiscoveryServer
-            instance: ec2-1
           - name: api-gateway
             dir: Api-Gateway
-            instance: ec2-2
           - name: userservice
             dir: UserService
-            instance: ec2-2
           - name: cartservice
             dir: CartService
-            instance: ec2-2
           - name: orderservice
             dir: OrderService
-            instance: ec2-2
           - name: paymentservice
             dir: PaymentService
-            instance: ec2-2
           - name: notificationservice
             dir: NotificationService
-            instance: ec2-4
           - name: productservice
             dir: ProductService
-            instance: ec2-4
           - name: recommendationservice
             dir: RecommendationService
-            instance: ec2-4
           - name: aiservice
             dir: AIService
-            instance: ec2-4
           - name: searchservice
             dir: SearchService
-            instance: ec2-4
 
     steps:
       - uses: actions/checkout@v4
@@ -60,100 +51,67 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push (${{ matrix.service.name }})
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.service.dir }}
           file: ./${{ matrix.service.dir }}/Dockerfile
           push: true
-          tags: ${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:latest
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache,mode=max
 
   deploy-ec2-1:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ contains(needs.build-and-push.result, 'success') }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to EC2-1
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_1_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/d4c
-
-            # Update compose file to use new images
-            sed -i 's|build:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/d4c-discovery-server:${{ github.sha }}|' docker-compose.yml
-
-            # Pull new image
-            docker compose pull
-
-            # Restart services
-            docker compose up -d --force-recreate
-
-            # Cleanup
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/d4c-discovery-server:latest
+            docker tag ${{ secrets.DOCKERHUB_USERNAME }}/d4c-discovery-server:latest d4c-discovery-server:latest
+            docker compose up -d --force-recreate discovery-server
             docker image prune -f
 
   deploy-ec2-2:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ contains(needs.build-and-push.result, 'success') }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to EC2-2
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/d4c
-
-            # Update compose file to use new images
-            for service in api-gateway userservice cartservice orderservice paymentservice; do
-              sed -i "/$service:/,/^[^ ]/ s|build:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$service:${{ github.sha }}|" docker-compose.yml
+            for svc in api-gateway userservice cartservice orderservice paymentservice; do
+              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$svc:latest
+              docker tag ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$svc:latest d4c-$svc:latest
             done
-
-            # Pull new images
-            docker compose pull
-
-            # Restart services
             docker compose up -d --force-recreate
-
-            # Cleanup
             docker image prune -f
 
   deploy-ec2-4:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ contains(needs.build-and-push.result, 'success') }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to EC2-4
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_4_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/d4c
-
-            # Update compose file to use new images
-            for service in notificationservice productservice recommendationservice aiservice searchservice; do
-              sed -i "/$service:/,/^[^ ]/ s|build:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$service:${{ github.sha }}|" docker-compose.yml
+            for svc in notificationservice productservice recommendationservice aiservice searchservice; do
+              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$svc:latest
+              docker tag ${{ secrets.DOCKERHUB_USERNAME }}/d4c-$svc:latest d4c-$svc:latest
             done
-
-            # Pull new images
-            docker compose pull
-
-            # Restart services
             docker compose up -d --force-recreate
-
-            # Cleanup
             docker image prune -f
