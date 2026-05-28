@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -26,7 +27,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (!"POST".equalsIgnoreCase(request.getMethod()) || !request.getRequestURI().contains("/signin")) {
+        if (!"POST".equalsIgnoreCase(request.getMethod()) || !request.getRequestURI().equals("/api/auth/signin")) {
             return true;
         }
 
@@ -36,7 +37,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         long windowStart = now - WINDOW_MS;
 
         try {
-            redisTemplate.opsForZSet().add(key, String.valueOf(now), (double) now);
+            redisTemplate.opsForZSet().add(key, UUID.randomUUID().toString(), (double) now);
             redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
             Long count = redisTemplate.opsForZSet().count(key, windowStart, now);
             redisTemplate.expire(key, 60, TimeUnit.SECONDS);

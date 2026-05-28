@@ -14,6 +14,8 @@ import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,10 @@ public class CartService {
     private final ProductServiceClient productServiceClient;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+
+    @Lazy
+    @Autowired
+    private CartService self;
 
     public CartService(CartRepository cartRepository,
                        CartItemRepository cartItemRepository,
@@ -155,7 +161,7 @@ public class CartService {
             return response;
         }
 
-        ProductDto product = getProductWithCircuitBreaker(item.getProductId());
+        ProductDto product = self.getProductWithCircuitBreaker(item.getProductId());
 
         VariantDto variant = product.getVariants().stream()
                 .filter(v -> v.getId().equals(item.getVariantId()))
@@ -228,7 +234,7 @@ public class CartService {
         List<ValidationResponse.ValidationError> errors = new ArrayList<>();
 
         for (CartItem item : items) {
-            ProductDto product = getProductWithCircuitBreaker(item.getProductId());
+            ProductDto product = self.getProductWithCircuitBreaker(item.getProductId());
             VariantDto variant = product.getVariants().stream()
                     .filter(v -> v.getId().equals(item.getVariantId()))
                     .findFirst()
@@ -394,7 +400,7 @@ public class CartService {
     private List<String> validateCartItems(List<CartItem> items) {
         List<String> validationErrors = new ArrayList<>();
         for (CartItem item : items) {
-            ProductDto product = getProductWithCircuitBreaker(item.getProductId());
+            ProductDto product = self.getProductWithCircuitBreaker(item.getProductId());
             if (product == null) {
                 validationErrors.add("Sản phẩm '" + item.getProductName() + "' không tồn tại");
                 continue;
