@@ -1,0 +1,9 @@
+target/
+.mvn/
+mvnw
+mvnw.cmd
+.gitignore
+.gitattributes
+.env
+.env.example
+HELP.md
