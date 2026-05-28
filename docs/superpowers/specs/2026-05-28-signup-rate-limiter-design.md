@@ -57,12 +57,33 @@ Content-Type: application/json
 ### File: `UserService/src/main/java/iuh/fit/UserService/Config/RateLimitInterceptor.java`
 
 **Changes:**
-1. Add constants: `SIGNUP_IP_KEY_PREFIX`, `SIGNUP_EMAIL_KEY_PREFIX`, `SIGNUP_IP_LIMIT`, `SIGNUP_EMAIL_LIMIT`
-2. In `preHandle()`: add branch for `/api/auth/signup` POST requests
-3. Extract email from request body using `BufferedReader` on `request.getInputStream()`
-4. Check IP limit first, then email limit (fail fast)
-5. If email parsing fails, skip email rate limit (don't block legitimate requests)
-6. Extract `checkRateLimit()` helper method to avoid duplicating Redis ZSet logic
+1. Rename existing constants for clarity:
+   - `KEY_PREFIX` → `SIGNIN_KEY_PREFIX`
+   - `LIMIT` → `SIGNIN_LIMIT`
+   - `WINDOW_MS` stays as-is (shared between signin and signup)
+2. Add new constants: `SIGNUP_IP_KEY_PREFIX`, `SIGNUP_EMAIL_KEY_PREFIX`, `SIGNUP_IP_LIMIT`, `SIGNUP_EMAIL_LIMIT`
+3. In `preHandle()`: add branch for `/api/auth/signup` POST requests
+4. Extract email from request body using `BufferedReader` on `request.getInputStream()`
+5. Check IP limit first, then email limit (fail fast)
+6. If email parsing fails, skip email rate limit (don't block legitimate requests)
+7. Extract `checkRateLimit()` helper method to avoid duplicating Redis ZSet logic
+
+### Final Constants
+
+```java
+// Shared
+private static final long WINDOW_MS = 60000;
+
+// Signin
+private static final String SIGNIN_KEY_PREFIX = "ratelimit:userservice:signin:";
+private static final int SIGNIN_LIMIT = 5;
+
+// Signup
+private static final String SIGNUP_IP_KEY_PREFIX = "ratelimit:userservice:signup:ip:";
+private static final String SIGNUP_EMAIL_KEY_PREFIX = "ratelimit:userservice:signup:email:";
+private static final int SIGNUP_IP_LIMIT = 3;
+private static final int SIGNUP_EMAIL_LIMIT = 2;
+```
 
 ### File: `UserService/src/main/java/iuh/fit/UserService/Config/WebConfig.java`
 
