@@ -1,5 +1,7 @@
 package iuh.fit.apigateway.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -15,6 +17,8 @@ import java.time.Duration;
 
 @Component
 public class RateLimiterFilter implements GlobalFilter, Ordered {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimiterFilter.class);
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private static final String KEY_PREFIX = "ratelimit:gateway:global:";
@@ -39,7 +43,8 @@ public class RateLimiterFilter implements GlobalFilter, Ordered {
         long now = System.currentTimeMillis();
         long windowStart = now - WINDOW_MS;
 
-        return redisTemplate.opsForZSet().add(key, String.valueOf(now), (double) now)
+        String member = now + ":" + java.util.UUID.randomUUID();
+        return redisTemplate.opsForZSet().add(key, member, (double) now)
                 .then(redisTemplate.opsForZSet().removeRangeByScore(key, Range.closed(0.0, (double) windowStart)))
                 .then(redisTemplate.opsForZSet().count(key, Range.closed((double) windowStart, (double) now)))
                 .flatMap(count -> {
@@ -52,7 +57,11 @@ public class RateLimiterFilter implements GlobalFilter, Ordered {
                     }
                     return chain.filter(exchange);
                 })
-                .doFinally(signalType -> redisTemplate.expire(key, Duration.ofSeconds(60)).subscribe());
+                .doFinally(signalType -> redisTemplate.expire(key, Duration.ofSeconds(60)).subscribe())
+                .onErrorResume(e -> {
+                    log.warn("[RateLimiter] Redis unavailable, allowing request through: {}", e.getMessage());
+                    return chain.filter(exchange);
+                });
     }
 
     @Override
