@@ -119,6 +119,40 @@ router.get("/featured", getFeaturedProducts);
  */
 router.get("/new-arrivals", getNewArrivals);
 
+// ─── ZIP Import ───────────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/products/import-zip:
+ *   post:
+ *     tags: [products]
+ *     summary: Import products from ZIP file
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               zipFile:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Products imported successfully
+ *       400:
+ *         description: Validation errors
+ *       413:
+ *         description: File too large
+ *       415:
+ *         description: Wrong file format
+ */
+router.post(
+  "/import-zip",
+  uploadZip.single("zipFile"),
+  requireAdmin,
+  importZipProducts,
+);
+
 // ─── Listing & Browsing ─────────────────────────────────────────────────────────
 /**
  * @swagger
@@ -319,40 +353,6 @@ router.post("/variants/:variantId/deduct-stock", requireAuth, deductStock);
  *         description: Server error
  */
 router.post("/variants/:variantId/restore-stock", requireAuth, restoreStock);
-
-// ─── ZIP Import ───────────────────────────────────────────────────────────
-/**
- * @swagger
- * /api/products/import-zip:
- *   post:
- *     tags: [products]
- *     summary: Import products from ZIP file
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               zipFile:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Products imported successfully
- *       400:
- *         description: Validation errors
- *       413:
- *         description: File too large
- *       415:
- *         description: Wrong file format
- */
-router.post(
-  "/import-zip",
-  uploadZip.single("zipFile"),
-  requireAdmin,
-  importZipProducts,
-);
 
 // ─── Admin CRUD ─────────────────────────────────────────────────────────────────
 /**
