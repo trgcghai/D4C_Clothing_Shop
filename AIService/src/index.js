@@ -6,6 +6,7 @@ import eurekaClient from "./config/eureka.config.js";
 import chatRoutes from "./routes/chat.routes.js";
 import tagsRoutes from "./routes/tags.routes.js";
 import { openApiSpec } from "./config/openapi.js";
+import { getAllCircuitBreakerStats } from "./config/circuit-breaker.js";
 
 dotenv.config();
 
@@ -21,7 +22,10 @@ app.get("/openapi.json", (req, res) => {
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.get("/api/ai/health", (req, res) => {
-  res.status(200).json({ status: "UP" });
+  res.status(200).json({
+    status: "UP",
+    circuitBreakers: getAllCircuitBreakerStats(),
+  });
 });
 
 app.use("/api/ai/chat", chatRoutes);

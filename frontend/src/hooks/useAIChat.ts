@@ -21,7 +21,6 @@ export function useAIChat(isOpen: boolean) {
     queryFn: getConversation,
     enabled: isOpen,
     staleTime: Infinity,
-    retry: false,
   });
 
   const { mutate: sendMessage, isPending } = useMutation({

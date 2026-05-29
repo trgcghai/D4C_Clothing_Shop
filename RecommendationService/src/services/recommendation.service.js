@@ -1,6 +1,6 @@
 import { behaviorModel } from "../models/behavior.model.js";
 import { recommendationModel } from "../models/recommendation.model.js";
-import { productServiceClient } from "../config/product-service-client.js";
+import { getProductServiceClient } from "../config/product-service-client.js";
 
 const EVENT_WEIGHTS = {
   view: 1,
@@ -29,15 +29,20 @@ class RecommendationService {
   }
 
   async fetchAllProducts() {
+    const client = getProductServiceClient();
     const allProducts = [];
     let page = 1;
     let totalPages = 1;
     const limit = 100;
 
     do {
-      const res = await productServiceClient.get("/api/products", {
+      const res = await client.get("/api/products", {
         params: { page, limit },
       });
+      if (!res) {
+        console.warn("[RecommendationService] ProductService unavailable during fetchAllProducts");
+        break;
+      }
       const { data: products, totalPages: tp } = res.data;
       allProducts.push(...(products || []));
       totalPages = tp || 1;
@@ -48,10 +53,12 @@ class RecommendationService {
   }
 
   async getRecommendations(userId, limit = 10) {
+    const client = getProductServiceClient();
     const topScores = await recommendationModel.findTopByUserId(userId, 10);
 
     if (topScores.length < COLD_START_THRESHOLD) {
-      const res = await productServiceClient.get("/api/products/featured");
+      const res = await client.get("/api/products/featured");
+      if (!res) return [];
       return res.data;
     }
 
@@ -59,9 +66,9 @@ class RecommendationService {
 
     const topProducts = await Promise.all(
       topScores.map((s) =>
-        productServiceClient
+        client
           .get(`/api/products/${s.productId}`)
-          .then((res) => res.data)
+          .then((res) => res ? res.data : null)
           .catch(() => null),
       ),
     );
@@ -96,9 +103,8 @@ class RecommendationService {
       .map((x) => x.product);
 
     if (scored.length < limit) {
-      const featuredRes = await productServiceClient.get(
-        "/api/products/featured",
-      );
+      const featuredRes = await client.get("/api/products/featured");
+      if (!featuredRes) return scored;
       const featured = featuredRes.data;
       const supplemented = featured.filter(
         (p) => !interactedIds.has(p.id) && !scored.find((s) => s.id === p.id),

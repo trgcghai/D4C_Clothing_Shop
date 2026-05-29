@@ -50,6 +50,6 @@ class SecurityConfigTest {
     @Test
     void protectedEndpoints_requireAuth() throws Exception {
         mockMvc.perform(get("/api/users/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

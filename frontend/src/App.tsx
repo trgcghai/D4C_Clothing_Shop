@@ -67,7 +67,20 @@ export const router = createBrowserRouter([
   },
 ]);
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // AxiosError shape: error.response?.status
+        // Interceptor-rejected shape: error.status
+        const status = error.response?.status ?? error.status;
+        if (!status) return failureCount < 2; // Network error or unknown
+        return status >= 500 && failureCount < 2; // 5xx only
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 2000),
+    },
+  },
+});
 
 function App() {
   useSyncUser();

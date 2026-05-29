@@ -44,6 +44,12 @@ class AuthControllerValidationTest {
     @MockBean
     private UserDetailsService userDetailsService;
 
+    @MockBean
+    private iuh.fit.UserService.Service.AuthService authService;
+
+    @MockBean
+    private org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
+
     @Test
     void signinShouldReturnBadRequestWhenUsernameMissing() throws Exception {
         String payload = """

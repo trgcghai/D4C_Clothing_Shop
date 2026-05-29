@@ -49,6 +49,9 @@ class UserControllerValidationTest {
     private S3Service s3Service;
 
     @MockBean
+    private org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
+
+    @MockBean
     private AddressRepository addressRepository;
 
     @Test

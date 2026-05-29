@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import { recommendationRouter } from "./routes/recommendation.routes.js";
 import eurekaClient from "./config/eureka.config.js";
+import { getCircuitBreakerStats } from "./config/product-service-client.js";
 
 dotenv.config();
 
@@ -19,6 +20,9 @@ app.get("/health", (req, res) => {
   res.json({
     name: "Recommendation Service",
     status: "UP",
+    circuitBreakers: {
+      productService: getCircuitBreakerStats(),
+    },
   });
 });
 

@@ -5,6 +5,7 @@ import {
   processMessage,
 } from "../controllers/chat.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
+import { rateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -86,7 +87,7 @@ router.get("/", requireAuth, getConversation);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/", requireAuth, processMessage);
+router.post("/", requireAuth, rateLimiter, processMessage);
 
 /**
  * @openapi
