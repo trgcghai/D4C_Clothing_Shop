@@ -165,6 +165,8 @@ function parseAndValidateCsv(tempDir, imageFiles) {
       const imgPath = row.image.trim();
       if (!imgPath.startsWith("images/")) {
         errors.push({ row: rowNum, field: "image", message: `Đường dẫn ảnh phải bắt đầu bằng 'images/' (hiện tại: '${imgPath}')` });
+      } else if (imgPath.includes("..")) {
+        errors.push({ row: rowNum, field: "image", message: `Đường dẫn ảnh không được chứa '..' (hiện tại: '${imgPath}')` });
       } else if (!imageFiles.has(imgPath)) {
         errors.push({ row: rowNum, field: "image", message: `File ảnh '${imgPath}' không tồn tại trong thư mục images/ của ZIP` });
       }

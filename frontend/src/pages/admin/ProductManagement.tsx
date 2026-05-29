@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  productKeys,
 } from "@/src/hooks/useProducts";
 import { useCategories } from "@/src/hooks/useCategories";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
@@ -98,6 +100,8 @@ export default function ProductManagement() {
   const [imageError, setImageError] = useState<string | undefined>();
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [zipDialogOpen, setZipDialogOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const { data: categoriesData = [] } = useCategories();
   const { data, isLoading } = useProducts({
@@ -832,6 +836,7 @@ export default function ProductManagement() {
           open={zipDialogOpen}
           onOpenChange={setZipDialogOpen}
           onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: productKeys.all });
             setPage(1);
           }}
         />
