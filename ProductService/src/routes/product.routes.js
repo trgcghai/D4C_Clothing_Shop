@@ -148,8 +148,8 @@ router.get("/new-arrivals", getNewArrivals);
  */
 router.post(
   "/import-zip",
-  uploadZip.single("zipFile"),
   requireAdmin,
+  uploadZip.single("zipFile"),
   importZipProducts,
 );
 

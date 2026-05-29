@@ -10,7 +10,7 @@ import { s3Client } from "../config/aws.config.js";
 import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
 import { categoryModel } from "../models/category.model.js";
-import { publishProductEvent } from "./event-publisher.service.js";
+import { publishProductEvent, publishCategoryEvent } from "./event-publisher.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,17 +121,27 @@ function validateZipStructure(tempDir) {
   return errors;
 }
 
-function parseAndValidateCsv(tempDir, imageFiles) {
+function parseAndValidateCsv(tempDir) {
   const items = fs.readdirSync(tempDir, { withFileTypes: true });
   const csvFile = items.find((item) => item.isFile() && item.name.toLowerCase().endsWith(".csv"));
   const csvPath = path.join(tempDir, csvFile.name);
+  const imagesDir = path.join(tempDir, "images");
+  const imageFiles = fs.existsSync(imagesDir)
+    ? new Set(fs.readdirSync(imagesDir).map((f) => `images/${f}`))
+    : new Set();
   const csvContent = fs.readFileSync(csvPath, "utf-8");
+
+  // Strip BOM if present
+  if (csvContent.charCodeAt(0) === 0xfeff) {
+    csvContent = csvContent.slice(1);
+  }
 
   const errors = [];
   const records = parse(csvContent, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
+    bom: true,
   });
 
   if (records.length === 0) {
@@ -276,12 +286,20 @@ async function getOrCreateCategory(categoryName, categoryCache, newCategoryIds) 
     updatedAt: new Date().toISOString(),
   };
   await categoryModel.create(newCategory);
+  publishCategoryEvent("CREATE", newCategory);
   if (newCategoryIds) {
     newCategoryIds.push(newCategory.id);
   }
   const result = { id: newCategory.id, name: newCategory.name };
   categoryCache.set(lowerName, result);
   return result;
+}
+
+async function loadCategoryCache(categoryCache) {
+  const allCategories = await categoryModel.findAll();
+  for (const c of allCategories) {
+    categoryCache.set(c.name.toLowerCase(), { id: c.id, name: c.name });
+  }
 }
 
 async function uploadImageToS3(filePath, originalName) {
@@ -324,13 +342,14 @@ export class ZipImportService {
       const imagesDir = path.join(tempDir, "images");
       const imageFiles = new Set(fs.readdirSync(imagesDir).map((f) => `images/${f}`));
 
-      const { records, errors: csvErrors } = parseAndValidateCsv(tempDir, imageFiles);
-      if (csvErrors.length > 0) {
-        return { success: false, errors: csvErrors, importedCount: 0 };
-      }
+    const { records, errors: csvErrors } = parseAndValidateCsv(tempDir);
+    if (csvErrors.length > 0) {
+      return { success: false, errors: csvErrors, importedCount: 0 };
+    }
 
-      const categoryCache = new Map();
-      let importedCount = 0;
+    const categoryCache = new Map();
+    await loadCategoryCache(categoryCache);
+    let importedCount = 0;
 
       const createdResources = {
         productIds: [],

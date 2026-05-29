@@ -263,8 +263,13 @@ export const importProductsFromZip = async (
     })
     .then((res) => res.data)
     .catch((error) => {
-      if (error.response?.data) {
-        return error.response.data;
+      const status = error.response?.status;
+      const data = error.response?.data;
+      if (status === 400 && data) {
+        return { success: false, message: data.message || "Import thất bại", errors: data.errors || [], importedCount: 0 };
+      }
+      if (status === 413 || status === 415) {
+        return { success: false, message: data?.message || `Lỗi: ${status === 413 ? "File quá lớn" : "Sai định dạng file"}`, errors: [], importedCount: 0 };
       }
       throw error;
     });
