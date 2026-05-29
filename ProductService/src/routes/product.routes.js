@@ -1,5 +1,6 @@
 import express from "express";
 import { uploadImage } from "../middlewares/upload.middleware.js";
+import { uploadZip } from "../middlewares/zip-upload.middleware.js";
 import { requireAdmin, requireAuth } from "../middlewares/auth.middleware.js";
 import {
   getAllProducts,
@@ -14,6 +15,7 @@ import {
   deductStock,
   restoreStock,
 } from "../controllers/product.controller.js";
+import { importZipProducts } from "../controllers/zip-import.controller.js";
 
 const router = express.Router();
 
@@ -116,6 +118,40 @@ router.get("/featured", getFeaturedProducts);
  *         description: Server error
  */
 router.get("/new-arrivals", getNewArrivals);
+
+// ─── ZIP Import ───────────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/products/import-zip:
+ *   post:
+ *     tags: [products]
+ *     summary: Import products from ZIP file
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               zipFile:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Products imported successfully
+ *       400:
+ *         description: Validation errors
+ *       413:
+ *         description: File too large
+ *       415:
+ *         description: Wrong file format
+ */
+router.post(
+  "/import-zip",
+  requireAdmin,
+  uploadZip.single("zipFile"),
+  importZipProducts,
+);
 
 // ─── Listing & Browsing ─────────────────────────────────────────────────────────
 /**

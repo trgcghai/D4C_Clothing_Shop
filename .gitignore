@@ -60,6 +60,9 @@ UserService/.mvn/wrapper/maven-wrapper.jar
 *.swp
 *.swo
 
+# 🚀 Deploy (contains secrets)
+deploy/
+
 # Agents & Skills
 **.txt
 UserService/.env

@@ -244,6 +244,37 @@ export const restoreStock = async (
     .then((res) => res.data);
 };
 
+export interface ZipImportResponse {
+  success: boolean;
+  message: string;
+  importedCount?: number;
+  errors?: Array<{ row: number; field: string; message: string }>;
+}
+
+export const importProductsFromZip = async (
+  zipFile: File,
+): Promise<ZipImportResponse> => {
+  const formData = new FormData();
+  formData.append("zipFile", zipFile);
+
+  return axiosInstance
+    .post("/api/products/import-zip", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((res) => res.data)
+    .catch((error) => {
+      const status = error.response?.status;
+      const data = error.response?.data;
+      if (status === 400 && data) {
+        return { success: false, message: data.message || "Import thất bại", errors: data.errors || [], importedCount: 0 };
+      }
+      if (status === 413 || status === 415) {
+        return { success: false, message: data?.message || `Lỗi: ${status === 413 ? "File quá lớn" : "Sai định dạng file"}`, errors: [], importedCount: 0 };
+      }
+      throw error;
+    });
+};
+
 // ─── Recommendation & Behavior ────────────────────────────────────────────────
 
 export type BehaviorEventType =

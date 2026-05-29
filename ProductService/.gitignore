@@ -21,6 +21,9 @@ dist/
 dist-ssr/
 build/
 
+# 3.5. THƯ MỤC TẠM THỜI (Temp imports)
+temp/
+
 # 4. LOGS (File ghi chú lỗi)
 logs
 *.log
