@@ -33,6 +33,8 @@ const VerifyEmail = () => {
     return null;
   }
 
+  const emailStr = email;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSuccessMessage(null);
@@ -40,7 +42,7 @@ const VerifyEmail = () => {
     if (otpValue.length !== 6) return;
 
     mutate(
-      { email, verificationCode: otpValue },
+      { email: emailStr, verificationCode: otpValue },
       {
         onSuccess: () => {
           setSuccessMessage(
