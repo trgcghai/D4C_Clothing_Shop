@@ -29,12 +29,16 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 
 @Service
 public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
     private static final SecureRandom secureRandom = new SecureRandom();
+    private static final String PENDING_SIGNUP_KEY_PREFIX = "pending_signup:email:";
+    private static final String VERIFICATION_KEY_PREFIX = "verification:email:";
+    private static final long PENDING_TTL_MINUTES = 5;
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -106,39 +110,45 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Error: Email is already taken!");
         }
 
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setPassword(encoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole() : Role.USER);
-        user.setEmailVerification(false);
+        String pendingKey = PENDING_SIGNUP_KEY_PREFIX + request.getEmail().toLowerCase();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(pendingKey))) {
+            throw new RuntimeException("Error: Email already has pending verification. Please check your inbox.");
+        }
 
-        userRepository.save(user);
-
-        sendVerificationEmail(user);
+        storePendingSignup(request);
+        sendVerificationEmail(request);
     }
 
-    private void sendVerificationEmail(User user) {
+    private void storePendingSignup(SignupRequest request) {
+        String key = PENDING_SIGNUP_KEY_PREFIX + request.getEmail().toLowerCase();
+
+        redisTemplate.opsForHash().put(key, "username", request.getUsername());
+        redisTemplate.opsForHash().put(key, "email", request.getEmail());
+        redisTemplate.opsForHash().put(key, "fullName", request.getFullName());
+        redisTemplate.opsForHash().put(key, "phoneNumber", request.getPhoneNumber());
+        redisTemplate.opsForHash().put(key, "password", encoder.encode(request.getPassword()));
+        redisTemplate.opsForHash().put(key, "role", request.getRole() != null ? request.getRole().name() : Role.USER.name());
+
+        redisTemplate.expire(key, Duration.ofMinutes(PENDING_TTL_MINUTES));
+    }
+
+    private void sendVerificationEmail(SignupRequest request) {
         try {
             String code = String.valueOf(secureRandom.nextInt(100000, 1000000));
 
-            redisTemplate.opsForValue().set(
-                    "verification:" + user.getId(),
-                    code,
-                    Duration.ofMinutes(5));
+            String verificationKey = VERIFICATION_KEY_PREFIX + request.getEmail().toLowerCase();
+            redisTemplate.opsForValue().set(verificationKey, code, Duration.ofMinutes(PENDING_TTL_MINUTES));
 
             VerificationEmailEvent event = new VerificationEmailEvent(
-                    user.getId(),
-                    user.getEmail(),
-                    user.getFullName(),
+                    null,
+                    request.getEmail(),
+                    request.getFullName(),
                     code);
 
             rabbitTemplate.convertAndSend(RabbitMQConfig.EMAIL_EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
-            log.info("Verification email event published for user {} ({})", user.getId(), user.getEmail());
+            log.info("Verification email event published for pending signup ({})", request.getEmail());
         } catch (AmqpException e) {
-            log.error("Failed to publish verification event for user {}: {}", user.getId(), e.getMessage());
+            log.error("Failed to publish verification event for pending signup {}: {}", request.getEmail(), e.getMessage());
         }
     }
 
@@ -149,8 +159,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void verifyEmail(Long userId, String verificationCode) {
-        String storedCode = redisTemplate.opsForValue().get("verification:" + userId);
+    public void verifyEmail(String email, String verificationCode) {
+        String normalizedEmail = email.toLowerCase();
+
+        String verificationKey = VERIFICATION_KEY_PREFIX + normalizedEmail;
+        String storedCode = redisTemplate.opsForValue().get(verificationKey);
 
         if (storedCode == null) {
             throw new RuntimeException("Verification code has expired or is invalid");
@@ -160,14 +173,28 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Verification code is incorrect");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String pendingKey = PENDING_SIGNUP_KEY_PREFIX + normalizedEmail;
+        Map<Object, Object> pendingData = redisTemplate.opsForHash().entries(pendingKey);
 
+        if (pendingData.isEmpty()) {
+            throw new RuntimeException("No pending signup found for this email. Please sign up first.");
+        }
+
+        User user = new User();
+        user.setUsername((String) pendingData.get("username"));
+        user.setEmail(normalizedEmail);
+        user.setFullName((String) pendingData.get("fullName"));
+        user.setPhoneNumber((String) pendingData.get("phoneNumber"));
+        user.setPassword((String) pendingData.get("password"));
+        user.setRole(Role.valueOf((String) pendingData.get("role")));
         user.setEmailVerification(true);
+        user.setEnabled(true);
+
         userRepository.save(user);
 
-        redisTemplate.delete("verification:" + userId);
+        redisTemplate.delete(verificationKey);
+        redisTemplate.delete(pendingKey);
 
-        log.info("Email verified successfully for user {}", userId);
+        log.info("Email verified and account created for user {} ({})", user.getId(), normalizedEmail);
     }
 }
