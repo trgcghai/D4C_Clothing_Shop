@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "../config/aws.config.js";
 import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
@@ -243,7 +243,7 @@ function parseAndValidateCsv(tempDir, imageFiles) {
   return { records, errors };
 }
 
-async function getOrCreateCategory(categoryName, categoryCache) {
+async function getOrCreateCategory(categoryName, categoryCache, newCategoryIds) {
   const lowerName = categoryName.toLowerCase();
   if (categoryCache.has(lowerName)) {
     return categoryCache.get(lowerName);
@@ -252,8 +252,9 @@ async function getOrCreateCategory(categoryName, categoryCache) {
   const allCategories = await categoryModel.findAll();
   const existing = allCategories.find((c) => c.name.toLowerCase() === lowerName);
   if (existing) {
-    categoryCache.set(lowerName, existing.id);
-    return existing.id;
+    const result = { id: existing.id, name: existing.name };
+    categoryCache.set(lowerName, result);
+    return result;
   }
 
   const newCategory = {
@@ -265,8 +266,12 @@ async function getOrCreateCategory(categoryName, categoryCache) {
     updatedAt: new Date().toISOString(),
   };
   await categoryModel.create(newCategory);
-  categoryCache.set(lowerName, newCategory.id);
-  return newCategory.id;
+  if (newCategoryIds) {
+    newCategoryIds.push(newCategory.id);
+  }
+  const result = { id: newCategory.id, name: newCategory.name };
+  categoryCache.set(lowerName, result);
+  return result;
 }
 
 async function uploadImageToS3(filePath, originalName) {
@@ -317,14 +322,23 @@ export class ZipImportService {
       const categoryCache = new Map();
       let importedCount = 0;
 
+      const createdResources = {
+        productIds: [],
+        variantIds: [],
+        s3Keys: [],
+        categoryIds: [],
+      };
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i];
 
-        const categoryId = await getOrCreateCategory(row.category.trim(), categoryCache);
+        const categoryResult = await getOrCreateCategory(row.category.trim(), categoryCache, createdResources.categoryIds);
 
         const imageRelPath = row.image.trim();
         const imageFullPath = path.join(tempDir, imageRelPath);
         const imageUrl = await uploadImageToS3(imageFullPath, path.basename(imageRelPath));
+        const s3Key = imageUrl.split(`.amazonaws.com/`)[1];
+        createdResources.s3Keys.push(s3Key);
 
         const variants = row.variants.split(";").filter((v) => v.trim()).map((v) => {
           const [color, size, qtyStr] = v.split("|").map((p) => p.trim());
@@ -340,7 +354,7 @@ export class ZipImportService {
           name: row.name.trim(),
           description: row.description?.trim() || "",
           price: Number(row.price),
-          categoryId,
+          categoryId: categoryResult.id,
           gender: row.gender.trim() || "Unisex",
           brand: row.brand.trim() || "D4C",
           tags,
@@ -351,20 +365,20 @@ export class ZipImportService {
         };
 
         await productModel.create(newProduct);
+        createdResources.productIds.push(newProduct.id);
 
         for (const v of variants) {
+          const variantId = uuidv4();
           await variantModel.create({
-            id: uuidv4(),
+            id: variantId,
             productId: newProduct.id,
             color: v.color,
             size: v.size,
             quantity: v.quantity,
             sku: `${newProduct.id}-${v.color}-${v.size}`.replace(/\s/g, "-"),
           });
+          createdResources.variantIds.push(variantId);
         }
-
-        const allCategories = await categoryModel.findAll();
-        const catObj = allCategories.find((c) => c.id === categoryId);
 
         publishProductEvent("CREATE", {
           id: newProduct.id,
@@ -372,7 +386,7 @@ export class ZipImportService {
           description: newProduct.description,
           price: newProduct.price,
           categoryId: newProduct.categoryId,
-          category: catObj?.name || null,
+          category: categoryResult.name,
           brand: newProduct.brand,
           gender: newProduct.gender,
           tags: newProduct.tags,
@@ -387,6 +401,30 @@ export class ZipImportService {
 
       return { success: true, importedCount, errors: [] };
     } catch (error) {
+      // Rollback: delete S3 images
+      for (const key of createdResources.s3Keys) {
+        try {
+          await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+        } catch (e) {
+          console.error("Rollback: failed to delete S3 key:", key, e);
+        }
+      }
+
+      // Rollback: delete variants
+      for (const id of createdResources.variantIds) {
+        try { await variantModel.remove(id); } catch (e) { console.error("Rollback: failed to delete variant:", id, e); }
+      }
+
+      // Rollback: delete products
+      for (const id of createdResources.productIds) {
+        try { await productModel.remove(id); } catch (e) { console.error("Rollback: failed to delete product:", id, e); }
+      }
+
+      // Rollback: delete newly created categories
+      for (const id of createdResources.categoryIds) {
+        try { await categoryModel.remove(id); } catch (e) { console.error("Rollback: failed to delete category:", id, e); }
+      }
+
       return {
         success: false,
         errors: [{ row: 0, field: "system", message: error.message }],
