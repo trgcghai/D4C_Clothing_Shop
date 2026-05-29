@@ -35,6 +35,9 @@ class JwksControllerTest {
     @MockBean
     private JwtUtils jwtUtils;
 
+    @MockBean
+    private org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
+
     @Autowired
     private ObjectMapper objectMapper;
 

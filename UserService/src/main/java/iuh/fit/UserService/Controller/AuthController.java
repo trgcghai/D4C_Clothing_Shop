@@ -126,18 +126,19 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    @Operation(summary = "Verify email", description = "Verify user email with 6-digit code sent via email.")
+    @Operation(summary = "Verify email", description = "Verify user email with 6-digit code sent via email. Creates account after successful verification.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Email verified successfully"),
+            @ApiResponse(responseCode = "200", description = "Email verified successfully. Account created."),
             @ApiResponse(responseCode = "400", description = "Invalid or expired verification code")
     })
     public ResponseEntity<?> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        authService.verifyEmail(request.getUserId(), request.getVerificationCode());
-        return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
+        authService.verifyEmail(request.getEmail(), request.getVerificationCode());
+        return ResponseEntity.ok(Map.of("message", "Email verified successfully. Account created."));
     }
 
     @GetMapping("/user-id")
-    @Operation(summary = "Get user ID by email", description = "Look up user ID by email address for email verification flow.")
+    @Deprecated
+    @Operation(summary = "Get user ID by email", description = "DEPRECATED: This endpoint is no longer used. Look up user ID by email address for email verification flow.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User ID returned"),
             @ApiResponse(responseCode = "404", description = "User not found")

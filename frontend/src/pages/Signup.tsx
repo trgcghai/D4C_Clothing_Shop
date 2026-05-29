@@ -79,7 +79,7 @@ const SignUp = () => {
       {
         onSuccess: () => {
           setSuccessMessage(
-            "Account created! Please check your email for the verification code.",
+            "Verification email sent! Please check your inbox.",
           );
           setForm(defaultForm);
           setTimeout(() => navigate(`/verify-email?email=${encodeURIComponent(form.email)}`), 2000);
@@ -220,7 +220,7 @@ const SignUp = () => {
             </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Creating account..." : "Create account"}
+              {isPending ? "Sending verification email..." : "Create account"}
             </Button>
           </form>
 
