@@ -119,7 +119,7 @@ A downloadable example ZIP file will be provided in the frontend. It will contai
   "errors": [
     { "row": 2, "field": "price", "message": "Giá phải là số nguyên dương" },
     { "row": 4, "field": "variants", "message": "Format variants sai: thiếu quantity" },
-    { "row": 5, "field": "image", "message": "File ảnh 'images/notfound.jpg' không tồn tại trong ZIP" }
+    { "row": 5, "field": "image", "message": "File ảnh 'images/notfound.jpg' không tồn tại trong thư mục images/ của ZIP" }
   ]
 }
 ```
@@ -148,6 +148,13 @@ A downloadable example ZIP file will be provided in the frontend. It will contai
    - Must contain exactly 1 `.csv` file (any name, at root level)
    - Must contain `images/` folder with at least 1 image file
    - Supported image formats: jpg, jpeg, png, webp, gif
+   - **Zip bomb protection:**
+     - Compressed file size <= 50MB
+     - Extracted total size <= 200MB (compression ratio max 4:1)
+     - Total file count <= 500 files (1 CSV + max 499 images)
+     - Max individual file size <= 50MB
+     - Max directory depth <= 3 levels (root → images/ → files)
+     - Reject entries with symlinks or unusual permissions
 
 2. **CSV header validation:**
    - Must contain all required columns: `image`, `name`, `price`, `category`, `brand`, `gender`, `variants`
@@ -223,7 +230,7 @@ When validation fails, show errors in a table:
 - **New file:** `ProductService/src/services/zip-import.service.js` - ZIP extraction, CSV parsing, validation, and import logic
 - **New file:** `ProductService/src/controllers/zip-import.controller.js` - ZIP import controller
 - **Modified:** `ProductService/src/routes/product.routes.js` - Add POST /api/products/import-zip route
-- **Modified:** `ProductService/package.json` - Add `adm-zip` (or `extract-zip`) and `csv-parse` dependencies
+- **Modified:** `ProductService/package.json` - Add `extract-zip` and `csv-parse` dependencies
 
 ### CategoryService (if separate service)
 - If category auto-creation needs to call CategoryService, add endpoint or reuse existing create category API
@@ -232,15 +239,15 @@ When validation fails, show errors in a table:
 ## Dependencies
 
 - Backend: `csv-parse` npm package for CSV parsing
-- Backend: `adm-zip` or `extract-zip` npm package for ZIP extraction
+- Backend: `extract-zip` npm package for ZIP extraction
 - Frontend: No new dependencies (uses existing Dialog, Button, etc. from shadcn/ui)
 
 ## Security Considerations
 
 - requireAdmin middleware protects the endpoint
-- File size limit (50MB) prevents DoS and ZIP bomb attacks
+- **Zip bomb protection:** compressed size <= 50MB, extracted total <= 200MB (4:1 ratio), max 500 files, max depth 3 levels, no symlinks
 - MIME type validation prevents non-ZIP uploads
-- ZIP extraction limited to expected structure (1 CSV + images/ folder only)
+- ZIP extraction via `extract-zip` with size/file count limits checked during extraction
 - Image file validation: only allow jpg, jpeg, png, webp, gif extensions
 - Path traversal prevention: image paths must start with `images/`, no `../` allowed
 - S3 upload uses existing secure upload flow
@@ -250,10 +257,11 @@ When validation fails, show errors in a table:
 ## Testing Strategy
 
 ### Backend
-- Unit tests for ZIP extraction (valid ZIP, malformed ZIP, missing CSV, missing images/)
+- Unit tests for ZIP extraction with `extract-zip` (valid ZIP, malformed ZIP, missing CSV, missing images/)
+- Unit tests for zip bomb detection (ratio > 4:1, > 500 files, > 3 depth, symlinks)
 - Unit tests for CSV parsing (valid CSV, malformed CSV, missing headers)
 - Unit tests for validation rules (each field, edge cases, pipe-delimited variants)
-- Unit tests for image reference validation (file exists vs missing)
+- Unit tests for image reference validation (file exists vs missing in images/)
 - Integration test for Phase 1 → Phase 2 flow (happy path)
 - Integration test for Phase 1 failure → no uploads, no products created, temp cleanup
 - Integration test for orphan file prevention (validate all before any upload)
