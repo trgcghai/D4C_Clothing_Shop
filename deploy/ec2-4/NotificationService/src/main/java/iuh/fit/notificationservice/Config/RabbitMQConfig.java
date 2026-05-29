@@ -1,0 +1,138 @@
+package iuh.fit.notificationservice.Config;
+
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.Map;
+
+@Configuration
+public class RabbitMQConfig {
+
+    public static final String EMAIL_EXCHANGE = "email.exchange";
+    public static final String EMAIL_QUEUE = "email.notifications";
+    public static final String EMAIL_ROUTING_KEY = "email.verification";
+    public static final String EMAIL_ACCOUNT_ROUTING_KEY = "email.account.locked";
+    public static final String EMAIL_UNLOCK_ROUTING_KEY = "email.account.unlocked";
+    public static final String EMAIL_ACCOUNT_QUEUE = "email.account.events";
+    public static final String DLX_EXCHANGE = "email.dlx";
+    public static final String DLQ_QUEUE = "email.notifications.dlq";
+    public static final String DLQ_ROUTING_KEY = "dlq";
+    public static final String EMAIL_ORDER_ROUTING_KEY_CREATED = "email.order.created";
+    public static final String EMAIL_ORDER_ROUTING_KEY_PAID = "email.order.paid";
+    public static final String EMAIL_ORDER_ROUTING_KEY_CANCELLED = "email.order.cancelled";
+    public static final String EMAIL_ORDER_QUEUE = "email.order.notifications";
+
+    @Bean
+    public Jackson2JsonMessageConverter messageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public TopicExchange emailExchange() {
+        return new TopicExchange(EMAIL_EXCHANGE);
+    }
+
+    @Bean
+    public DirectExchange deadLetterExchange() {
+        return new DirectExchange(DLX_EXCHANGE);
+    }
+
+    @Bean
+    public Queue emailNotificationsQueue() {
+        return QueueBuilder.durable(EMAIL_QUEUE)
+                .withArguments(Map.of(
+                        "x-queue-type", "quorum",
+                        "x-dead-letter-exchange", DLX_EXCHANGE,
+                        "x-dead-letter-routing-key", DLQ_ROUTING_KEY,
+                        "x-message-ttl", 300000
+                ))
+                .build();
+    }
+
+    @Bean
+    public Queue emailAccountQueue() {
+        return QueueBuilder.durable(EMAIL_ACCOUNT_QUEUE)
+                .withArguments(Map.of(
+                        "x-queue-type", "quorum",
+                        "x-dead-letter-exchange", DLX_EXCHANGE,
+                        "x-dead-letter-routing-key", DLQ_ROUTING_KEY,
+                        "x-message-ttl", 300000
+                ))
+                .build();
+    }
+
+    @Bean
+    public Queue emailOrderNotificationsQueue() {
+        return QueueBuilder.durable(EMAIL_ORDER_QUEUE)
+                .withArguments(Map.of(
+                        "x-queue-type", "quorum",
+                        "x-dead-letter-exchange", DLX_EXCHANGE,
+                        "x-dead-letter-routing-key", DLQ_ROUTING_KEY,
+                        "x-message-ttl", 300000
+                ))
+                .build();
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable(DLQ_QUEUE)
+                .withArguments(Map.of("x-queue-type", "quorum"))
+                .build();
+    }
+
+    @Bean
+    public Binding emailBinding(Queue emailNotificationsQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailNotificationsQueue)
+                .to(emailExchange)
+                .with(EMAIL_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding emailAccountBinding(Queue emailAccountQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailAccountQueue)
+                .to(emailExchange)
+                .with(EMAIL_ACCOUNT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding emailAccountUnlockBinding(Queue emailAccountQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailAccountQueue)
+                .to(emailExchange)
+                .with(EMAIL_UNLOCK_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding emailOrderCreatedBinding(Queue emailOrderNotificationsQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailOrderNotificationsQueue)
+                .to(emailExchange)
+                .with(EMAIL_ORDER_ROUTING_KEY_CREATED);
+    }
+
+    @Bean
+    public Binding emailOrderPaidBinding(Queue emailOrderNotificationsQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailOrderNotificationsQueue)
+                .to(emailExchange)
+                .with(EMAIL_ORDER_ROUTING_KEY_PAID);
+    }
+
+    @Bean
+    public Binding emailOrderCancelledBinding(Queue emailOrderNotificationsQueue, TopicExchange emailExchange) {
+        return BindingBuilder.bind(emailOrderNotificationsQueue)
+                .to(emailExchange)
+                .with(EMAIL_ORDER_ROUTING_KEY_CANCELLED);
+    }
+
+    @Bean
+    public Binding dlqBinding(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(deadLetterQueue)
+                .to(deadLetterExchange)
+                .with(DLQ_ROUTING_KEY);
+    }
+}
