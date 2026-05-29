@@ -2,6 +2,7 @@ import extract from "extract-zip";
 import { parse } from "csv-parse/sync";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
@@ -309,7 +310,7 @@ async function uploadImageToS3(filePath, originalName) {
 
 export class ZipImportService {
   async importZip(zipBuffer) {
-    const tempDir = path.join(__dirname, "../../temp", `zip-import-${Date.now()}-${uuidv4()}`);
+    const tempDir = path.join(os.tmpdir(), `zip-import-${Date.now()}-${uuidv4()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
     try {
