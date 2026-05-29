@@ -67,7 +67,7 @@ export interface ChangePasswordRequest {
 }
 
 export interface VerifyEmailRequest {
-  userId: number;
+  email: string;
   verificationCode: string;
 }
 
@@ -142,18 +142,6 @@ export const verifyEmail = async (
 ): Promise<{ message: string }> => {
   return axiosInstance
     .post("/api/auth/verify-email", payload)
-    .then((res) => res.data);
-};
-
-/**
- * GET /api/auth/user-id
- * Look up user ID by email address.
- */
-export const getUserIdByEmail = async (
-  email: string,
-): Promise<{ userId: number }> => {
-  return axiosInstance
-    .get("/api/auth/user-id", { params: { email } })
     .then((res) => res.data);
 };
 
