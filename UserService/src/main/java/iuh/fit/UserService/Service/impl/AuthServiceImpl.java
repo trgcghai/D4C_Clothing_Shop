@@ -173,6 +173,9 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Verification code is incorrect");
         }
 
+        // Delete verification key atomically to prevent concurrent use
+        redisTemplate.delete(verificationKey);
+
         String pendingKey = PENDING_SIGNUP_KEY_PREFIX + normalizedEmail;
         Map<Object, Object> pendingData = redisTemplate.opsForHash().entries(pendingKey);
 
@@ -192,7 +195,6 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        redisTemplate.delete(verificationKey);
         redisTemplate.delete(pendingKey);
 
         log.info("Email verified and account created for user {} ({})", user.getId(), normalizedEmail);

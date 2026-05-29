@@ -137,7 +137,8 @@ public class AuthController {
     }
 
     @GetMapping("/user-id")
-    @Operation(summary = "Get user ID by email", description = "Look up user ID by email address for email verification flow.")
+    @Deprecated
+    @Operation(summary = "Get user ID by email", description = "DEPRECATED: This endpoint is no longer used. Look up user ID by email address for email verification flow.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User ID returned"),
             @ApiResponse(responseCode = "404", description = "User not found")
