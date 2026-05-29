@@ -244,6 +244,32 @@ export const restoreStock = async (
     .then((res) => res.data);
 };
 
+export interface ZipImportResponse {
+  success: boolean;
+  message: string;
+  importedCount?: number;
+  errors?: Array<{ row: number; field: string; message: string }>;
+}
+
+export const importProductsFromZip = async (
+  zipFile: File,
+): Promise<ZipImportResponse> => {
+  const formData = new FormData();
+  formData.append("zipFile", zipFile);
+
+  return axiosInstance
+    .post("/api/products/import-zip", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((res) => res.data)
+    .catch((error) => {
+      if (error.response?.data) {
+        return error.response.data;
+      }
+      throw error;
+    });
+};
+
 // ─── Recommendation & Behavior ────────────────────────────────────────────────
 
 export type BehaviorEventType =
