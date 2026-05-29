@@ -17,6 +17,8 @@ const __dirname = path.dirname(__filename);
 const BUCKET_NAME = process.env.BUCKET_NAME || "d4c-clothingshop-products-bucket";
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
 
+const MAX_CSV_ROWS = 500;
+
 const VALID_BRANDS = ["Nike", "Adidas", "Zara", "D4C", "H&M", "Uniqlo", "Local Brand"];
 const VALID_GENDERS = ["Nam", "Nữ", "Unisex"];
 const VALID_IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
@@ -133,6 +135,11 @@ function parseAndValidateCsv(tempDir, imageFiles) {
 
   if (records.length === 0) {
     errors.push({ row: 0, field: "csv", message: "File CSV không có dữ liệu" });
+    return { records: [], errors };
+  }
+
+  if (records.length > MAX_CSV_ROWS) {
+    errors.push({ row: 0, field: "csv", message: `File CSV chứa quá nhiều dòng (tối đa ${MAX_CSV_ROWS})` });
     return { records: [], errors };
   }
 
@@ -295,7 +302,7 @@ async function uploadImageToS3(filePath, originalName) {
     })
   );
 
-  return `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${fileKey}`;
+  return { url: `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${fileKey}`, key: fileKey };
 }
 
 export class ZipImportService {
@@ -329,6 +336,8 @@ export class ZipImportService {
         categoryIds: [],
       };
 
+      const eventPayloads = [];
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i];
 
@@ -336,9 +345,8 @@ export class ZipImportService {
 
         const imageRelPath = row.image.trim();
         const imageFullPath = path.join(tempDir, imageRelPath);
-        const imageUrl = await uploadImageToS3(imageFullPath, path.basename(imageRelPath));
-        const s3Key = imageUrl.split(`.amazonaws.com/`)[1];
-        createdResources.s3Keys.push(s3Key);
+        const uploadResult = await uploadImageToS3(imageFullPath, path.basename(imageRelPath));
+        createdResources.s3Keys.push(uploadResult.key);
 
         const variants = row.variants.split(";").filter((v) => v.trim()).map((v) => {
           const [color, size, qtyStr] = v.split("|").map((p) => p.trim());
@@ -359,7 +367,7 @@ export class ZipImportService {
           brand: row.brand.trim() || "D4C",
           tags,
           isFeatured: row.isFeatured?.trim().toLowerCase() === "true" || false,
-          imageUrl,
+          imageUrl: uploadResult.url,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -380,7 +388,7 @@ export class ZipImportService {
           createdResources.variantIds.push(variantId);
         }
 
-        publishProductEvent("CREATE", {
+        eventPayloads.push({
           id: newProduct.id,
           name: newProduct.name,
           description: newProduct.description,
@@ -397,6 +405,10 @@ export class ZipImportService {
         });
 
         importedCount++;
+      }
+
+      for (const payload of eventPayloads) {
+        publishProductEvent("CREATE", payload);
       }
 
       return { success: true, importedCount, errors: [] };
