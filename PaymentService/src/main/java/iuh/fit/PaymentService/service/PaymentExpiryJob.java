@@ -12,7 +12,9 @@ import iuh.fit.PaymentService.repository.PaymentRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -27,16 +29,13 @@ public class PaymentExpiryJob {
     private static final Logger log = LoggerFactory.getLogger(PaymentExpiryJob.class);
 
     private final PaymentRepository paymentRepository;
-    private final RabbitTemplate rabbitTemplate;
     private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
     public PaymentExpiryJob(PaymentRepository paymentRepository,
-                            RabbitTemplate rabbitTemplate,
                             OutboxEventRepository outboxRepository,
                             ObjectMapper objectMapper) {
         this.paymentRepository = paymentRepository;
-        this.rabbitTemplate = rabbitTemplate;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
     }
@@ -88,7 +87,7 @@ public class PaymentExpiryJob {
                 String payload = objectMapper.writeValueAsString(eventPayload);
                 OutboxEvent outboxEvent = OutboxEvent.builder()
                         .eventType("PAYMENT_EXPIRED")
-                        .eventId(java.util.UUID.randomUUID().toString())
+                        .eventId(UUID.randomUUID().toString())
                         .aggregateId(refreshed.getId())
                         .payload(payload)
                         .exchange(RabbitMQConfig.PAYMENT_EXCHANGE)

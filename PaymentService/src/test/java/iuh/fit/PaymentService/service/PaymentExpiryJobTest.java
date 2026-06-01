@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +28,6 @@ import static org.mockito.Mockito.*;
 class PaymentExpiryJobTest {
 
     @Mock private PaymentRepository paymentRepository;
-    @Mock private RabbitTemplate rabbitTemplate;
     @Mock private OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
@@ -58,7 +56,7 @@ class PaymentExpiryJobTest {
         when(paymentRepository.expirePendingPayments(any(Instant.class))).thenReturn(1);
         when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        PaymentExpiryJob job = new PaymentExpiryJob(paymentRepository, rabbitTemplate, outboxRepository, objectMapper);
+        PaymentExpiryJob job = new PaymentExpiryJob(paymentRepository, outboxRepository, objectMapper);
         job.expirePendingPayments();
 
         ArgumentCaptor<OutboxEvent> captor = ArgumentCaptor.forClass(OutboxEvent.class);
@@ -71,28 +69,14 @@ class PaymentExpiryJobTest {
     }
 
     @Test
-    void shouldNotCallRabbitTemplateDirectly() {
+    void shouldSaveToOutboxWithoutRabbitMqDependency() {
         Payment payment = createExpiredPayment();
         Page<Payment> page = new PageImpl<>(List.of(payment));
         when(paymentRepository.findByStatus(eq(PaymentStatus.PENDING), any(Pageable.class))).thenReturn(page);
         when(paymentRepository.expirePendingPayments(any(Instant.class))).thenReturn(1);
         when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        PaymentExpiryJob job = new PaymentExpiryJob(paymentRepository, rabbitTemplate, outboxRepository, objectMapper);
-        job.expirePendingPayments();
-
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
-    }
-
-    @Test
-    void shouldNotLoseEventWhenRabbitMqIsDown() {
-        Payment payment = createExpiredPayment();
-        Page<Payment> page = new PageImpl<>(List.of(payment));
-        when(paymentRepository.findByStatus(eq(PaymentStatus.PENDING), any(Pageable.class))).thenReturn(page);
-        when(paymentRepository.expirePendingPayments(any(Instant.class))).thenReturn(1);
-        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
-
-        PaymentExpiryJob job = new PaymentExpiryJob(paymentRepository, rabbitTemplate, outboxRepository, objectMapper);
+        PaymentExpiryJob job = new PaymentExpiryJob(paymentRepository, outboxRepository, objectMapper);
 
         // Should NOT throw — outbox save doesn't depend on RabbitMQ
         job.expirePendingPayments();
