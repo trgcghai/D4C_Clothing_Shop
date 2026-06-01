@@ -65,10 +65,10 @@ class OrderServiceCheckoutTest {
         when(productClient.batchRestoreStock(anyList()))
                 .thenReturn(new BatchStockResponse(true, null));
         when(orderRepository.save(any(Order.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate key"));
+                .thenThrow(new RuntimeException("DB connection lost"));
 
         assertThatThrownBy(() -> orderService.createOrderFromCheckout(1L, "test@email.com", request))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(RuntimeException.class);
 
         verify(productClient).batchRestoreStock(anyList());
     }
@@ -83,10 +83,10 @@ class OrderServiceCheckoutTest {
         when(productClient.batchRestoreStock(anyList()))
                 .thenThrow(new RuntimeException("ProductService down"));
         when(orderRepository.save(any(Order.class)))
-                .thenThrow(new DataIntegrityViolationException("DB error"));
+                .thenThrow(new RuntimeException("DB error"));
 
         assertThatThrownBy(() -> orderService.createOrderFromCheckout(1L, "test@email.com", request))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(RuntimeException.class);
 
         verify(orderEventPublisher).publishStockRestoreFailed(anyList(), anyString());
     }

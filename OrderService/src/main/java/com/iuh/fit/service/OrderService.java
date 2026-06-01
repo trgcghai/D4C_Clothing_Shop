@@ -112,24 +112,8 @@ public class OrderService {
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
                     .findByUserIdAndCheckoutOrderId(userId, request.getOrderId())
-                    .orElse(null);
-            if (duplicated != null) {
-                return toResponse(duplicated);
-            }
-            log.error("Order creation failed with integrity violation, compensating stock: {}", ex.getMessage());
-            try {
-                restoreStockForOrder(request.getItems());
-            } catch (Exception restoreEx) {
-                log.error("Stock compensation ALSO failed — saving to outbox for retry");
-                orderEventPublisher.publishStockRestoreFailed(
-                        request.getItems().stream()
-                                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
-                                .map(itemDto -> new com.iuh.fit.client.dto.BatchStockRequest(
-                                        itemDto.getVariantId(), itemDto.getQuantity()))
-                                .collect(Collectors.toList()),
-                        ex.getMessage() + " | " + restoreEx.getMessage());
-            }
-            throw ex;
+                    .orElseThrow(() -> ex);
+            return toResponse(duplicated);
         } catch (Exception ex) {
             log.error("Order creation failed, compensating stock: {}", ex.getMessage());
             try {
