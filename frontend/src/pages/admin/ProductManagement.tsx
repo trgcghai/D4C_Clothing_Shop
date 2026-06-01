@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,12 +42,14 @@ import {
   Image as ImageIcon,
   Package,
   Sparkles,
+  FileArchive,
 } from "lucide-react";
 import {
   useProducts,
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  productKeys,
 } from "@/src/hooks/useProducts";
 import { useCategories } from "@/src/hooks/useCategories";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
@@ -56,6 +59,7 @@ import type {
   Variant,
 } from "@/src/services/productApi";
 import { generateProductTags } from "@/src/services/aiApi";
+import ZipImportDialog from "@/src/components/ZipImportDialog";
 
 const PAGE_SIZE = 10;
 const GENDERS = ["Nam", "Nữ", "Unisex"];
@@ -95,6 +99,9 @@ export default function ProductManagement() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [imageError, setImageError] = useState<string | undefined>();
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [zipDialogOpen, setZipDialogOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const { data: categoriesData = [] } = useCategories();
   const { data, isLoading } = useProducts({
@@ -289,12 +296,18 @@ export default function ProductManagement() {
             setOpen(v);
           }}
         >
+        <div className="flex gap-2">
           <DialogTrigger asChild>
             <Button onClick={openCreate}>
               <Plus className="mr-2 size-4" />
               Thêm sản phẩm
             </Button>
           </DialogTrigger>
+          <Button variant="outline" onClick={() => setZipDialogOpen(true)}>
+            <FileArchive className="mr-2 size-4" />
+            Thêm ZIP
+          </Button>
+        </div>
 
           <DialogContent className="sm:max-w-225 max-h-[90vh] p-0 gap-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
@@ -818,6 +831,15 @@ export default function ProductManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ZipImportDialog
+          open={zipDialogOpen}
+          onOpenChange={setZipDialogOpen}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: productKeys.all });
+            setPage(1);
+          }}
+        />
       </div>
 
       <div className="rounded-lg border">
