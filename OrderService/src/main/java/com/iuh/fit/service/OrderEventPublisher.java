@@ -7,6 +7,7 @@ import com.iuh.fit.domain.dto.OrderCancelledEvent;
 import com.iuh.fit.domain.dto.OrderPaidEvent;
 import com.iuh.fit.domain.dto.OrderStatusEvent;
 import com.iuh.fit.domain.entity.OutboxEvent;
+import com.iuh.fit.domain.event.StockRestoreFailedEvent;
 import com.iuh.fit.repository.OutboxEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -58,6 +60,18 @@ public class OrderEventPublisher {
 
     public void publishOrderCancelledEvent(OrderCancelledEvent event) {
         publish(event, "ORDER_CANCELLED", event.getOrderId(), RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_CANCELLED_EVENT_ROUTING_KEY);
+    }
+
+    public void publishStockRestoreFailed(List<com.iuh.fit.client.dto.BatchStockRequest> items, String reason) {
+        StockRestoreFailedEvent event = new StockRestoreFailedEvent(
+                items.stream()
+                        .map(i -> new StockRestoreFailedEvent.StockItem(i.variantId(), i.quantity()))
+                        .collect(java.util.stream.Collectors.toList()),
+                reason,
+                java.time.Instant.now()
+        );
+        publish(event, "STOCK_RESTORE_FAILED", null,
+                RabbitMQConfig.ORDER_EXCHANGE, "stock.restore.failed");
     }
 
     private void publish(Object event, String eventType, Long aggregateId, String exchange, String routingKey) {

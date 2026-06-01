@@ -112,8 +112,39 @@ public class OrderService {
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
                     .findByUserIdAndCheckoutOrderId(userId, request.getOrderId())
-                    .orElseThrow(() -> ex);
-            return toResponse(duplicated);
+                    .orElse(null);
+            if (duplicated != null) {
+                return toResponse(duplicated);
+            }
+            log.error("Order creation failed with integrity violation, compensating stock: {}", ex.getMessage());
+            try {
+                restoreStockForOrder(request.getItems());
+            } catch (Exception restoreEx) {
+                log.error("Stock compensation ALSO failed — saving to outbox for retry");
+                orderEventPublisher.publishStockRestoreFailed(
+                        request.getItems().stream()
+                                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                                .map(itemDto -> new com.iuh.fit.client.dto.BatchStockRequest(
+                                        itemDto.getVariantId(), itemDto.getQuantity()))
+                                .collect(Collectors.toList()),
+                        ex.getMessage() + " | " + restoreEx.getMessage());
+            }
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Order creation failed, compensating stock: {}", ex.getMessage());
+            try {
+                restoreStockForOrder(request.getItems());
+            } catch (Exception restoreEx) {
+                log.error("Stock compensation ALSO failed — saving to outbox for retry");
+                orderEventPublisher.publishStockRestoreFailed(
+                        request.getItems().stream()
+                                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                                .map(itemDto -> new com.iuh.fit.client.dto.BatchStockRequest(
+                                        itemDto.getVariantId(), itemDto.getQuantity()))
+                                .collect(Collectors.toList()),
+                        ex.getMessage() + " | " + restoreEx.getMessage());
+            }
+            throw ex;
         }
     }
 
@@ -203,6 +234,19 @@ public class OrderService {
         batchRestoreStock(items);
     }
 
+    private void restoreStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
+        List<BatchStockRequest> batchItems = items.stream()
+                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
+                .collect(Collectors.toList());
+
+        if (batchItems.isEmpty()) {
+            return;
+        }
+
+        batchRestoreStock(batchItems);
+    }
+
     private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
         List<BatchStockRequest> batchItems = items.stream()
                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
@@ -248,6 +292,7 @@ public class OrderService {
             }
         } catch (Exception e) {
             log.error("Stock restoration failed: {}", e.getMessage());
+            throw e;
         }
     }
 
