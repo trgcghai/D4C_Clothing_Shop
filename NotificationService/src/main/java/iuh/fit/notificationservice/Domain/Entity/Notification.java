@@ -26,8 +26,11 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long userId;
+
+    @Column(nullable = false)
+    private String email;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -45,6 +45,7 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationResponse sendNotification(SendNotificationRequest request) {
         Notification notification = Notification.builder()
                 .userId(request.getUserId())
+                .email(request.getRecipientEmail())
                 .type(request.getType())
                 .subject(request.getSubject() != null ? request.getSubject() : "")
                 .channel(request.getChannel())
@@ -110,6 +111,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(request.getUserId())
+                .email(request.getEmail())
                 .type(NotificationType.WELCOME)
                 .subject("Xác thực email - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -172,6 +174,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.WELCOME)
                 .subject("Xác thực email - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -225,6 +228,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.ACCOUNT_ALERT)
                 .subject("Thông báo: Tài khoản của bạn đã bị khóa - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -277,6 +281,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.ACCOUNT_ALERT)
                 .subject("Thông báo: Tài khoản của bạn đã được mở khóa - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -328,6 +333,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.ORDER_CONFIRMATION)
                 .subject("Xác nhận đơn hàng - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -379,6 +385,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.ORDER_CONFIRMATION)
                 .subject("Thanh toán thành công - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
@@ -430,6 +437,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = Notification.builder()
                 .userId(event.getUserId())
+                .email(event.getEmail())
                 .type(NotificationType.ORDER_CONFIRMATION)
                 .subject("Đơn hàng đã bị hủy - D4C Clothing Shop")
                 .channel(iuh.fit.notificationservice.Domain.Enum.NotificationChannel.EMAIL)
