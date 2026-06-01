@@ -38,12 +38,12 @@ public class OutboxPublisherJob {
             return;
         }
 
-        List<OutboxEvent> events = outboxRepository.findPendingEvents(PageRequest.of(0, BATCH_SIZE));
+        List<OutboxEvent> events = outboxRepository.findRetryableEvents(PageRequest.of(0, BATCH_SIZE));
         if (events.isEmpty()) {
             return;
         }
 
-        log.info("Publishing {} pending outbox events", events.size());
+        log.info("Publishing {} retryable outbox events", events.size());
 
         for (OutboxEvent event : events) {
             publishSingleEvent(event);
@@ -56,20 +56,26 @@ public class OutboxPublisherJob {
             rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
             event.setStatus("PUBLISHED");
             event.setPublishedAt(Instant.now());
+            event.setRetryAfter(null);
             outboxRepository.save(event);
             log.debug("Published outbox event id={}", event.getId());
         } catch (Exception e) {
             event.setRetryCount(event.getRetryCount() + 1);
-            event.setErrorMessage(e.getMessage());
+            event.setErrorMessage(e.getClass().getSimpleName() + ": " + e.getMessage());
             if (event.getRetryCount() >= event.getMaxRetries()) {
                 event.setStatus("FAILED");
                 outboxRepository.save(event);
                 log.error("Outbox event id={} failed after {} retries: {}",
                     event.getId(), event.getRetryCount(), e.getMessage());
             } else {
+                long baseDelayMs = 5000;
+                long exponentialDelay = baseDelayMs * (long) Math.pow(2, event.getRetryCount() - 1);
+                long jitter = java.util.concurrent.ThreadLocalRandom.current().nextLong(0, 2000);
+                long totalDelayMs = Math.min(exponentialDelay + jitter, 300_000);
+                event.setRetryAfter(Instant.now().plusMillis(totalDelayMs));
                 outboxRepository.save(event);
-                log.warn("Outbox event id={} publish failed (attempt {}/{}): {}",
-                    event.getId(), event.getRetryCount(), event.getMaxRetries(), e.getMessage());
+                log.warn("Outbox event id={} publish failed (attempt {}/{}), retry after {}ms: {}",
+                    event.getId(), event.getRetryCount(), event.getMaxRetries(), totalDelayMs, e.getMessage());
             }
         }
     }

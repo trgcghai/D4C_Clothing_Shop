@@ -62,6 +62,9 @@ public class OutboxEvent {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "retry_after")
+    private Instant retryAfter;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 }

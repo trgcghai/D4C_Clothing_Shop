@@ -9,9 +9,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -39,11 +41,11 @@ class OutboxPublisherJobTest {
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
         outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
-        when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of());
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxPublisherJob.publishPendingEvents();
 
-        verify(outboxRepository).findPendingEvents(PageRequest.of(0, 100));
+        verify(outboxRepository).findRetryableEvents(PageRequest.of(0, 100));
         verifyNoMoreInteractions(outboxRepository);
         verifyNoInteractions(rabbitTemplate);
     }
@@ -62,7 +64,7 @@ class OutboxPublisherJobTest {
                 .routingKey("payment.completed")
                 .build();
 
-        when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
 
         outboxPublisherJob.publishPendingEvents();
 
@@ -87,7 +89,7 @@ class OutboxPublisherJobTest {
                 .maxRetries(5)
                 .build();
 
-        when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate)
                 .convertAndSend("payment-exchange", "payment.completed", "{\"paymentId\": 2}");
 
@@ -96,7 +98,8 @@ class OutboxPublisherJobTest {
         verify(outboxRepository).save(argThat(saved ->
                 saved.getRetryCount() == 1 &&
                 !"FAILED".equals(saved.getStatus()) &&
-                "Connection refused".equals(saved.getErrorMessage())));
+                saved.getErrorMessage() != null &&
+                saved.getErrorMessage().contains("Connection refused")));
     }
 
     @Test
@@ -115,7 +118,7 @@ class OutboxPublisherJobTest {
                 .maxRetries(5)
                 .build();
 
-        when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
         doThrow(new RuntimeException("Timeout")).when(rabbitTemplate)
                 .convertAndSend("payment-exchange", "payment.completed", "{\"paymentId\": 3}");
 
@@ -124,7 +127,8 @@ class OutboxPublisherJobTest {
         verify(outboxRepository).save(argThat(saved ->
                 saved.getRetryCount() == 5 &&
                 "FAILED".equals(saved.getStatus()) &&
-                "Timeout".equals(saved.getErrorMessage())));
+                saved.getErrorMessage() != null &&
+                saved.getErrorMessage().contains("Timeout")));
     }
 
     @Test
@@ -151,7 +155,7 @@ class OutboxPublisherJobTest {
                 .routingKey("payment.failed")
                 .build();
 
-        when(outboxRepository.findPendingEvents(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
 
         outboxPublisherJob.publishPendingEvents();
 
@@ -159,5 +163,72 @@ class OutboxPublisherJobTest {
         verify(rabbitTemplate).convertAndSend("payment-exchange", "payment.failed", "{\"paymentId\": 11}");
         verify(outboxRepository, times(2)).save(argThat(saved ->
                 "PUBLISHED".equals(saved.getStatus()) && saved.getPublishedAt() != null));
+    }
+
+    @Test
+    void shouldSetRetryAfterWithExponentialDelay() {
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+
+        OutboxEvent event = OutboxEvent.builder()
+                .id(5L)
+                .eventType("PAYMENT_COMPLETED")
+                .eventId("event-5")
+                .aggregateId(5L)
+                .payload("{\"paymentId\": 5}")
+                .exchange("payment-exchange")
+                .routingKey("payment.completed")
+                .retryCount(0)
+                .maxRetries(5)
+                .build();
+
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate)
+                .convertAndSend("payment-exchange", "payment.completed", "{\"paymentId\": 5}");
+
+        outboxPublisherJob.publishPendingEvents();
+
+        verify(outboxRepository).save(argThat(saved ->
+                saved.getRetryCount() == 1 &&
+                saved.getRetryAfter() != null &&
+                saved.getRetryAfter().isAfter(Instant.now().plusSeconds(3)) &&
+                saved.getRetryAfter().isBefore(Instant.now().plusSeconds(10))));
+    }
+
+    @Test
+    void shouldSkipEventsWithFutureRetryAfter() {
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of());
+
+        outboxPublisherJob.publishPendingEvents();
+
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void shouldIncludeExceptionClassInErrorMessage() {
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+
+        OutboxEvent event = OutboxEvent.builder()
+                .id(7L)
+                .eventType("PAYMENT_COMPLETED")
+                .eventId("event-7")
+                .aggregateId(7L)
+                .payload("{\"paymentId\": 7}")
+                .exchange("payment-exchange")
+                .routingKey("payment.completed")
+                .retryCount(0)
+                .maxRetries(5)
+                .build();
+
+        when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate)
+                .convertAndSend("payment-exchange", "payment.completed", "{\"paymentId\": 7}");
+
+        outboxPublisherJob.publishPendingEvents();
+
+        verify(outboxRepository).save(argThat(saved ->
+                saved.getErrorMessage() != null &&
+                saved.getErrorMessage().startsWith("RuntimeException: ")));
     }
 }

@@ -11,8 +11,10 @@ import java.util.List;
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
-    @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'PENDING' ORDER BY e.createdAt ASC")
-    List<OutboxEvent> findPendingEvents(Pageable pageable);
+    @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'PENDING' " +
+           "AND (e.retryAfter IS NULL OR e.retryAfter <= CURRENT_TIMESTAMP) " +
+           "ORDER BY e.createdAt ASC")
+    List<OutboxEvent> findRetryableEvents(Pageable pageable);
 
     @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'FAILED' ORDER BY e.createdAt ASC")
     List<OutboxEvent> findFailedEvents(Pageable pageable);
