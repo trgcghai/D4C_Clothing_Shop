@@ -13,4 +13,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     List<Notification> findByStatus(NotificationStatus status);
 
     List<Notification> findByUserId(Long userId);
+
+    List<Notification> findByEmail(String email);
 }
