@@ -2,6 +2,7 @@ package iuh.fit.PaymentService.service;
 
 import iuh.fit.PaymentService.domain.entity.OutboxEvent;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -33,6 +34,7 @@ public class OutboxPublisherJob {
     }
 
     @Scheduled(fixedDelay = 5000)
+    @SchedulerLock(name = "outboxPublisherJob", lockAtMostFor = "10s", lockAtLeastFor = "2s")
     public void publishPendingEvents() {
         if (!outboxEnabled) {
             return;
