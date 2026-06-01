@@ -3,6 +3,7 @@ import { stockService } from "../services/stock.service.js";
 export const deductBatchStock = async (req, res) => {
   try {
     const items = req.body;
+    const idempotencyKey = req.headers["x-idempotency-key"];
 
     if (!Array.isArray(items) || items.length === 0) {
       return res
@@ -18,7 +19,7 @@ export const deductBatchStock = async (req, res) => {
       }
     }
 
-    const result = await stockService.batchDeductStock(items);
+    const result = await stockService.batchDeductStock(items, idempotencyKey);
 
     if (result.success) {
       return res.status(200).json({ success: true });

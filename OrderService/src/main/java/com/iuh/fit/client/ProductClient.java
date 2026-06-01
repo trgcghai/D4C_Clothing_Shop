@@ -8,6 +8,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
@@ -27,7 +28,9 @@ public interface ProductClient {
     );
 
     @PostMapping("/api/products/stock/deduct-batch")
-    BatchStockResponse batchDeductStock(@RequestBody List<BatchStockRequest> items);
+    BatchStockResponse batchDeductStock(
+            @RequestBody List<BatchStockRequest> items,
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey);
 
     @PostMapping("/api/products/stock/restore-batch")
     BatchStockResponse batchRestoreStock(@RequestBody List<BatchStockRequest> items);

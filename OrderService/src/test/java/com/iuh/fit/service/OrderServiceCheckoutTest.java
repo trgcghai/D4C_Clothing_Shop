@@ -60,7 +60,7 @@ class OrderServiceCheckoutTest {
         CreateOrderFromCheckoutRequest request = createRequest();
         when(orderRepository.findByUserIdAndCheckoutOrderId(anyLong(), anyString()))
                 .thenReturn(Optional.empty());
-        when(productClient.batchDeductStock(anyList()))
+        when(productClient.batchDeductStock(anyList(), anyString()))
                 .thenReturn(new BatchStockResponse(true, null));
         when(productClient.batchRestoreStock(anyList()))
                 .thenReturn(new BatchStockResponse(true, null));
@@ -78,7 +78,7 @@ class OrderServiceCheckoutTest {
         CreateOrderFromCheckoutRequest request = createRequest();
         when(orderRepository.findByUserIdAndCheckoutOrderId(anyLong(), anyString()))
                 .thenReturn(Optional.empty());
-        when(productClient.batchDeductStock(anyList()))
+        when(productClient.batchDeductStock(anyList(), anyString()))
                 .thenReturn(new BatchStockResponse(true, null));
         when(productClient.batchRestoreStock(anyList()))
                 .thenThrow(new RuntimeException("ProductService down"));

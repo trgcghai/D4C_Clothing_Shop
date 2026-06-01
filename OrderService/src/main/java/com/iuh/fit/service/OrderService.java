@@ -69,7 +69,7 @@ public class OrderService {
         }
 
         // Deduct stock BEFORE creating order
-        deductStockForOrder(request.getItems());
+        deductStockForOrder(request.getItems(), request.getOrderId());
 
         Order order = new Order();
         order.setUserId(userId);
@@ -231,7 +231,7 @@ public class OrderService {
         batchRestoreStock(batchItems);
     }
 
-    private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
+    private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items, String checkoutOrderId) {
         List<BatchStockRequest> batchItems = items.stream()
                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
                 .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
@@ -241,14 +241,14 @@ public class OrderService {
             return;
         }
 
-        batchDeductStock(batchItems);
+        batchDeductStock(batchItems, checkoutOrderId);
     }
 
     @CircuitBreaker(name = "productService", fallbackMethod = "deductStockFallback")
     @Retry(name = "productService")
     @Bulkhead(name = "productService")
-    public void batchDeductStock(List<BatchStockRequest> items) {
-        BatchStockResponse response = productClient.batchDeductStock(items);
+    public void batchDeductStock(List<BatchStockRequest> items, String idempotencyKey) {
+        BatchStockResponse response = productClient.batchDeductStock(items, idempotencyKey);
         if (!response.success() && response.failedItems() != null && !response.failedItems().isEmpty()) {
             String failedDetails = response.failedItems().stream()
                     .map(f -> f.variantId() + ": " + f.reason())
@@ -257,7 +257,7 @@ public class OrderService {
         }
     }
 
-    public void deductStockFallback(List<BatchStockRequest> items, Throwable t) {
+    public void deductStockFallback(List<BatchStockRequest> items, String idempotencyKey, Throwable t) {
         log.error("Stock deduction failed: {}", t.getMessage());
         throw new BadRequestException("Không thể xử lý đặt hàng, vui lòng thử lại");
     }
