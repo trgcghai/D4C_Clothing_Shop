@@ -26,8 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -107,7 +105,11 @@ public class OrderService {
 
         try {
             Order saved = orderRepository.save(order);
-            publishOrderCreatedEvent(saved);
+            if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+                orderEventPublisher.saveOrderCreatedToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+            } else {
+                log.warn("Order {} has no email, skipping outbox save", saved.getId());
+            }
             return toResponse(saved);
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
@@ -368,24 +370,6 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         orderRepository.delete(order);
-    }
-
-    private void publishOrderCreatedEvent(Order saved) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    String userEmail = saved.getEmail();
-                    if (userEmail != null && !userEmail.isBlank()) {
-                        orderEventPublisher.publishOrderCreated(saved.getId(), saved.getUserId(), userEmail);
-                    } else {
-                        log.warn("Order {} has no email, skipping order created event", saved.getId());
-                    }
-                } catch (Exception e) {
-                    log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage(), e);
-                }
-            }
-        });
     }
 
     private BigDecimal calculateTotal(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
