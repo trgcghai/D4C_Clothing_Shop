@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, useSearchParams, useBlocker } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useBlocker,
+} from "react-router-dom";
 import { useCountdownTimer } from "use-countdown-timer";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +17,11 @@ import {
   useCancelPayment,
 } from "@/src/hooks/usePayment";
 import { useRemoveCartItemsBulk } from "@/src/hooks/useCart";
-import { useUserOrderDetail, useCancelOrder } from "@/src/hooks/useUserOrders";
+import {
+  useUserOrderDetail,
+  useCancelOrder,
+  userOrderKeys,
+} from "@/src/hooks/useUserOrders";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
 import { buildCancelPaymentUrl } from "@/src/services/paymentApi";
 import {
@@ -28,6 +38,7 @@ import { toast } from "sonner";
 export default function PaymentPage() {
   const { paymentId } = useParams<{ paymentId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const removeItemIdsParam = searchParams.get("removeItemIds");
   const removeItemIds = useMemo(() => {
@@ -84,13 +95,13 @@ export default function PaymentPage() {
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !paymentCompletedRef.current &&
-      currentLocation.pathname !== nextLocation.pathname
+      currentLocation.pathname !== nextLocation.pathname,
   );
 
   useEffect(() => {
     if (blocker.state === "blocked") {
       const confirmed = window.confirm(
-        "Bạn đang trong quá trình thanh toán. Nếu rời đi, đơn hàng sẽ bị hủy sau 5 phút. Tiếp tục?"
+        "Bạn đang trong quá trình thanh toán. Nếu rời đi, đơn hàng sẽ bị hủy sau 5 phút. Tiếp tục?",
       );
       if (confirmed) {
         handleCancelPayment("user", true).then(() => blocker.proceed());
@@ -117,6 +128,8 @@ export default function PaymentPage() {
   }, [payment]);
 
   useEffect(() => {
+    if (paymentCompletedRef.current) return;
+
     const status = paymentStatus?.status;
     if (!status || status === "PENDING" || status === "EXPIRED") return;
 
@@ -124,13 +137,32 @@ export default function PaymentPage() {
 
     if (status === "PAID") {
       if (removeItemIds.length > 0) {
-        removeItemsBulkMutation.mutate({ itemIds: removeItemIds }, {
-          onSettled: () => {
+        removeItemsBulkMutation
+          .mutateAsync({ itemIds: removeItemIds })
+          .then(() => {
+            if (payment?.orderId) {
+              queryClient.invalidateQueries({
+                queryKey: userOrderKeys.detail(payment?.orderId),
+              });
+            }
             toast.success("Thanh toán thành công!");
             navigate(`/orders/${payment?.orderId}`);
-          },
-        });
+          })
+          .catch(() => {
+            if (payment?.orderId) {
+              queryClient.invalidateQueries({
+                queryKey: userOrderKeys.detail(payment?.orderId),
+              });
+            }
+            toast.success("Thanh toán thành công!");
+            navigate(`/orders/${payment?.orderId}`);
+          });
       } else {
+        if (payment?.orderId) {
+          queryClient.invalidateQueries({
+            queryKey: userOrderKeys.detail(payment?.orderId),
+          });
+        }
         toast.success("Thanh toán thành công!");
         navigate(`/orders/${payment?.orderId}`);
       }
@@ -138,7 +170,7 @@ export default function PaymentPage() {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
     }
-  }, [paymentStatus?.status, removeItemIds, payment?.orderId, removeItemsBulkMutation, navigate]);
+  }, [paymentStatus?.status, removeItemIds, payment?.orderId, navigate]);
 
   // Only cancel on actual tab/window close — NOT on component unmount
   // The previous cleanup effect caused immediate cancellation on React StrictMode double-mount
@@ -254,7 +286,11 @@ export default function PaymentPage() {
             <div className="flex items-center justify-center gap-2 text-amber-600">
               <Clock className="h-4 w-4" />
               <span className="font-mono font-semibold text-lg">
-                {`${Math.floor(countdown / 60000).toString().padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000).toString().padStart(2, "0")}`}
+                {`${Math.floor(countdown / 60000)
+                  .toString()
+                  .padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000)
+                  .toString()
+                  .padStart(2, "0")}`}
               </span>
               <span className="text-sm">còn lại để thanh toán</span>
             </div>
