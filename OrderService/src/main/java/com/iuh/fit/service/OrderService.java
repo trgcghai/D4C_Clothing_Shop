@@ -336,6 +336,11 @@ public class OrderService {
         order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
         auditService.record(orderId, adminUserId, prev, requestedStatus.name(), request.getNote());
+
+        if (requestedStatus == OrderStatus.CANCELLED && saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            orderEventPublisher.saveOrderCancelledEmailToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+        }
+
         return toResponse(saved);
     }
 
