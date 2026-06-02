@@ -66,3 +66,5 @@ deploy/
 # Agents & Skills
 **.txt
 UserService/.env
+
+ec2-sync
