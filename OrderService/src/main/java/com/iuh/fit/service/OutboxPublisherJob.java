@@ -5,6 +5,9 @@ import com.iuh.fit.repository.OutboxEventRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -55,7 +59,14 @@ public class OutboxPublisherJob {
     @Transactional
     public void publishSingleEvent(OutboxEvent event) {
         try {
-            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
+            String typeId = resolveTypeId(event.getRoutingKey());
+            MessageProperties props = new MessageProperties();
+            props.setContentType("application/json");
+            props.setHeader("__TypeId__", typeId);
+            Message message = MessageBuilder.withBody(event.getPayload().getBytes(StandardCharsets.UTF_8))
+                    .andProperties(props)
+                    .build();
+            rabbitTemplate.send(event.getExchange(), event.getRoutingKey(), message);
             event.setStatus("PUBLISHED");
             event.setPublishedAt(Instant.now());
             event.setRetryAfter(null);
@@ -80,5 +91,16 @@ public class OutboxPublisherJob {
                     event.getId(), event.getRetryCount(), event.getMaxRetries(), totalDelayMs, e.getMessage());
             }
         }
+    }
+
+    private String resolveTypeId(String routingKey) {
+        if (routingKey == null) return "OrderStatusEvent";
+        return switch (routingKey) {
+            case "email.order.created", "email.order.paid", "email.order.cancelled" -> "OrderStatusEvent";
+            case "order.paid" -> "OrderPaidEvent";
+            case "order.cancelled" -> "OrderCancelledEvent";
+            case "stock.restore.failed" -> "StockRestoreFailedEvent";
+            default -> "OrderStatusEvent";
+        };
     }
 }

@@ -1,5 +1,6 @@
 package iuh.fit.notificationservice.Config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -7,6 +8,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,8 +32,17 @@ public class RabbitMQConfig {
     public static final String EMAIL_ORDER_QUEUE = "email.order.notifications";
 
     @Bean
-    public Jackson2JsonMessageConverter messageConverter() {
-        return new Jackson2JsonMessageConverter();
+    public Jackson2JsonMessageConverter messageConverter(ObjectMapper objectMapper) {
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter(objectMapper);
+        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+        typeMapper.setTrustedPackages("*");
+        typeMapper.setIdClassMapping(Map.of(
+                "OrderStatusEvent", iuh.fit.notificationservice.Domain.DTO.OrderStatusEvent.class,
+                "AccountEvent", iuh.fit.notificationservice.Domain.DTO.AccountEvent.class,
+                "VerificationEmailEvent", iuh.fit.notificationservice.Domain.DTO.VerificationEmailEvent.class
+        ));
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
     }
 
     @Bean
