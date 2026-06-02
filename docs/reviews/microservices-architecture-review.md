@@ -14,11 +14,11 @@
 | Checkout Flow (Idempotency, Saga)         | ⚠️ Idempotent but no Saga   | **High**     |
 | Communication (HTTP + MQ)                 | ✅ Good mix                 | Low          |
 | Message Queue (Outbox, DLQ, Retry)        | ⚠️ DLQ has no consumers     | **High**     |
-| Fault Tolerance (CB, Retry, Rate Limit)   | ✅ Well covered             | Medium       |
+| Fault Tolerance (CB, Retry, Rate Limit)   | ⚠️ Mostly covered           | Medium       |
 | Security (JWT, Auth, Input Validation)    | ⚠️ Partial coverage         | Medium       |
 | Observability (Tracing, Metrics, Logging) | ❌ No tracing, no metrics   | **Critical** |
 | Data Consistency                          | ⚠️ No reconciliation        | Medium       |
-| Deployment & Operations                   | ✅ Docker Compose, no CI/CD | Medium       |
+| Deployment & Operations                   | ✅ Docker Compose + CI/CD   | Medium       |
 
 ---
 
@@ -106,7 +106,7 @@ Current flow (risky):
 
 ### ✅ Done Well
 
-- **Outbox pattern** implemented with feature flag (disabled by default)
+- **Outbox pattern** implemented and **enabled** (`feature.outbox.enabled=true` in OrderService and PaymentService `application.properties`)
 - **DLQ configured** for all services (Notification, Order, Payment, Search, Product)
 - **Message TTL** (300s) on most queues
 - **Publisher confirms** on RabbitTemplate
@@ -115,10 +115,10 @@ Current flow (risky):
 ### ❌ Critical Gaps
 
 - **DLQs have NO consumers** in Java services — dead letters accumulate forever with no automated retry or alerting. Only SearchService handles DLQ.
-- **Outbox disabled by default** (`feature.outbox.enabled=false`) — direct publish path loses events if RabbitMQ is down
-- **No ShedLock on OutboxPublisherJob** — multi-instance race condition on duplicate event publishing
-- **No retry backoff** on outbox — failed events retried every 5s with no exponential delay
-- **No message deduplication** at consumer level — only aggregate state check, not event-level dedup
+- **PaymentExpiryJob bypasses outbox** — uses direct `rabbitTemplate.convertAndSend()` instead of outbox. If RabbitMQ is down, payment expiry events are lost.
+- **No ShedLock on OutboxPublisherJob** — multi-instance race condition on duplicate event publishing.
+- **No retry backoff** on outbox — failed events retried every 5s with constant interval, no exponential delay.
+- **No message deduplication** at consumer level — only aggregate state check, not event-level dedup.
 
 ---
 
@@ -127,16 +127,17 @@ Current flow (risky):
 ### ✅ Done Well
 
 - **Resilience4j** on all Java inter-service calls (CB + Retry + Bulkhead)
-- **opossum** on Node.js services (AIService, RecommendationService)
+- **opossum** on AIService and RecommendationService (ProductService missing — no circuit breaker)
 - **API Gateway retry** — 3 retries with exponential backoff (200→400→800ms) on GET/HEAD
 - **Rate limiting** at 3 layers (Gateway 100/min, Login 5/min, AI 10/min/user)
 - **Graceful fallbacks** — Vietnamese error messages, empty data for non-critical paths
 
 ### ⚠️ Concerns
 
-- **No Feign timeout config** — default 10s connect / 60s read
-- **No RabbitMQ consumer retry** — message goes straight to DLQ on first failure
-- **No graceful degradation for search** — Typesense down = complete failure
+- **Feign timeouts configured but tight** — `connectTimeout=2000`, `readTimeout=5000` on all services. May be too aggressive for slow downstream calls.
+- **RabbitMQ consumer retry uses Spring AMQP defaults** — 3 retries with no backoff, then DLQ. No custom retry/backoff configured.
+- **No graceful degradation for search** — Typesense down = complete failure.
+- **ProductService has no circuit breaker** — only Node.js service without opossum.
 
 ---
 
@@ -145,7 +146,7 @@ Current flow (risky):
 ### ✅ Done Well
 
 - **JWT validation at Gateway** with JWKS from UserService
-- **Gateway strips Authorization** → forwards `X-User-Id`, `X-User-Roles` headers
+- **Gateway adds `X-User-Id`, `X-User-Roles` headers** → forwards to downstream services (note: original `Authorization` header is NOT stripped — forwarded as well)
 - **GatewayIdentityFilter** in Java services validates internal requests
 - **Node.js services have `auth.middleware.js`** — ProductService, RecommendationService, AIService all validate `X-User-Id` header:
   - **ProductService**: `requireAuth` on stock operations, `requireAdmin` on CRUD. Public GET routes (browse, search, featured) intentionally open.
@@ -154,13 +155,14 @@ Current flow (risky):
 - **Admin role filter** on `/api/admin/**` routes
 - **Rate limiting** on login (brute force protection)
 - **Sensitive headers stripped** from audit logs
+- **SePay webhook HMAC verification** — `WebhookService.java:70-98` implements HMAC-SHA256 signature verification
 
 ### ⚠️ Concerns
 
 - **SearchService has NO auth middleware** — all search routes are fully open. Acceptable for public search but worth noting.
 - **GatewayIdentityFilter trusts any header value** — no cryptographic verification headers came from gateway. An attacker on the internal network can forge `X-User-Id` headers.
-- **No CSRF protection** — cookie-based refresh tokens vulnerable without `SameSite=Strict`
-- **SePay webhook is publicly accessible** — no signature verification, no API key
+- **Gateway does NOT strip `Authorization` header** — original JWT token forwarded to downstream services. If a downstream service is compromised, the token can be reused.
+- **No CSRF protection** — cookie-based refresh tokens use `SameSite=Lax` (not `Strict`) and `secure=false` in development.
 - **No HTTPS** in development
 
 ---
@@ -195,8 +197,8 @@ Current flow (risky):
 ### ⚠️ Concerns
 
 - **Stock deduction sync, order creation eventual** — if stock succeeds but event lost, services are inconsistent
-- **No cache invalidation** — CartService caches product data but no invalidation on product change
-- **No data reconciliation jobs** — no periodic check for inconsistencies between services
+- **CartService cache invalidation on writes only** — `invalidateCache()` called after add/update/remove/clear (7 call sites), but no invalidation on product changes from ProductService
+- **No data reconciliation jobs** — no periodic check for inconsistencies between services. PaymentService has manual reconciliation support (`reconciliationStatus` field) but no automated jobs.
 - **No event schema versioning** — adding/removing fields breaks consumers
 
 ---
@@ -213,9 +215,9 @@ Current flow (risky):
 ### ⚠️ Concerns
 
 - **Gateway depends on ALL services** — if one fails, entire gateway waits
-- **No resource limits** — runaway service can starve others
+- **No resource limits in root docker-compose.yml** — runaway service can starve others. Deploy compose files (`deploy/ec2-*.yml`) DO have limits configured.
 - **No backup strategy** — MariaDB, Redis data has no automated backup
-- **No CI/CD pipeline** — no GitHub Actions, no staging, no canary deployment
+- **CI/CD pipeline exists** (`.github/workflows/deploy.yml`) — builds and deploys to EC2 on push to `main`. No staging environment, no canary deployment.
 
 ---
 
@@ -223,18 +225,28 @@ Current flow (risky):
 
 | #   | Fix                                       | Why                                                                                                                              | Effort |
 | --- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | **Enable outbox by default**              | Event loss = data integrity risk. Orders/Payments can be silently lost.                                                          | Medium |
-| 2   | **Add DLQ consumers with retry**          | Dead letters accumulate forever. Failed messages are never retried.                                                              | Medium |
-| 3   | **Implement Saga compensation for stock** | Inventory permanently lost on order creation failure. Unacceptable for e-commerce.                                               | High   |
+| 1   | **Add DLQ consumers with retry**          | Dead letters accumulate forever. Failed messages are never retried. Paid orders may never be confirmed.                          | Medium |
+| 2   | **Implement Saga compensation for stock** | Inventory permanently lost on order creation failure. `batchRestoreStock()` fallback silently swallows errors.                   | High   |
+| 3   | **Route PaymentExpiryJob through outbox** | Payment expiry events bypass outbox and are lost if RabbitMQ is down. Orders stuck in `PENDING_PAYMENT` indefinitely.            | Low    |
 | 4   | **Add data reconciliation jobs**          | No periodic check for inconsistencies between services (stock vs orders, search vs products). Silent data drift goes undetected. | Medium |
+| 5   | **Add ShedLock on OutboxPublisherJob**    | Multi-instance race condition — duplicate events published when multiple replicas run the job simultaneously.                    | Low    |
 
 ---
 
 ## Summary
 
-**Solid foundation** for a microservices e-commerce platform. The idempotency, outbox pattern, circuit breakers, and rate limiting show good architectural thinking. The critical gaps are:
+**Solid foundation** for a microservices e-commerce platform. The idempotency, outbox pattern (enabled), circuit breakers, rate limiting, and CI/CD pipeline show good architectural thinking. The critical gaps are:
 
 1. **DLQ handling** — configured but unused, dead letters accumulate forever
 2. **Saga compensation** — inventory loss risk on order creation failure
-3. **Outbox disabled by default** — event loss is a real data integrity risk
+3. **PaymentExpiryJob bypasses outbox** — payment expiry events lost if RabbitMQ is down
 4. **No data reconciliation** — stock, search, and order data can silently drift between services with no detection
+
+**Corrections from original review:**
+- Outbox IS enabled (`feature.outbox.enabled=true`) — not disabled
+- SePay webhook HAS HMAC-SHA256 signature verification
+- Feign timeouts ARE configured (2s connect, 5s read)
+- CartService DOES invalidate cache after writes
+- CI/CD pipeline EXISTS (`.github/workflows/deploy.yml`)
+- Gateway does NOT strip `Authorization` header (security concern)
+- ProductService is missing opossum circuit breaker
