@@ -2,25 +2,17 @@ package iuh.fit.PaymentService.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import iuh.fit.PaymentService.config.RabbitMQConfig;
 import iuh.fit.PaymentService.config.SePayConfig;
 import iuh.fit.PaymentService.domain.dto.SePayWebhookPayload;
-import iuh.fit.PaymentService.domain.entity.OutboxEvent;
-import iuh.fit.PaymentService.domain.entity.Payment;
 import iuh.fit.PaymentService.domain.entity.UnmatchedPayment;
 import iuh.fit.PaymentService.domain.entity.WebhookLog;
 import iuh.fit.PaymentService.domain.enums.PaymentStatus;
-import iuh.fit.PaymentService.domain.event.PaymentConfirmedEvent;
 import iuh.fit.PaymentService.exception.PaymentException;
-import iuh.fit.PaymentService.repository.OutboxEventRepository;
-import iuh.fit.PaymentService.repository.PaymentRepository;
 import iuh.fit.PaymentService.repository.UnmatchedPaymentRepository;
 import iuh.fit.PaymentService.repository.WebhookLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +24,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 
 @Service
 public class WebhookService {
@@ -45,25 +36,13 @@ public class WebhookService {
     private WebhookLogRepository webhookLogRepository;
 
     @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
     private PaymentService paymentService;
 
     @Autowired
     private SePayConfig sePayConfig;
 
     @Autowired
-    private RabbitTemplate rabbitTemplate;
-
-    @Autowired
-    private OutboxEventRepository outboxRepository;
-
-    @Autowired
     private UnmatchedPaymentRepository unmatchedPaymentRepository;
-
-    @Value("${feature.outbox.enabled:false}")
-    private boolean outboxEnabled;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -156,29 +135,8 @@ public class WebhookService {
         }
 
         try {
-            var statusResponse = paymentService.markAsPaid(paymentCode, payload.getId(), payload.getGateway());
-
-            if (statusResponse.getStatus() == PaymentStatus.PAID) {
-                log.info("Payment marked as PAID: {} (SePay tx: {})", paymentCode, payload.getId());
-
-                var payment = paymentService.findPaymentByPaymentCodeOrNull(paymentCode);
-                if (payment != null) {
-                    PaymentConfirmedEvent event = new PaymentConfirmedEvent(
-                            payment.getId(),
-                            payment.getOrderId(),
-                            payment.getCheckoutOrderId(),
-                            payment.getPaymentCode(),
-                            payment.getAmount(),
-                            payload.getId(),
-                            payload.getGateway(),
-                            Instant.now()
-                    );
-                    publishPaymentConfirmedEvent(event);
-                    log.info("Published PaymentConfirmedEvent for payment: {}", payment.getId());
-                } else {
-                    log.warn("Payment found but is null for code: {}", paymentCode);
-                }
-            }
+            paymentService.markAsPaid(paymentCode, payload.getId(), payload.getGateway());
+            log.info("Payment marked as PAID: {} (SePay tx: {})", paymentCode, payload.getId());
 
             WebhookLog webhookLog = new WebhookLog();
             webhookLog.setTransactionId(payload.getId());
@@ -283,32 +241,6 @@ public class WebhookService {
 
         log.warn("No matching pending payment for code: {}", webhookCode);
         return null;
-    }
-
-    private void publishPaymentConfirmedEvent(PaymentConfirmedEvent event) {
-        if (outboxEnabled) {
-            try {
-                String payload = objectMapper.writeValueAsString(event);
-                OutboxEvent outboxEvent = OutboxEvent.builder()
-                        .eventType("PAYMENT_CONFIRMED")
-                        .eventId(UUID.randomUUID().toString())
-                        .aggregateId(event.getPaymentId())
-                        .payload(payload)
-                        .exchange(RabbitMQConfig.PAYMENT_EXCHANGE)
-                        .routingKey(RabbitMQConfig.PAYMENT_CONFIRMED_ROUTING_KEY)
-                        .build();
-                outboxRepository.save(outboxEvent);
-                log.debug("Saved PAYMENT_CONFIRMED event to outbox for paymentId={}", event.getPaymentId());
-            } catch (JsonProcessingException e) {
-                log.error("Failed to serialize PAYMENT_CONFIRMED event: {}", e.getMessage());
-            }
-        } else {
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.PAYMENT_EXCHANGE,
-                    RabbitMQConfig.PAYMENT_CONFIRMED_ROUTING_KEY,
-                    event
-            );
-        }
     }
 
     private static String bytesToHex(byte[] bytes) {

@@ -1,5 +1,6 @@
 package iuh.fit.PaymentService.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import iuh.fit.PaymentService.domain.entity.OutboxEvent;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -23,13 +24,16 @@ public class OutboxPublisherJob {
 
     private final OutboxEventRepository outboxRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
     private final boolean outboxEnabled;
 
     public OutboxPublisherJob(OutboxEventRepository outboxRepository,
                               RabbitTemplate rabbitTemplate,
+                              ObjectMapper objectMapper,
                               @Value("${feature.outbox.enabled:false}") boolean outboxEnabled) {
         this.outboxRepository = outboxRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.objectMapper = objectMapper;
         this.outboxEnabled = outboxEnabled;
     }
 
@@ -55,7 +59,8 @@ public class OutboxPublisherJob {
     @Transactional
     public void publishSingleEvent(OutboxEvent event) {
         try {
-            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
+            Object payload = objectMapper.readValue(event.getPayload(), Object.class);
+            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), payload);
             event.setStatus("PUBLISHED");
             event.setPublishedAt(Instant.now());
             event.setRetryAfter(null);

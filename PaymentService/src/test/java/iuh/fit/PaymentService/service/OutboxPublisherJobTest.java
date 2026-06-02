@@ -1,5 +1,6 @@
 package iuh.fit.PaymentService.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import iuh.fit.PaymentService.domain.entity.OutboxEvent;
 import iuh.fit.PaymentService.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
@@ -26,11 +27,14 @@ class OutboxPublisherJobTest {
     @Mock
     private RabbitTemplate rabbitTemplate;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     private OutboxPublisherJob outboxPublisherJob;
 
     @Test
     void shouldDoNothingWhenOutboxDisabled() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, false);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, false);
 
         outboxPublisherJob.publishPendingEvents();
 
@@ -40,7 +44,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
         when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxPublisherJob.publishPendingEvents();
@@ -52,7 +56,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldPublishPendingEventsAndMarkAsPublished() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(1L)
@@ -75,7 +79,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldIncrementRetryCountOnPublishFailure() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(2L)
@@ -104,7 +108,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldMarkAsFailedAfterMaxRetriesExceeded() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(3L)
@@ -133,7 +137,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldProcessMultipleEventsInBatch() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event1 = OutboxEvent.builder()
                 .id(10L)
@@ -167,7 +171,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldSetRetryAfterWithExponentialDelay() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(5L)
@@ -196,7 +200,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldSkipEventsWithFutureRetryAfter() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         when(outboxRepository.findRetryableEvents(PageRequest.of(0, 100))).thenReturn(List.of());
 
@@ -207,7 +211,7 @@ class OutboxPublisherJobTest {
 
     @Test
     void shouldIncludeExceptionClassInErrorMessage() {
-        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, true);
+        outboxPublisherJob = new OutboxPublisherJob(outboxRepository, rabbitTemplate, objectMapper, true);
 
         OutboxEvent event = OutboxEvent.builder()
                 .id(7L)
