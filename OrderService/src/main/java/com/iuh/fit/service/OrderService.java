@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -273,8 +274,9 @@ public class OrderService {
     @Retry(name = "productService")
     @Bulkhead(name = "productService")
     public void batchRestoreStock(List<BatchStockRequest> items) {
+        String idempotencyKey = "restore:" + UUID.randomUUID();
         try {
-            BatchStockResponse response = productClient.batchRestoreStock(items);
+            BatchStockResponse response = productClient.batchRestoreStock(items, idempotencyKey);
             if (!response.success() && response.failedItems() != null && !response.failedItems().isEmpty()) {
                 String failedDetails = response.failedItems().stream()
                         .map(f -> f.variantId() + ": " + f.reason())

@@ -1,6 +1,7 @@
 import { stockService } from "../services/stock.service.js";
+import { redisClient } from "../config/redis.config.js";
 
-const processedOrders = new Set();
+const IDEMPOTENCY_TTL = 86400;
 
 export async function handleOrderCancelled(event) {
   const { orderId, checkoutOrderId, items } = event;
@@ -12,7 +13,13 @@ export async function handleOrderCancelled(event) {
 
   const effectiveOrderId = orderId || checkoutOrderId;
 
-  if (processedOrders.has(effectiveOrderId)) {
+  const acquired = await redisClient.set(
+    `idempotency:order_cancelled:${effectiveOrderId}`,
+    "1",
+    { NX: true, EX: IDEMPOTENCY_TTL }
+  );
+
+  if (!acquired) {
     console.log(`Order ${effectiveOrderId} stock already restored (idempotency check)`);
     return;
   }
@@ -25,7 +32,6 @@ export async function handleOrderCancelled(event) {
 
   if (stockItems.length === 0) {
     console.warn(`Order ${effectiveOrderId} has no valid items to restore`);
-    processedOrders.add(effectiveOrderId);
     return;
   }
 
@@ -33,7 +39,6 @@ export async function handleOrderCancelled(event) {
     const result = await stockService.batchRestoreStock(stockItems);
 
     if (result.success) {
-      processedOrders.add(effectiveOrderId);
       console.log(`Successfully restored stock for order ${effectiveOrderId}`);
     } else {
       console.error(`Partial stock restoration failure for order ${effectiveOrderId}:`, result.failedItems);

@@ -62,7 +62,7 @@ class OrderServiceCheckoutTest {
                 .thenReturn(Optional.empty());
         when(productClient.batchDeductStock(anyList(), anyString()))
                 .thenReturn(new BatchStockResponse(true, null));
-        when(productClient.batchRestoreStock(anyList()))
+        when(productClient.batchRestoreStock(anyList(), anyString()))
                 .thenReturn(new BatchStockResponse(true, null));
         when(orderRepository.save(any(Order.class)))
                 .thenThrow(new RuntimeException("DB connection lost"));
@@ -70,7 +70,7 @@ class OrderServiceCheckoutTest {
         assertThatThrownBy(() -> orderService.createOrderFromCheckout(1L, "test@email.com", request))
                 .isInstanceOf(RuntimeException.class);
 
-        verify(productClient).batchRestoreStock(anyList());
+        verify(productClient).batchRestoreStock(anyList(), anyString());
     }
 
     @Test
@@ -80,7 +80,7 @@ class OrderServiceCheckoutTest {
                 .thenReturn(Optional.empty());
         when(productClient.batchDeductStock(anyList(), anyString()))
                 .thenReturn(new BatchStockResponse(true, null));
-        when(productClient.batchRestoreStock(anyList()))
+        when(productClient.batchRestoreStock(anyList(), anyString()))
                 .thenThrow(new RuntimeException("ProductService down"));
         when(orderRepository.save(any(Order.class)))
                 .thenThrow(new RuntimeException("DB error"));
