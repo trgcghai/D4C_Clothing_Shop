@@ -40,6 +40,7 @@ export const deductBatchStock = async (req, res) => {
 export const restoreBatchStock = async (req, res) => {
   try {
     const items = req.body;
+    const idempotencyKey = req.headers["x-idempotency-key"];
 
     if (!Array.isArray(items) || items.length === 0) {
       return res
@@ -55,7 +56,7 @@ export const restoreBatchStock = async (req, res) => {
       }
     }
 
-    const result = await stockService.batchRestoreStock(items);
+    const result = await stockService.batchRestoreStock(items, idempotencyKey);
 
     if (result.success) {
       return res.status(200).json({ success: true });

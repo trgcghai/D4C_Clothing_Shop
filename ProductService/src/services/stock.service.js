@@ -53,7 +53,15 @@ class StockService {
     }
   }
 
-  async batchRestoreStock(items) {
+  async batchRestoreStock(items, idempotencyKey) {
+    if (idempotencyKey) {
+      const { redisClient } = await import("../config/redis.config.js");
+      const cached = await redisClient.get(`idempotency:restore:${idempotencyKey}`);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+
     if (!items || items.length === 0) {
       return { success: true };
     }
@@ -74,7 +82,14 @@ class StockService {
       await dynamoClient.send(new TransactWriteCommand({
         TransactItems: transactItems
       }));
-      return { success: true };
+      const result = { success: true };
+
+      if (idempotencyKey) {
+        const { redisClient } = await import("../config/redis.config.js");
+        await redisClient.set(`idempotency:restore:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
+      }
+
+      return result;
     } catch (error) {
       if (error.name === "TransactionCanceledException") {
         const failedItems = this.parseCancellationReasons(error, items);

@@ -33,5 +33,7 @@ public interface ProductClient {
             @RequestHeader("X-Idempotency-Key") String idempotencyKey);
 
     @PostMapping("/api/products/stock/restore-batch")
-    BatchStockResponse batchRestoreStock(@RequestBody List<BatchStockRequest> items);
+    BatchStockResponse batchRestoreStock(
+            @RequestBody List<BatchStockRequest> items,
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey);
 }
