@@ -188,6 +188,11 @@ public class OrderService {
 
         if (OrderStatus.valueOf(request.getStatus()) == OrderStatus.CANCELLED && prev != null) {
             restoreStockForOrder(saved);
+            if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+                orderEventPublisher.saveOrderCancelledEmailToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+            } else {
+                log.warn("Order {} has no email, skipping cancellation outbox save", saved.getId());
+            }
         }
 
         return toResponse(saved);
