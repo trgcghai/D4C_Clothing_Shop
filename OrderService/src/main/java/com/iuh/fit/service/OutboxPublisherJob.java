@@ -2,8 +2,12 @@ package com.iuh.fit.service;
 
 import com.iuh.fit.domain.entity.OutboxEvent;
 import com.iuh.fit.repository.OutboxEventRepository;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -11,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -33,17 +38,18 @@ public class OutboxPublisherJob {
     }
 
     @Scheduled(fixedDelay = 5000)
+    @SchedulerLock(name = "outboxPublisherJob", lockAtMostFor = "10s", lockAtLeastFor = "2s")
     public void publishPendingEvents() {
         if (!outboxEnabled) {
             return;
         }
 
-        List<OutboxEvent> events = outboxRepository.findPendingEvents(PageRequest.of(0, BATCH_SIZE));
+        List<OutboxEvent> events = outboxRepository.findRetryableEvents(PageRequest.of(0, BATCH_SIZE));
         if (events.isEmpty()) {
             return;
         }
 
-        log.info("Publishing {} pending outbox events", events.size());
+        log.info("Publishing {} retryable outbox events", events.size());
 
         for (OutboxEvent event : events) {
             publishSingleEvent(event);
@@ -53,24 +59,48 @@ public class OutboxPublisherJob {
     @Transactional
     public void publishSingleEvent(OutboxEvent event) {
         try {
-            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
+            String typeId = resolveTypeId(event.getRoutingKey());
+            MessageProperties props = new MessageProperties();
+            props.setContentType("application/json");
+            props.setHeader("__TypeId__", typeId);
+            Message message = MessageBuilder.withBody(event.getPayload().getBytes(StandardCharsets.UTF_8))
+                    .andProperties(props)
+                    .build();
+            rabbitTemplate.send(event.getExchange(), event.getRoutingKey(), message);
             event.setStatus("PUBLISHED");
             event.setPublishedAt(Instant.now());
+            event.setRetryAfter(null);
             outboxRepository.save(event);
             log.debug("Published outbox event id={}", event.getId());
         } catch (Exception e) {
             event.setRetryCount(event.getRetryCount() + 1);
-            event.setErrorMessage(e.getMessage());
+            event.setErrorMessage(e.getClass().getSimpleName() + ": " + e.getMessage());
             if (event.getRetryCount() >= event.getMaxRetries()) {
                 event.setStatus("FAILED");
                 outboxRepository.save(event);
                 log.error("Outbox event id={} failed after {} retries: {}",
                     event.getId(), event.getRetryCount(), e.getMessage());
             } else {
+                long baseDelayMs = 5000;
+                long exponentialDelay = baseDelayMs * (long) Math.pow(2, event.getRetryCount() - 1);
+                long jitter = java.util.concurrent.ThreadLocalRandom.current().nextLong(0, 2000);
+                long totalDelayMs = Math.min(exponentialDelay + jitter, 300_000);
+                event.setRetryAfter(Instant.now().plusMillis(totalDelayMs));
                 outboxRepository.save(event);
-                log.warn("Outbox event id={} publish failed (attempt {}/{}): {}",
-                    event.getId(), event.getRetryCount(), event.getMaxRetries(), e.getMessage());
+                log.warn("Outbox event id={} publish failed (attempt {}/{}), retry after {}ms: {}",
+                    event.getId(), event.getRetryCount(), event.getMaxRetries(), totalDelayMs, e.getMessage());
             }
         }
+    }
+
+    private String resolveTypeId(String routingKey) {
+        if (routingKey == null) return "OrderStatusEvent";
+        return switch (routingKey) {
+            case "email.order.created", "email.order.paid", "email.order.cancelled" -> "OrderStatusEvent";
+            case "order.paid" -> "OrderPaidEvent";
+            case "order.cancelled" -> "OrderCancelledEvent";
+            case "stock.restore.failed" -> "StockRestoreFailedEvent";
+            default -> "OrderStatusEvent";
+        };
     }
 }

@@ -26,8 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -69,7 +67,7 @@ public class OrderService {
         }
 
         // Deduct stock BEFORE creating order
-        deductStockForOrder(request.getItems());
+        deductStockForOrder(request.getItems(), request.getOrderId());
 
         Order order = new Order();
         order.setUserId(userId);
@@ -107,13 +105,32 @@ public class OrderService {
 
         try {
             Order saved = orderRepository.save(order);
-            publishOrderCreatedEvent(saved);
+            if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+                orderEventPublisher.saveOrderCreatedToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+            } else {
+                log.warn("Order {} has no email, skipping outbox save", saved.getId());
+            }
             return toResponse(saved);
         } catch (DataIntegrityViolationException ex) {
             Order duplicated = orderRepository
                     .findByUserIdAndCheckoutOrderId(userId, request.getOrderId())
                     .orElseThrow(() -> ex);
             return toResponse(duplicated);
+        } catch (Exception ex) {
+            log.error("Order creation failed, compensating stock: {}", ex.getMessage());
+            try {
+                restoreStockForOrder(request.getItems());
+            } catch (Exception restoreEx) {
+                log.error("Stock compensation ALSO failed — saving to outbox for retry");
+                orderEventPublisher.publishStockRestoreFailed(
+                        request.getItems().stream()
+                                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                                .map(itemDto -> new com.iuh.fit.client.dto.BatchStockRequest(
+                                        itemDto.getVariantId(), itemDto.getQuantity()))
+                                .collect(Collectors.toList()),
+                        ex.getMessage() + " | " + restoreEx.getMessage());
+            }
+            throw ex;
         }
     }
 
@@ -171,6 +188,11 @@ public class OrderService {
 
         if (OrderStatus.valueOf(request.getStatus()) == OrderStatus.CANCELLED && prev != null) {
             restoreStockForOrder(saved);
+            if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+                orderEventPublisher.saveOrderCancelledEmailToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+            } else {
+                log.warn("Order {} has no email, skipping cancellation outbox save", saved.getId());
+            }
         }
 
         return toResponse(saved);
@@ -203,7 +225,7 @@ public class OrderService {
         batchRestoreStock(items);
     }
 
-    private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
+    private void restoreStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
         List<BatchStockRequest> batchItems = items.stream()
                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
                 .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
@@ -213,14 +235,27 @@ public class OrderService {
             return;
         }
 
-        batchDeductStock(batchItems);
+        batchRestoreStock(batchItems);
+    }
+
+    private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items, String checkoutOrderId) {
+        List<BatchStockRequest> batchItems = items.stream()
+                .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
+                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
+                .collect(Collectors.toList());
+
+        if (batchItems.isEmpty()) {
+            return;
+        }
+
+        batchDeductStock(batchItems, checkoutOrderId);
     }
 
     @CircuitBreaker(name = "productService", fallbackMethod = "deductStockFallback")
     @Retry(name = "productService")
     @Bulkhead(name = "productService")
-    public void batchDeductStock(List<BatchStockRequest> items) {
-        BatchStockResponse response = productClient.batchDeductStock(items);
+    public void batchDeductStock(List<BatchStockRequest> items, String idempotencyKey) {
+        BatchStockResponse response = productClient.batchDeductStock(items, idempotencyKey);
         if (!response.success() && response.failedItems() != null && !response.failedItems().isEmpty()) {
             String failedDetails = response.failedItems().stream()
                     .map(f -> f.variantId() + ": " + f.reason())
@@ -229,7 +264,7 @@ public class OrderService {
         }
     }
 
-    public void deductStockFallback(List<BatchStockRequest> items, Throwable t) {
+    public void deductStockFallback(List<BatchStockRequest> items, String idempotencyKey, Throwable t) {
         log.error("Stock deduction failed: {}", t.getMessage());
         throw new BadRequestException("Không thể xử lý đặt hàng, vui lòng thử lại");
     }
@@ -248,6 +283,7 @@ public class OrderService {
             }
         } catch (Exception e) {
             log.error("Stock restoration failed: {}", e.getMessage());
+            throw e;
         }
     }
 
@@ -300,6 +336,11 @@ public class OrderService {
         order.setStatus(requestedStatus);
         Order saved = orderRepository.save(order);
         auditService.record(orderId, adminUserId, prev, requestedStatus.name(), request.getNote());
+
+        if (requestedStatus == OrderStatus.CANCELLED && saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            orderEventPublisher.saveOrderCancelledEmailToOutbox(saved.getId(), saved.getUserId(), saved.getEmail());
+        }
+
         return toResponse(saved);
     }
 
@@ -339,24 +380,6 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         orderRepository.delete(order);
-    }
-
-    private void publishOrderCreatedEvent(Order saved) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    String userEmail = saved.getEmail();
-                    if (userEmail != null && !userEmail.isBlank()) {
-                        orderEventPublisher.publishOrderCreated(saved.getId(), saved.getUserId(), userEmail);
-                    } else {
-                        log.warn("Order {} has no email, skipping order created event", saved.getId());
-                    }
-                } catch (Exception e) {
-                    log.error("Failed to publish order created event for orderId {}: {}", saved.getId(), e.getMessage(), e);
-                }
-            }
-        });
     }
 
     private BigDecimal calculateTotal(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
