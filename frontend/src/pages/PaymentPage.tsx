@@ -218,7 +218,7 @@ export default function PaymentPage() {
     );
   }
 
-  if (payment.status === "PAID" || payment.status === "CANCELLED") {
+  if (payment.status === "PAID") {
     return null;
   }
 

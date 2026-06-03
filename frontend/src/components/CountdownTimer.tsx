@@ -23,9 +23,9 @@ export default function CountdownTimer({
 
   const timerMs = Math.max(0, expiresMs - getAdjustedNow());
 
-  const { countdown, start } = useCountdownTimer({
+  const { countdown } = useCountdownTimer({
     timer: timerMs,
-    autostart: false,
+    autostart: true,
     onExpire: () => {
       if (mountedRef.current) {
         onExpireRef.current();
@@ -33,12 +33,12 @@ export default function CountdownTimer({
     },
   });
 
+  // Unmount guard: prevent onExpire from firing after component unmounts
   useEffect(() => {
-    start();
     return () => {
       mountedRef.current = false;
     };
-  }, [start]);
+  }, []);
 
   if (countdown <= 0) return null;
 
