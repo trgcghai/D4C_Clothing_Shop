@@ -51,6 +51,10 @@ public class CartItem {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "needs_sync", nullable = false)
+    @Builder.Default
+    private Boolean needsSync = false;
+
     public BigDecimal getSubtotal() {
         return price.multiply(BigDecimal.valueOf(quantity));
     }
