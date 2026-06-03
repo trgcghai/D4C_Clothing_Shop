@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Empty,
   EmptyMedia,
   EmptyTitle,
@@ -17,9 +25,12 @@ import {
   useUpdateCartItem,
   useRemoveCartItem,
   useClearCart,
+  useValidateCart,
+  useSyncCartItems,
 } from "@/src/hooks/useCart";
 import { useCartSelection } from "@/src/hooks/useCartSelection";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
+import type { ValidationError } from "@/src/services/cartApi";
 import {
   ShoppingCart,
   Trash2,
@@ -27,7 +38,10 @@ import {
   Plus,
   ArrowLeft,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { isAxiosError } from "axios";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -55,6 +69,13 @@ const CartPage = () => {
   );
 
   const [editingQty, setEditingQty] = useState<Record<number, string>>({});
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [syncedTotal, setSyncedTotal] = useState(0);
+
+  const validateMutation = useValidateCart();
+  const syncMutation = useSyncCartItems();
 
   if (isLoading) {
     return (
@@ -156,15 +177,103 @@ const CartPage = () => {
     }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (selectedIds.length === 0) return;
+
+    try {
+      const validation = await validateMutation.mutateAsync();
+      if (validation.valid) {
+        const idsParam = selectedIds.join(",");
+        navigate(`/checkout?selectedIds=${idsParam}`);
+      } else {
+        setValidationErrors(validation.errors);
+        setShowValidationModal(true);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        const data = error.response?.data;
+        if (data?.errors) {
+          setValidationErrors(data.errors);
+          setShowValidationModal(true);
+        } else {
+          const msg = data?.message || "Không thể kiểm tra giỏ hàng";
+          toast.error(msg);
+        }
+      } else {
+        toast.error("Không thể kiểm tra giỏ hàng");
+      }
+    }
+  };
+
+  const handleContinueCheckout = async () => {
+    try {
+      const result = await syncMutation.mutateAsync({});
+      if (result.errors.length > 0) {
+        const stockErrors = result.errors.filter(
+          (e) => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK"
+        );
+        if (stockErrors.length > 0) {
+          stockErrors.forEach((e) => toast.error(e.message));
+          setShowValidationModal(false);
+          return;
+        }
+      }
+
+      const refetched = await refetch();
+      if (refetched.data) {
+        const selectedItemsInCart = refetched.data.items.filter((item) =>
+          selectedIds.includes(item.id)
+        );
+        const newTotal = selectedItemsInCart.reduce(
+          (sum, item) => sum + item.subtotal,
+          0
+        );
+        setSyncedTotal(newTotal);
+        setShowValidationModal(false);
+        setShowConfirmationModal(true);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error(error.response?.data?.message || "Không thể đồng bộ giỏ hàng");
+      } else {
+        toast.error("Không thể đồng bộ giỏ hàng");
+      }
+    }
+  };
+
+  const handleBackToCart = async () => {
+    try {
+      await syncMutation.mutateAsync({});
+      await refetch();
+    } catch {
+      await refetch();
+    }
+    setShowValidationModal(false);
+  };
+
+  const handleConfirmPayment = () => {
+    setShowConfirmationModal(false);
     const idsParam = selectedIds.join(",");
     navigate(`/checkout?selectedIds=${idsParam}`);
   };
 
   return (
+    <>
     <main className="page-wrap px-4 py-10">
       <div className="mx-auto">
+        {cart.hasChanges && (
+          <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                Một số sản phẩm trong giỏ hàng đã có thay đổi
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Giá hoặc thông tin sản phẩm đã được cập nhật. Vui lòng kiểm tra trước khi thanh toán.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Giỏ hàng</h1>
@@ -251,6 +360,11 @@ const CartPage = () => {
                         <Badge variant="secondary" className="text-xs">
                           {item.size}
                         </Badge>
+                        {item.needsSync && (
+                          <Badge variant="destructive" className="text-xs">
+                            Đã thay đổi
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <Button
@@ -367,6 +481,74 @@ const CartPage = () => {
         </div>
       </div>
     </main>
+
+    <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Thông tin sản phẩm đã thay đổi
+          </DialogTitle>
+          <DialogDescription>
+            Một số sản phẩm trong giỏ hàng đã có thay đổi. Bạn có muốn tiếp tục?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 max-h-60 overflow-y-auto">
+          {validationErrors.map((error, idx) => (
+            <div key={idx} className="rounded-lg border p-3 text-sm">
+              <p className="font-medium">
+                {error.reason === "PRICE_CHANGED" && "Giá đã thay đổi"}
+                {error.reason === "NAME_CHANGED" && "Tên sản phẩm đã thay đổi"}
+                {error.reason === "IMAGE_CHANGED" && "Hình ảnh đã thay đổi"}
+                {error.reason === "OUT_OF_STOCK" && "Hết hàng"}
+                {error.reason === "INSUFFICIENT_STOCK" && "Không đủ hàng"}
+                {error.reason === "VARIANT_NOT_FOUND" && "Variant không tồn tại"}
+                {error.reason === "PRODUCT_INACTIVE" && "Sản phẩm ngừng hoạt động"}
+              </p>
+              <p className="text-muted-foreground mt-1">{error.message}</p>
+            </div>
+          ))}
+        </div>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="outline"
+            onClick={handleBackToCart}
+            disabled={syncMutation.isPending}
+          >
+            {syncMutation.isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang đồng bộ...</>
+            ) : "Quay lại giỏ hàng"}
+          </Button>
+          <Button onClick={handleContinueCheckout} disabled={syncMutation.isPending}>
+            {syncMutation.isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang đồng bộ...</>
+            ) : "Tiếp tục"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={showConfirmationModal} onOpenChange={setShowConfirmationModal}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Xác nhận thanh toán</DialogTitle>
+          <DialogDescription>
+            Tổng tiền mới của bạn là{" "}
+            <span className="font-semibold text-foreground">
+              {formatCurrency(syncedTotal)}
+            </span>
+            . Xác nhận thanh toán?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-between">
+          <Button variant="outline" onClick={() => setShowConfirmationModal(false)}>
+            Hủy
+          </Button>
+          <Button onClick={handleConfirmPayment}>Xác nhận</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
