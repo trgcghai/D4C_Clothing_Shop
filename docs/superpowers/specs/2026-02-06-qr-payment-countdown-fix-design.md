@@ -26,10 +26,20 @@ Extract countdown into a separate component `CountdownTimer` that only mounts wh
 
 ### Server Time Sync: `frontend/src/services/api.ts` (or existing axios instance)
 
-- Extract `Date` header from API responses (server time)
+- Add axios response interceptor to extract `Date` header from API responses
 - Calculate `clockOffset = serverTime - clientTime` on each response
-- Store in a module-level variable or Zustand store
+- Store in a module-level variable `let clockOffset = 0` (default: 0, meaning no offset = client clock)
 - Countdown uses `Date.now() + clockOffset` instead of raw `Date.now()`
+
+**Fallback safety (production-ready):**
+
+- In production, API Gateway/Nginx/CDN may strip, cache, or override the `Date` header
+- **Fallback chain:**
+  1. Try `response.headers['date']` from the payment creation response (most reliable — direct from PaymentService)
+  2. If `Date` header is missing/invalid → `clockOffset` stays `0` → uses client clock (best effort)
+  3. The `usePaymentStatus` polling response also carries `Date` header — each successful poll refreshes the offset
+- **Never crash:** all date parsing wrapped in try/catch; invalid header silently falls back to client clock
+- `clockOffset` is capped at ±30 seconds — if drift exceeds this, the offset is clamped to prevent extreme countdown values (indicates header manipulation or severe clock skew; client clock is safer)
 
 ### New Component: `frontend/src/components/CountdownTimer.tsx`
 
@@ -93,7 +103,7 @@ Extract countdown into a separate component `CountdownTimer` that only mounts wh
 | Component unmounts before expiry | `useCountdownTimer` cleanup clears interval |
 | `expiresAt` already past when page loads | `Math.max(0, ...)` → timerMs = 0 → `onExpire` fires immediately |
 | Negative countdown display | `countdown > 0` JSX guard + `Math.max(0, ...)` calculation |
-| **Client clock drift** | Server `Date` header offset applied to `Date.now()` |
+| **Client clock drift** | Server `Date` header offset applied to `Date.now()`; fallback to client clock if header stripped by proxy/CDN; offset capped at ±30s |
 | **Browser closed before expiry** | Backend `PaymentExpiryJob` guarantees expiry regardless of FE |
 | **F5 at timer=0** | Payment status checked before rendering CountdownTimer; if EXPIRED, show expired banner instead |
 | **Double cancel on F5 at expiry boundary** | `cancelPaymentMutation` and `cancelOrderMutation` are idempotent; backend returns 400/409 for already-expired/cancelled, frontend catches and proceeds |
