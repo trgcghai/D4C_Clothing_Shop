@@ -1,6 +1,7 @@
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import axios from "axios";
 import { useStore } from "@/src/store";
+import { updateClockOffset } from "./clockSync";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -46,7 +47,6 @@ axiosInstance.interceptors.response.use(
   (response) => {
     const dateHeader = response.headers["date"] ?? response.headers["Date"];
     if (dateHeader) {
-      const { updateClockOffset } = require("./clockSync");
       updateClockOffset(dateHeader as string);
     }
     return response;
