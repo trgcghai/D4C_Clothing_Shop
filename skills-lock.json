@@ -19,6 +19,18 @@
       "skillPath": "ci-cd/dockerfile-optimizer/SKILL.md",
       "computedHash": "e008d1b146276bed031728642839e0be477c9cb9bfdec3827423f0cea9109a80"
     },
+    "draw-io-diagram-generator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/draw-io-diagram-generator/SKILL.md",
+      "computedHash": "62482a37dd45bfd414b285c1876e2028c5de62d43bb0af8a35fc488cafdb04b8"
+    },
+    "drawio": {
+      "source": "jgraph/drawio-mcp",
+      "sourceType": "github",
+      "skillPath": "skill-cli/drawio/SKILL.md",
+      "computedHash": "b33821c1d01e10274e03a27de28225feb72d45fb98777b8455e7958dd783fe0f"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -48,6 +60,12 @@
       "sourceType": "github",
       "skillPath": "skills/multi-stage-dockerfile/SKILL.md",
       "computedHash": "698bf93a84dae18fd7bd0b1d35c21427307fde78fbdf4624be9726f5f98189ca"
+    },
+    "plantuml-skill": {
+      "source": "agents365-ai/365-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/plantuml/skills/plantuml-skill/SKILL.md",
+      "computedHash": "6ecce75b8072830ee2da41092ee7ba070cadecf966d1316c1b2278eff37e4cf5"
     },
     "rabbitmq": {
       "source": "claude-dev-suite/claude-dev-suite",
