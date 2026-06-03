@@ -195,20 +195,40 @@ class ProductService {
     const CHUNK_SIZE = 100;
     for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
       const chunk = ids.slice(i, i + CHUNK_SIZE);
-      const params = {
-        RequestItems: {
-          [TABLE_NAME]: {
-            Keys: chunk.map((id) => ({ id })),
-          },
+      let requestItems = {
+        [TABLE_NAME]: {
+          Keys: chunk.map((id) => ({ id })),
         },
       };
-      const command = new BatchGetItemCommand(params);
-      const response = await dynamoClient.send(command);
-      const items = response.Responses?.[TABLE_NAME] || [];
-      for (const item of items) {
-        item.variants = await variantModel.findByProductId(item.id);
-        products[item.id] = item;
+
+      // Retry UnprocessedKeys until all are fetched
+      while (Object.keys(requestItems).length > 0) {
+        const command = new BatchGetItemCommand({ RequestItems: requestItems });
+        const response = await dynamoClient.send(command);
+        const items = response.Responses?.[TABLE_NAME] || [];
+        for (const item of items) {
+          products[item.id] = item;
+        }
+        requestItems = response.UnprocessedKeys || {};
       }
+    }
+
+    // Batch fetch all variants in parallel to avoid N+1
+    const productIds = Object.keys(products);
+    if (productIds.length > 0) {
+      const allVariants = await variantModel.findAll();
+      const variantsByProductId = {};
+      for (const v of allVariants) {
+        if (!variantsByProductId[v.productId]) variantsByProductId[v.productId] = [];
+        variantsByProductId[v.productId].push(v);
+      }
+      for (const id of productIds) {
+        products[id].variants = variantsByProductId[id] || [];
+      }
+    }
+
+    return products;
+  }
     }
     return products;
   }

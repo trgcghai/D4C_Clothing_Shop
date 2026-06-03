@@ -104,11 +104,14 @@ export const bulkGetProducts = async (req, res) => {
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({ message: "productIds must be a non-empty array" });
     }
+    if (productIds.length > 100) {
+      return res.status(400).json({ message: "Maximum 100 product IDs per request" });
+    }
     const products = await productService.getProductsByIds(productIds);
     res.status(200).json({ products });
   } catch (error) {
-    console.error("Error bulk get products:", error);
-    res.status(500).json({ message: "Loi server khi lay san pham", error: error.message });
+    console.error("Lỗi bulk get products:", error);
+    res.status(500).json({ message: "Lỗi server khi lấy sản phẩm", error: error.message });
   }
 };
 
