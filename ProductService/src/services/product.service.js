@@ -281,6 +281,12 @@ class ProductService {
       createdAt: newProduct.createdAt,
       variants: populated.variants || [],
     });
+    // Invalidate caches
+    if (newProduct.isFeatured) {
+      await cacheDel(keys.featured());
+    }
+    await cacheDelPattern("product:new-arrivals:*");
+    await cacheDelPattern("product:list:*");
     return populated;
   }
 
@@ -371,6 +377,14 @@ class ProductService {
       createdAt: updated.createdAt,
       variants: updated.variants || [],
     });
+    // Invalidate caches
+    await cacheDel(keys.detail(id));
+    await cacheDelPattern("product:related:*");
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:new-arrivals:*");
+    if (updateData.isFeatured !== undefined || existingProduct.isFeatured) {
+      await cacheDel(keys.featured());
+    }
     return updated;
   }
 
@@ -392,6 +406,14 @@ class ProductService {
     await variantModel.removeByProductId(id);
     await productModel.remove(id);
     publishProductEvent("DELETE", { id });
+    // Invalidate caches
+    await cacheDel(keys.detail(id));
+    await cacheDelPattern("product:related:*");
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:new-arrivals:*");
+    if (existingProduct.isFeatured) {
+      await cacheDel(keys.featured());
+    }
     return { success: true, message: "Đã xóa sản phẩm thành công" };
   }
 
