@@ -1,6 +1,6 @@
 import { behaviorModel } from "../models/behavior.model.js";
 import { recommendationModel } from "../models/recommendation.model.js";
-import { getProductServiceClient } from "../config/product-service-client.js";
+import { getProductServiceClient, getCachedRecommendations, postCachedRecommendations } from "../config/product-service-client.js";
 
 const EVENT_WEIGHTS = {
   view: 1,
@@ -54,6 +54,11 @@ class RecommendationService {
 
   async getRecommendations(userId, limit = 10) {
     const client = getProductServiceClient();
+
+    // Check cache first
+    const cached = await getCachedRecommendations(userId);
+    if (cached) return cached;
+
     const topScores = await recommendationModel.findTopByUserId(userId, 10);
 
     if (topScores.length < COLD_START_THRESHOLD) {
@@ -111,6 +116,9 @@ class RecommendationService {
       );
       return [...scored, ...supplemented].slice(0, limit);
     }
+
+    // Cache the result
+    await postCachedRecommendations(userId, scored);
 
     return scored;
   }
