@@ -43,7 +43,14 @@ axiosInstance.interceptors.request.use(
 
 // Response interceptor: tự động refresh khi 401
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const dateHeader = response.headers["date"] ?? response.headers["Date"];
+    if (dateHeader) {
+      const { updateClockOffset } = require("./clockSync");
+      updateClockOffset(dateHeader as string);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
