@@ -59,7 +59,7 @@ jobs:
           push: true
           tags: ${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:latest
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache,mode=max
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache,mode=min
 
   deploy-ec2-1:
     needs: build-and-push
