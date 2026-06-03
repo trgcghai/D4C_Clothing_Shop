@@ -12,13 +12,13 @@ vi.mock("../config/aws.config.js", () => ({
 const mockRedisGet = vi.fn();
 const mockRedisSet = vi.fn();
 const mockRedisDel = vi.fn();
-const mockRedisScan = vi.fn();
+const mockRedisSendCommand = vi.fn();
 vi.mock("../config/redis.config.js", () => ({
   redisClient: {
     get: vi.fn().mockImplementation(async (key) => mockRedisGet(key)),
     set: vi.fn().mockImplementation(async (key, val, opts) => mockRedisSet(key, val, opts)),
     del: vi.fn().mockImplementation(async (keyOrKeys) => mockRedisDel(keyOrKeys)),
-    scan: vi.fn().mockImplementation(async (cursor, opts) => mockRedisScan(cursor, opts))
+    sendCommand: vi.fn().mockImplementation(async (args) => mockRedisSendCommand(args))
   }
 }));
 
@@ -79,7 +79,7 @@ describe("StockService Idempotency", () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
     mockRedisDel.mockResolvedValueOnce(1);
-    mockRedisScan.mockResolvedValueOnce({ cursor: 0, keys: ["product:list:abc123"] });
+    mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:abc123"]]);
 
     const result = await stockService.batchDeductStock(
       [{ variantId: "var_1", quantity: 2, productId: "prod_1" }],
@@ -88,7 +88,9 @@ describe("StockService Idempotency", () => {
 
     expect(result).toEqual({ success: true });
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
-    expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisSendCommand).toHaveBeenCalledWith([
+      "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
+    ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:abc123"]);
   });
 
@@ -96,7 +98,7 @@ describe("StockService Idempotency", () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
     mockRedisDel.mockResolvedValueOnce(1);
-    mockRedisScan.mockResolvedValueOnce({ cursor: 0, keys: ["product:list:xyz"] });
+    mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:xyz"]]);
 
     const result = await stockService.batchDeductStock(
       [
@@ -111,7 +113,9 @@ describe("StockService Idempotency", () => {
     expect(mockRedisDel).toHaveBeenCalledTimes(3);
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_2");
-    expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisSendCommand).toHaveBeenCalledWith([
+      "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
+    ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:xyz"]);
   });
 
@@ -126,14 +130,14 @@ describe("StockService Idempotency", () => {
 
     expect(result).toEqual({ success: true });
     expect(mockRedisDel).not.toHaveBeenCalled();
-    expect(mockRedisScan).not.toHaveBeenCalled();
+    expect(mockRedisSendCommand).not.toHaveBeenCalled();
   });
 
   it("should invalidate cache after successful restore", async () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
     mockRedisDel.mockResolvedValueOnce(1);
-    mockRedisScan.mockResolvedValueOnce({ cursor: 0, keys: ["product:list:def456"] });
+    mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:def456"]]);
 
     const result = await stockService.batchRestoreStock(
       [{ variantId: "var_1", quantity: 2, productId: "prod_1" }],
@@ -142,7 +146,9 @@ describe("StockService Idempotency", () => {
 
     expect(result).toEqual({ success: true });
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
-    expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisSendCommand).toHaveBeenCalledWith([
+      "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
+    ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:def456"]);
   });
 
