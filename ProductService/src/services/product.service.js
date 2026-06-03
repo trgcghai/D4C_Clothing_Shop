@@ -6,6 +6,7 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { publishProductEvent } from "./event-publisher.service.js";
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern, TTL, keys } from "./cache.service.js";
 
 dotenv.config();
 
@@ -165,8 +166,14 @@ class ProductService {
   }
 
   async getFeaturedProducts() {
+    const cacheKey = keys.featured();
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const items = await productModel.findFeatured();
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.FEATURED);
+    return result;
   }
 
   async getNewArrivals(limit = 8) {
