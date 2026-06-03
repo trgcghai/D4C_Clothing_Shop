@@ -1,5 +1,7 @@
 package iuh.fit.CartService.client;
 
+import iuh.fit.CartService.domain.dto.BulkProductRequest;
+import iuh.fit.CartService.domain.dto.BulkProductResponse;
 import iuh.fit.CartService.domain.dto.DeductStockRequest;
 import iuh.fit.CartService.domain.dto.ProductDto;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -16,4 +18,7 @@ public interface ProductServiceClient {
 
     @PostMapping("/api/products/variants/{variantId}/deduct-stock")
     void deductStock(@PathVariable("variantId") String variantId, @RequestBody DeductStockRequest request);
+
+    @PostMapping("/api/products/bulk")
+    BulkProductResponse bulkGetProducts(@RequestBody BulkProductRequest request);
 }

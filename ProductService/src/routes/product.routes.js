@@ -14,6 +14,7 @@ import {
   getRelatedProducts,
   deductStock,
   restoreStock,
+  bulkGetProducts,
 } from "../controllers/product.controller.js";
 import { importZipProducts } from "../controllers/zip-import.controller.js";
 import cacheRouter from "./cache.routes.js";
@@ -223,6 +224,34 @@ router.post(
 router.get("/", getAllProducts);
 
 // ─── Single product ─────────────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/products/bulk:
+ *   post:
+ *     tags: [products]
+ *     summary: Bulk fetch products by IDs
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [productIds]
+ *             properties:
+ *               productIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Map of products by ID
+ *       400:
+ *         description: Invalid productIds
+ *       500:
+ *         description: Server error
+ */
+router.post("/bulk", bulkGetProducts);
+
 /**
  * @swagger
  * /api/products/{id}:

@@ -12,30 +12,29 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CartResponse {
-    private Long cartId;
-    private Long userId;
-    private List<CartItemDto> items;
-    private BigDecimal totalAmount;
-    private Integer totalItems;
-    private Boolean hasChanges;
+public class SyncResponse {
+    private List<SyncedItem> synced;
+    private List<SyncError> errors;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CartItemDto {
-        private Long id;
+    public static class SyncedItem {
         private String variantId;
-        private String productId;
         private String productName;
-        private String color;
-        private String size;
         private BigDecimal price;
         private Integer quantity;
-        private BigDecimal subtotal;
-        private String sku;
-        private String imageUrl;
         private Boolean needsSync;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SyncError {
+        private String variantId;
+        private String reason;
+        private String message;
     }
 }

@@ -1,8 +1,9 @@
 import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
 import { categoryModel } from "../models/category.model.js";
-import { s3Client } from "../config/aws.config.js";
+import { s3Client, dynamoClient } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { BatchGetCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { publishProductEvent } from "./event-publisher.service.js";
@@ -12,6 +13,7 @@ dotenv.config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME || "d4c-clothingshop-products-bucket";
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
+const TABLE_NAME = process.env.TABLE_NAME || "d4c_products";
 
 class ProductService {
   async _populateRelations(product) {
@@ -204,6 +206,55 @@ class ProductService {
     const result = await this._populateRelations(product);
     await cacheSet(cacheKey, result, TTL.DETAIL);
     return result;
+  }
+
+  async getProductsByIds(ids) {
+    if (!ids || ids.length === 0) return {};
+    const products = {};
+
+    // Filter and ensure all IDs are strings
+    const validIds = ids.filter(id => id && typeof id === "string").map(id => String(id).trim());
+    if (validIds.length === 0) return {};
+
+    console.log("getProductsByIds called with:", validIds);
+
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < validIds.length; i += CHUNK_SIZE) {
+      const chunk = validIds.slice(i, i + CHUNK_SIZE);
+      console.log("BatchGetItem chunk:", chunk);
+      let requestItems = {
+        [TABLE_NAME]: {
+          Keys: chunk.map((id) => ({ id })),
+        },
+      };
+
+      // Retry UnprocessedKeys until all are fetched
+      while (Object.keys(requestItems).length > 0) {
+        const command = new BatchGetCommand({ RequestItems: requestItems });
+        const response = await dynamoClient.send(command);
+        const items = response.Responses?.[TABLE_NAME] || [];
+        for (const item of items) {
+          products[item.id] = item;
+        }
+        requestItems = response.UnprocessedKeys || {};
+      }
+    }
+
+    // Batch fetch all variants in parallel to avoid N+1
+    const productIds = Object.keys(products);
+    if (productIds.length > 0) {
+      const allVariants = await variantModel.findAll();
+      const variantsByProductId = {};
+      for (const v of allVariants) {
+        if (!variantsByProductId[v.productId]) variantsByProductId[v.productId] = [];
+        variantsByProductId[v.productId].push(v);
+      }
+      for (const id of productIds) {
+        products[id].variants = variantsByProductId[id] || [];
+      }
+    }
+
+    return products;
   }
 
   async createProduct(data, file) {

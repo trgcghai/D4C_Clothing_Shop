@@ -10,6 +10,7 @@ import {
   clearCartAfterCheckout,
   partialCheckout,
   removeCartItemsBulk,
+  syncCartItems,
   type AddCartItemPayload,
   type UpdateCartItemPayload,
 } from "@/src/services/cartApi";
@@ -107,7 +108,7 @@ export function useClearCart() {
 
 export function useValidateCart() {
   return useMutation({
-    mutationFn: () => validateCart(),
+    mutationFn: (itemIds?: number[]) => validateCart(itemIds),
   });
 }
 
@@ -169,6 +170,30 @@ export function useRemoveCartItemsBulk() {
         toast.error(msg);
       } else {
         toast.error("Không thể xóa sản phẩm");
+      }
+    },
+  });
+}
+
+export function useSyncCartItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: syncCartItems,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+      if (data.errors.length > 0) {
+        data.errors.forEach((e) => toast.warning(e.message));
+      } else if (data.synced.length > 0) {
+        toast.success("Đã đồng bộ giỏ hàng");
+      }
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const msg = error.response?.data?.message || "Không thể đồng bộ giỏ hàng";
+        toast.error(msg);
+      } else {
+        toast.error("Không thể đồng bộ giỏ hàng");
       }
     },
   });
