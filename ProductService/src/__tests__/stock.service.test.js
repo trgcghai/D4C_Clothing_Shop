@@ -75,11 +75,18 @@ describe("StockService Idempotency", () => {
     expect(mockRedisSet).not.toHaveBeenCalled();
   });
 
-  it("should invalidate detail and list cache after successful deduct", async () => {
-    mockRedisGet.mockResolvedValueOnce(null);
+  it("should update detail cache and delete list cache after successful deduct", async () => {
+    const cachedProduct = {
+      id: "prod_1",
+      name: "Test Product",
+      variants: [{ id: "var_1", quantity: 10, color: "Red", size: "M" }]
+    };
+    mockRedisGet.mockResolvedValueOnce(null); // idempotency check
     mockTransactWrite.mockResolvedValueOnce({});
-    mockRedisDel.mockResolvedValueOnce(1);
-    mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:abc123"]]);
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(cachedProduct)); // detail cache read
+    mockRedisSet.mockResolvedValueOnce(1); // detail cache write
+    mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:abc123"]]); // list scan
+    mockRedisDel.mockResolvedValueOnce(1); // list delete
 
     const result = await stockService.batchDeductStock(
       [{ variantId: "var_1", quantity: 2, productId: "prod_1" }],
@@ -87,18 +94,28 @@ describe("StockService Idempotency", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "product:detail:prod_1",
+      JSON.stringify({ id: "prod_1", name: "Test Product", variants: [{ id: "var_1", quantity: 8, color: "Red", size: "M" }] }),
+      { EX: 900 }
+    );
     expect(mockRedisSendCommand).toHaveBeenCalledWith([
       "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
     ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:abc123"]);
   });
 
-  it("should invalidate cache for multiple unique productIds after deduct", async () => {
+  it("should update detail cache for multiple unique productIds after deduct", async () => {
+    const cachedProd1 = { id: "prod_1", variants: [{ id: "var_1", quantity: 10 }] };
+    const cachedProd2 = { id: "prod_2", variants: [{ id: "var_2", quantity: 5 }] };
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
-    mockRedisDel.mockResolvedValueOnce(1);
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(cachedProd1));
+    mockRedisSet.mockResolvedValueOnce(1);
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(cachedProd2));
+    mockRedisSet.mockResolvedValueOnce(1);
     mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:xyz"]]);
+    mockRedisDel.mockResolvedValueOnce(1);
 
     const result = await stockService.batchDeductStock(
       [
@@ -110,16 +127,29 @@ describe("StockService Idempotency", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockRedisDel).toHaveBeenCalledTimes(3);
-    expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
-    expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_2");
+    expect(mockRedisSet).toHaveBeenCalledTimes(3); // 1 idempotency + 2 detail caches
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "product:detail:prod_1",
+      JSON.stringify({ id: "prod_1", variants: [{ id: "var_1", quantity: 9 }] }),
+      { EX: 900 }
+    );
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "product:detail:prod_2",
+      JSON.stringify({ id: "prod_2", variants: [{ id: "var_2", quantity: 3 }] }),
+      { EX: 900 }
+    );
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "idempotency:checkout-dup",
+      JSON.stringify({ success: true }),
+      { EX: 3600 }
+    );
     expect(mockRedisSendCommand).toHaveBeenCalledWith([
       "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
     ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:xyz"]);
   });
 
-  it("should skip cache invalidation when productId is missing", async () => {
+  it("should skip cache update when productId is missing", async () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
 
@@ -129,15 +159,26 @@ describe("StockService Idempotency", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockRedisDel).not.toHaveBeenCalled();
+    expect(mockRedisSet).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^product:detail:/),
+      expect.any(String),
+      expect.any(Object)
+    );
     expect(mockRedisSendCommand).not.toHaveBeenCalled();
   });
 
-  it("should invalidate cache after successful restore", async () => {
+  it("should update detail cache after successful restore", async () => {
+    const cachedProduct = {
+      id: "prod_1",
+      name: "Test Product",
+      variants: [{ id: "var_1", quantity: 5, color: "Blue", size: "L" }]
+    };
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
-    mockRedisDel.mockResolvedValueOnce(1);
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(cachedProduct));
+    mockRedisSet.mockResolvedValueOnce(1);
     mockRedisSendCommand.mockResolvedValueOnce(["0", ["product:list:def456"]]);
+    mockRedisDel.mockResolvedValueOnce(1);
 
     const result = await stockService.batchRestoreStock(
       [{ variantId: "var_1", quantity: 2, productId: "prod_1" }],
@@ -145,17 +186,21 @@ describe("StockService Idempotency", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "product:detail:prod_1",
+      JSON.stringify({ id: "prod_1", name: "Test Product", variants: [{ id: "var_1", quantity: 7, color: "Blue", size: "L" }] }),
+      { EX: 900 }
+    );
     expect(mockRedisSendCommand).toHaveBeenCalledWith([
       "SCAN", "0", "MATCH", "product:list:*", "COUNT", "100"
     ]);
     expect(mockRedisDel).toHaveBeenCalledWith(["product:list:def456"]);
   });
 
-  it("should not fail stock operation when cache invalidation throws", async () => {
+  it("should not fail stock operation when cache update throws", async () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
-    mockRedisDel.mockRejectedValueOnce(new Error("Redis connection lost"));
+    mockRedisGet.mockRejectedValueOnce(new Error("Redis connection lost"));
 
     const result = await stockService.batchDeductStock(
       [{ variantId: "var_1", quantity: 2, productId: "prod_1" }],
