@@ -5,12 +5,13 @@ import {
   useSearchParams,
   useBlocker,
 } from "react-router-dom";
-import { useCountdownTimer } from "use-countdown-timer";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import CountdownTimer from "@/src/components/CountdownTimer";
 import {
   usePaymentById,
   usePaymentStatus,
@@ -29,9 +30,9 @@ import {
   Loader2,
   QrCode,
   XCircle,
-  Clock,
   Copy,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,7 +50,7 @@ export default function PaymentPage() {
       .filter((n) => !isNaN(n) && n > 0);
   }, [removeItemIdsParam]);
 
-  const id = paymentId ? parseInt(paymentId, 10) : null;
+  const id = paymentId ? Number.parseInt(paymentId, 10) : null;
 
   const {
     data: payment,
@@ -57,16 +58,17 @@ export default function PaymentPage() {
     isError: paymentError,
   } = usePaymentById(id);
   const { data: paymentStatus } = usePaymentStatus(id, !!id);
-  const cancelPaymentMutation = useCancelPayment();
-  const cancelOrderMutation = useCancelOrder();
-  const removeItemsBulkMutation = useRemoveCartItemsBulk();
+  const { mutateAsync: cancelPayment, isPending: isCancelingPayment } =
+    useCancelPayment();
+  const { mutateAsync: cancelOrder } = useCancelOrder();
+  const { mutateAsync: removeItemsBulk, isPending: isRemovingItems } =
+    useRemoveCartItemsBulk();
   const { data: order } = useUserOrderDetail(payment?.orderId ?? null);
 
   const [copied, setCopied] = useState(false);
   const paymentCompletedRef = useRef(false);
 
-  const isProcessing =
-    cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
+  const isProcessing = isCancelingPayment || isRemovingItems;
 
   const handleCancelPayment = useCallback(
     async (reason: "user" | "expired", skipNavigate = false) => {
@@ -74,22 +76,29 @@ export default function PaymentPage() {
       paymentCompletedRef.current = true;
 
       try {
-        await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
+        await cancelPayment(Number.parseInt(paymentId, 10));
+      } catch (error) {
+        // 409 = already expired/cancelled — treat as soft success
+        console.error("Cancel payment error (may be already expired):", error);
+      }
+
+      try {
         if (order) {
-          await cancelOrderMutation.mutateAsync(order.id);
-        }
-        if (reason === "expired") {
-          toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
-        }
-        if (!skipNavigate) {
-          navigate("/orders");
+          await cancelOrder(order.id);
         }
       } catch (error) {
-        paymentCompletedRef.current = false;
-        console.error("Failed to cancel payment:", error);
+        // 400 = already cancelled — treat as soft success
+        console.error("Cancel order error (may be already cancelled):", error);
+      }
+
+      if (reason === "expired") {
+        toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
+      }
+      if (!skipNavigate) {
+        navigate("/orders");
       }
     },
-    [paymentId, order, cancelPaymentMutation, cancelOrderMutation, navigate],
+    [paymentId, order, cancelPayment, cancelOrder, navigate],
   );
 
   const blocker = useBlocker(
@@ -111,21 +120,9 @@ export default function PaymentPage() {
     }
   }, [blocker.state, blocker.proceed, blocker.reset, handleCancelPayment]);
 
-  const timerMs = payment?.expiresAt
-    ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
-    : 0;
-  const { countdown, start } = useCountdownTimer({
-    timer: timerMs,
-    autostart: false,
-    onExpire: () => handleCancelPayment("expired"),
-  });
-
-  // Start countdown only after payment data is loaded
-  useEffect(() => {
-    if (payment && !paymentCompletedRef.current) {
-      start();
-    }
-  }, [payment]);
+  const handleExpire = useCallback(() => {
+    handleCancelPayment("expired");
+  }, [handleCancelPayment]);
 
   useEffect(() => {
     if (paymentCompletedRef.current) return;
@@ -136,48 +133,55 @@ export default function PaymentPage() {
     paymentCompletedRef.current = true;
 
     if (status === "PAID") {
+      const orderId = payment?.orderId;
       if (removeItemIds.length > 0) {
-        removeItemsBulkMutation
-          .mutateAsync({ itemIds: removeItemIds })
+        removeItemsBulk({ itemIds: removeItemIds })
           .then(() => {
-            if (payment?.orderId) {
+            if (orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment?.orderId),
+                queryKey: userOrderKeys.detail(orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment?.orderId}`);
+            navigate(`/orders/${orderId}`);
           })
           .catch(() => {
-            if (payment?.orderId) {
+            if (orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment?.orderId),
+                queryKey: userOrderKeys.detail(orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment?.orderId}`);
+            navigate(`/orders/${orderId}`);
           });
       } else {
-        if (payment?.orderId) {
+        if (orderId) {
           queryClient.invalidateQueries({
-            queryKey: userOrderKeys.detail(payment?.orderId),
+            queryKey: userOrderKeys.detail(orderId),
           });
         }
         toast.success("Thanh toán thành công!");
-        navigate(`/orders/${payment?.orderId}`);
+        navigate(`/orders/${orderId}`);
       }
     } else if (status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
     }
-  }, [paymentStatus?.status, removeItemIds, payment?.orderId, navigate]);
+  }, [
+    paymentStatus?.status,
+    removeItemIds,
+    payment?.orderId,
+    navigate,
+    removeItemsBulk,
+    queryClient,
+  ]);
 
   // Only cancel on actual tab/window close — NOT on component unmount
   // The previous cleanup effect caused immediate cancellation on React StrictMode double-mount
   useEffect(() => {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
-        const url = buildCancelPaymentUrl(parseInt(paymentId, 10));
+        const url = buildCancelPaymentUrl(Number.parseInt(paymentId, 10));
         navigator.sendBeacon(url);
       }
     };
@@ -215,7 +219,7 @@ export default function PaymentPage() {
     );
   }
 
-  if (payment.status === "PAID" || payment.status === "CANCELLED") {
+  if (payment.status === "PAID") {
     return null;
   }
 
@@ -282,18 +286,30 @@ export default function PaymentPage() {
 
           <Separator />
 
-          {countdown > 0 && (
-            <div className="flex items-center justify-center gap-2 text-amber-600">
-              <Clock className="h-4 w-4" />
-              <span className="font-mono font-semibold text-lg">
-                {`${Math.floor(countdown / 60000)
-                  .toString()
-                  .padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000)
-                  .toString()
-                  .padStart(2, "0")}`}
-              </span>
-              <span className="text-sm">còn lại để thanh toán</span>
-            </div>
+          {payment.status === "EXPIRED" && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Mã QR đã hết hạn. Vui lòng tạo đơn hàng mới.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {payment.status === "CANCELLED" && (
+            <Alert>
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>
+                Thanh toán đã bị hủy.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {payment.status === "PENDING" && (
+            <CountdownTimer
+              key={payment.expiresAt}
+              expiresAt={payment.expiresAt}
+              onExpire={handleExpire}
+            />
           )}
 
           <Separator />
