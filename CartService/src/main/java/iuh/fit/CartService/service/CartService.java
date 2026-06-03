@@ -290,6 +290,25 @@ public class CartService {
     }
 
     /**
+     * Creates an order draft for all cart items.
+     * Does NOT remove items from cart — caller must call clearCart
+     * after successful order creation.
+     */
+    @Transactional
+    public CheckoutResponse checkout(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        if (items.isEmpty()) {
+            throw new RuntimeException("Cart is empty");
+        }
+
+        List<Long> itemIds = items.stream().map(CartItem::getId).collect(Collectors.toList());
+        return partialCheckout(userId, itemIds);
+    }
+
+    /**
      * Creates an order draft for selected cart items only.
      * Does NOT remove items from cart — caller must call removeItemsBulk
      * after successful order creation.
