@@ -108,7 +108,7 @@ export function useClearCart() {
 
 export function useValidateCart() {
   return useMutation({
-    mutationFn: () => validateCart(),
+    mutationFn: (itemIds?: number[]) => validateCart(itemIds),
   });
 }
 

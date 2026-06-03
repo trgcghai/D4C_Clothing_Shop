@@ -181,43 +181,62 @@ const CartPage = () => {
   const handleCheckout = async () => {
     if (selectedIds.length === 0) return;
 
+    const allErrors: ValidationError[] = [];
+
+    if (cart.hasChanges) {
+      const changedItems = cart.items.filter((item) => item.needsSync);
+      allErrors.push(
+        ...changedItems.map((item) => ({
+          variantId: item.variantId,
+          reason: "NEEDS_SYNC" as const,
+          message: `Sản phẩm "${item.productName}" đã có thay đổi`,
+        }))
+      );
+    }
+
     try {
-      const validation = await validateMutation.mutateAsync();
-      if (validation.valid) {
-        const idsParam = selectedIds.join(",");
-        navigate(`/checkout?selectedIds=${idsParam}`);
-      } else {
-        setValidationErrors(validation.errors);
-        setShowValidationModal(true);
+      const validation = await validateMutation.mutateAsync(selectedIds);
+      if (!validation.valid) {
+        const stockErrors = validation.errors.filter(
+          (e) => e.reason !== "VARIANT_NOT_FOUND"
+        );
+        allErrors.push(...stockErrors);
       }
-    } catch (error) {
-      if (isAxiosError(error)) {
-        const data = error.response?.data;
-        if (data?.errors) {
-          setValidationErrors(data.errors);
-          setShowValidationModal(true);
-        } else {
-          const msg = data?.message || "Không thể kiểm tra giỏ hàng";
-          toast.error(msg);
-        }
+    } catch (error: unknown) {
+      const err = error as { errors?: ValidationError[]; message?: string };
+      if (err?.errors && Array.isArray(err.errors)) {
+        const stockErrors = err.errors.filter(
+          (e) => e.reason !== "VARIANT_NOT_FOUND"
+        );
+        allErrors.push(...stockErrors);
       } else {
-        toast.error("Không thể kiểm tra giỏ hàng");
+        toast.error(err?.message || "Không thể kiểm tra giỏ hàng");
+        return;
       }
     }
+
+    if (allErrors.length > 0) {
+      setValidationErrors(allErrors);
+      setShowValidationModal(true);
+      return;
+    }
+
+    const idsParam = selectedIds.join(",");
+    navigate(`/checkout?selectedIds=${idsParam}`);
   };
 
   const handleContinueCheckout = async () => {
     try {
       const result = await syncCartItems({});
       if (result.errors.length > 0) {
-        const stockErrors = result.errors.filter(
-          (e: { reason: string }) => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK"
+        const selectedErrors = result.errors.filter(
+          (e: ValidationError) => selectedIds.some((id) => {
+            const item = cart.items.find((i) => i.id === id);
+            return item?.variantId === e.variantId;
+          })
         );
-        if (stockErrors.length > 0) {
-          stockErrors.forEach((e: { message: string }) => toast.error(e.message));
-          setShowValidationModal(false);
-          return;
-        }
+        setValidationErrors(selectedErrors);
+        return;
       }
 
       await refetch();
@@ -242,6 +261,11 @@ const CartPage = () => {
   };
 
   const handleBackToCart = async () => {
+    try {
+      await syncCartItems({});
+    } catch (_e) {
+      // Ignore sync errors, just go back
+    }
     await refetch();
     setShowValidationModal(false);
   };
@@ -514,11 +538,13 @@ const CartPage = () => {
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang đồng bộ...</>
             ) : "Quay lại giỏ hàng"}
           </Button>
-          <Button onClick={handleContinueCheckout} disabled={syncMutation.isPending}>
-            {syncMutation.isPending ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang đồng bộ...</>
-            ) : "Tiếp tục"}
-          </Button>
+          {!validationErrors.some(e => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK") && (
+            <Button onClick={handleContinueCheckout} disabled={syncMutation.isPending}>
+              {syncMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang đồng bộ...</>
+              ) : "Tiếp tục"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -225,7 +225,7 @@ public class CartService {
         }
     }
 
-    public ValidationResponse validateCart(Long userId) {
+    public ValidationResponse validateCart(Long userId, List<Long> itemIds) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElse(null);
         if (cart == null) {
@@ -235,7 +235,10 @@ public class CartService {
                     .build();
         }
 
-        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        List<CartItem> allItems = cartItemRepository.findByCartId(cart.getId());
+        List<CartItem> items = (itemIds != null && !itemIds.isEmpty())
+                ? allItems.stream().filter(i -> itemIds.contains(i.getId())).collect(Collectors.toList())
+                : allItems;
         List<ValidationResponse.ValidationError> errors = new ArrayList<>();
 
         for (CartItem item : items) {
@@ -263,13 +266,41 @@ public class CartService {
                 continue;
             }
 
-            if (variant.getQuantity() < item.getQuantity()) {
+            if (variant.getQuantity() == 0) {
                 errors.add(ValidationResponse.ValidationError.builder()
                         .variantId(item.getVariantId())
                         .reason("OUT_OF_STOCK")
-                        .message("Variant '" + variant.getColor() + "/" + variant.getSize()
-                                + "' không đủ hàng (cần: " + item.getQuantity()
-                                + ", có: " + variant.getQuantity() + ")")
+                        .message("Sản phẩm '" + item.getProductName() + "' đã hết hàng")
+                        .build());
+            } else if (variant.getQuantity() < item.getQuantity()) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("INSUFFICIENT_STOCK")
+                        .message("Sản phẩm '" + item.getProductName() + "' còn " + variant.getQuantity() + " cái trong kho")
+                        .build());
+            }
+
+            if (item.getNeedsSync() != null && item.getNeedsSync()) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("NEEDS_SYNC")
+                        .message("Thông tin sản phẩm '" + item.getProductName() + "' đã thay đổi")
+                        .build());
+            }
+
+            if (!product.getName().equals(item.getProductName())) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("NAME_CHANGED")
+                        .message("Tên sản phẩm đã thay đổi")
+                        .build());
+            }
+
+            if (product.getImageUrl() != null && !product.getImageUrl().equals(item.getImageUrl())) {
+                errors.add(ValidationResponse.ValidationError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("IMAGE_CHANGED")
+                        .message("Hình ảnh sản phẩm đã thay đổi")
                         .build());
             }
 
@@ -431,13 +462,22 @@ public class CartService {
                     .orElse(null);
 
             if (variant == null) {
+                variant = product.getVariants().stream()
+                        .filter(v -> v.getColor().equals(item.getColor()) && v.getSize().equals(item.getSize()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (variant == null) {
                 errors.add(SyncResponse.SyncError.builder()
                         .variantId(item.getVariantId())
                         .reason("VARIANT_NOT_FOUND")
-                        .message("Variant khong ton tai")
+                        .message("Variant '" + item.getColor() + "/" + item.getSize() + "' khong ton tai")
                         .build());
                 continue;
             }
+
+            item.setVariantId(variant.getId());
 
             if (variant.getQuantity() == 0) {
                 errors.add(SyncResponse.SyncError.builder()

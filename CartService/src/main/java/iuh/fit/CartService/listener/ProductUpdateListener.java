@@ -8,7 +8,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +27,7 @@ public class ProductUpdateListener {
     }
 
     @RabbitListener(queues = "${cart.rabbitmq.product-sync-queue:cart.product.sync.queue}")
+    @Transactional
     public void handleProductUpdate(Map<String, Object> message) {
         try {
             @SuppressWarnings("unchecked")

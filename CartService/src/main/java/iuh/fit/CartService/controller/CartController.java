@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/cart")
 @Tag(name = "Cart", description = "Shopping cart management APIs")
@@ -59,9 +61,12 @@ public class CartController {
     }
 
     @PostMapping("/validate")
-    @Operation(summary = "Validate cart before checkout", description = "Check all items against ProductService for stock, price changes, and active status.")
-    public ResponseEntity<ValidationResponse> validateCart(@RequestHeader("X-User-Id") Long userId) {
-        ValidationResponse response = cartService.validateCart(userId);
+    @Operation(summary = "Validate cart before checkout", description = "Check items against ProductService for stock, price changes, and active status. If itemIds provided, only validate those items.")
+    public ResponseEntity<ValidationResponse> validateCart(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody(required = false) ValidateRequest request) {
+        List<Long> itemIds = request != null ? request.getItemIds() : null;
+        ValidationResponse response = cartService.validateCart(userId, itemIds);
         HttpStatus status = response.isValid() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }

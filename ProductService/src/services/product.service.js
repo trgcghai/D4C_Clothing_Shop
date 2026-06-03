@@ -3,7 +3,7 @@ import { variantModel } from "../models/variant.model.js";
 import { categoryModel } from "../models/category.model.js";
 import { s3Client, dynamoClient } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { BatchGetItemCommand } from "@aws-sdk/client-dynamodb";
+import { BatchGetCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { publishProductEvent } from "./event-publisher.service.js";
@@ -192,9 +192,16 @@ class ProductService {
     if (!ids || ids.length === 0) return {};
     const products = {};
 
+    // Filter and ensure all IDs are strings
+    const validIds = ids.filter(id => id && typeof id === "string").map(id => String(id).trim());
+    if (validIds.length === 0) return {};
+
+    console.log("getProductsByIds called with:", validIds);
+
     const CHUNK_SIZE = 100;
-    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-      const chunk = ids.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < validIds.length; i += CHUNK_SIZE) {
+      const chunk = validIds.slice(i, i + CHUNK_SIZE);
+      console.log("BatchGetItem chunk:", chunk);
       let requestItems = {
         [TABLE_NAME]: {
           Keys: chunk.map((id) => ({ id })),
@@ -203,7 +210,7 @@ class ProductService {
 
       // Retry UnprocessedKeys until all are fetched
       while (Object.keys(requestItems).length > 0) {
-        const command = new BatchGetItemCommand({ RequestItems: requestItems });
+        const command = new BatchGetCommand({ RequestItems: requestItems });
         const response = await dynamoClient.send(command);
         const items = response.Responses?.[TABLE_NAME] || [];
         for (const item of items) {

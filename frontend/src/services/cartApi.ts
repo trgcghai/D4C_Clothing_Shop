@@ -82,8 +82,8 @@ export const removeCartItem = (itemId: number) =>
 export const clearCart = () =>
   axiosInstance.delete<void>("/api/cart").then((res) => res.data);
 
-export const validateCart = () =>
-  axiosInstance.post<ValidationResponse>("/api/cart/validate").then((res) => res.data);
+export const validateCart = (itemIds?: number[]) =>
+  axiosInstance.post<ValidationResponse>("/api/cart/validate", itemIds ? { itemIds } : undefined).then((res) => res.data);
 
 export const checkout = () =>
   axiosInstance.post<CheckoutResponse>("/api/cart/checkout").then((res) => res.data);
