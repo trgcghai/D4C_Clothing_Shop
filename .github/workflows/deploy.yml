@@ -58,8 +58,8 @@ jobs:
           file: ./${{ matrix.service.dir }}/Dockerfile
           push: true
           tags: ${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:latest
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:buildcache,mode=min
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
 
   deploy-ec2-1:
     needs: build-and-push
