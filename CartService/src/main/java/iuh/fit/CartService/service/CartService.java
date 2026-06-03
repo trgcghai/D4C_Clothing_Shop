@@ -2,6 +2,10 @@ package iuh.fit.CartService.service;
 
 import iuh.fit.CartService.client.ProductServiceClient;
 import iuh.fit.CartService.domain.dto.*;
+import iuh.fit.CartService.domain.dto.SyncRequest;
+import iuh.fit.CartService.domain.dto.SyncResponse;
+import iuh.fit.CartService.domain.dto.BulkProductRequest;
+import iuh.fit.CartService.domain.dto.BulkProductResponse;
 import iuh.fit.CartService.domain.entity.Cart;
 import iuh.fit.CartService.domain.entity.CartItem;
 import iuh.fit.CartService.exception.ServiceUnavailableException;
@@ -23,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -351,49 +356,111 @@ public class CartService {
     }
 
     @Transactional
-    public CheckoutResponse checkout(Long userId) {
-        Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+    public SyncResponse syncItems(Long userId, SyncRequest request) {
+        List<CartItem> targetItems;
 
-        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
-        if (items.isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+        if (request.getForceSync() != null && request.getForceSync()) {
+            targetItems = cartItemRepository.findByCartId(
+                    cartRepository.findByUserId(userId)
+                            .orElseThrow(() -> new RuntimeException("Cart not found"))
+                            .getId());
+        } else if (request.getVariantIds() != null && !request.getVariantIds().isEmpty()) {
+            targetItems = cartItemRepository.findByUserIdAndVariantIds(userId, request.getVariantIds());
+        } else {
+            targetItems = cartItemRepository.findNeedsSyncByUserId(userId);
         }
 
-        List<String> validationErrors = validateCartItems(items);
-
-        if (!validationErrors.isEmpty()) {
-            throw new RuntimeException("Thanh toán thất bại:\n" + String.join("\n", validationErrors));
+        if (targetItems.isEmpty()) {
+            return SyncResponse.builder()
+                    .synced(List.of())
+                    .errors(List.of())
+                    .build();
         }
 
-        String orderId = "ORD-" + System.currentTimeMillis() + "-" + userId;
-
-        List<CheckoutResponse.CheckoutItem> checkoutItems = items.stream()
-                .map(item -> CheckoutResponse.CheckoutItem.builder()
-                        .variantId(item.getVariantId())
-                        .productId(item.getProductId())
-                        .productName(item.getProductName())
-                        .color(item.getColor())
-                        .size(item.getSize())
-                        .price(item.getPrice())
-                        .quantity(item.getQuantity())
-                        .snapshot(CheckoutResponse.Snapshot.builder()
-                                .priceAtCheckout(item.getPrice())
-                                .productName(item.getProductName())
-                                .variantSku(item.getSku())
-                                .build())
-                        .build())
+        List<String> productIds = targetItems.stream()
+                .map(CartItem::getProductId)
+                .distinct()
                 .collect(Collectors.toList());
 
-        BigDecimal totalAmount = checkoutItems.stream()
-                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, ProductDto> productMap;
+        try {
+            BulkProductResponse bulkResponse = productServiceClient.bulkGetProducts(
+                    BulkProductRequest.builder().productIds(productIds).build());
+            productMap = bulkResponse.getProducts();
+        } catch (Exception e) {
+            log.error("Bulk fetch failed for user {}: {}", userId, e.getMessage());
+            throw new RuntimeException("Khong the dong bo gio hang, vui long thu lai sau");
+        }
 
-        return CheckoutResponse.builder()
-                .orderId(orderId)
-                .status("PENDING")
-                .items(checkoutItems)
-                .totalAmount(totalAmount)
+        List<SyncResponse.SyncedItem> synced = new ArrayList<>();
+        List<SyncResponse.SyncError> errors = new ArrayList<>();
+
+        for (CartItem item : targetItems) {
+            ProductDto product = productMap.get(item.getProductId());
+            if (product == null) {
+                errors.add(SyncResponse.SyncError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("PRODUCT_NOT_FOUND")
+                        .message("San pham khong ton tai")
+                        .build());
+                continue;
+            }
+
+            VariantDto variant = product.getVariants().stream()
+                    .filter(v -> v.getId().equals(item.getVariantId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (variant == null) {
+                errors.add(SyncResponse.SyncError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("VARIANT_NOT_FOUND")
+                        .message("Variant khong ton tai")
+                        .build());
+                continue;
+            }
+
+            if (variant.getQuantity() == 0) {
+                errors.add(SyncResponse.SyncError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("OUT_OF_STOCK")
+                        .message("San pham '" + item.getProductName() + "' da het hang")
+                        .build());
+                continue;
+            }
+
+            if (variant.getQuantity() < item.getQuantity()) {
+                errors.add(SyncResponse.SyncError.builder()
+                        .variantId(item.getVariantId())
+                        .reason("INSUFFICIENT_STOCK")
+                        .message("San pham '" + item.getProductName() + "' chi con " + variant.getQuantity() + " san pham")
+                        .build());
+                continue;
+            }
+
+            item.setPrice(product.getPrice());
+            item.setProductName(product.getName());
+            item.setImageUrl(product.getImageUrl());
+            item.setColor(variant.getColor());
+            item.setSize(variant.getSize());
+            item.setSku(variant.getSku());
+            item.setNeedsSync(false);
+            cartItemRepository.save(item);
+
+            synced.add(SyncResponse.SyncedItem.builder()
+                    .variantId(item.getVariantId())
+                    .productName(item.getProductName())
+                    .price(item.getPrice())
+                    .quantity(item.getQuantity())
+                    .needsSync(false)
+                    .build());
+        }
+
+        invalidateCache(userId);
+
+        return SyncResponse.builder()
+                .synced(synced)
+                .errors(errors)
                 .build();
     }
 
@@ -431,21 +498,29 @@ public class CartService {
     private CartResponse buildCartResponse(Cart cart) {
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
 
-        List<CartResponse.CartItemDto> itemDtos = items.stream()
-                .map(item -> CartResponse.CartItemDto.builder()
-                        .id(item.getId())
-                        .variantId(item.getVariantId())
-                        .productId(item.getProductId())
-                        .productName(item.getProductName())
-                        .color(item.getColor())
-                        .size(item.getSize())
-                        .price(item.getPrice())
-                        .quantity(item.getQuantity())
-                        .subtotal(item.getSubtotal())
-                        .sku(item.getSku())
-                        .imageUrl(item.getImageUrl())
-                        .build())
-                .collect(Collectors.toList());
+        boolean hasChanges = false;
+        List<CartResponse.CartItemDto> itemDtos = new ArrayList<>();
+
+        for (CartItem item : items) {
+            if (item.getNeedsSync() != null && item.getNeedsSync()) {
+                hasChanges = true;
+            }
+
+            itemDtos.add(CartResponse.CartItemDto.builder()
+                    .id(item.getId())
+                    .variantId(item.getVariantId())
+                    .productId(item.getProductId())
+                    .productName(item.getProductName())
+                    .color(item.getColor())
+                    .size(item.getSize())
+                    .price(item.getPrice())
+                    .quantity(item.getQuantity())
+                    .subtotal(item.getSubtotal())
+                    .sku(item.getSku())
+                    .imageUrl(item.getImageUrl())
+                    .needsSync(item.getNeedsSync() != null && item.getNeedsSync())
+                    .build());
+        }
 
         BigDecimal totalAmount = itemDtos.stream()
                 .map(CartResponse.CartItemDto::getSubtotal)
@@ -461,6 +536,7 @@ public class CartService {
                 .items(itemDtos)
                 .totalAmount(totalAmount)
                 .totalItems(totalItems)
+                .hasChanges(hasChanges)
                 .build();
     }
 

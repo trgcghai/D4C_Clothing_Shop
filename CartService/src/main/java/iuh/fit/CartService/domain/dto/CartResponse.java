@@ -18,6 +18,7 @@ public class CartResponse {
     private List<CartItemDto> items;
     private BigDecimal totalAmount;
     private Integer totalItems;
+    private Boolean hasChanges;
 
     @Data
     @Builder
@@ -35,5 +36,6 @@ public class CartResponse {
         private BigDecimal subtotal;
         private String sku;
         private String imageUrl;
+        private Boolean needsSync;
     }
 }
