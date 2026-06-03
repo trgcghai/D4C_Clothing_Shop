@@ -5,12 +5,13 @@ import {
   useSearchParams,
   useBlocker,
 } from "react-router-dom";
-import { useCountdownTimer } from "use-countdown-timer";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import CountdownTimer from "@/src/components/CountdownTimer";
 import {
   usePaymentById,
   usePaymentStatus,
@@ -29,9 +30,9 @@ import {
   Loader2,
   QrCode,
   XCircle,
-  Clock,
   Copy,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -111,21 +112,9 @@ export default function PaymentPage() {
     }
   }, [blocker.state, blocker.proceed, blocker.reset, handleCancelPayment]);
 
-  const timerMs = payment?.expiresAt
-    ? Math.max(0, new Date(payment.expiresAt).getTime() - Date.now())
-    : 0;
-  const { countdown, start } = useCountdownTimer({
-    timer: timerMs,
-    autostart: false,
-    onExpire: () => handleCancelPayment("expired"),
-  });
-
-  // Start countdown only after payment data is loaded
-  useEffect(() => {
-    if (payment && !paymentCompletedRef.current) {
-      start();
-    }
-  }, [payment]);
+  const handleExpire = useCallback(() => {
+    handleCancelPayment("expired");
+  }, [handleCancelPayment]);
 
   useEffect(() => {
     if (paymentCompletedRef.current) return;
@@ -282,18 +271,30 @@ export default function PaymentPage() {
 
           <Separator />
 
-          {countdown > 0 && (
-            <div className="flex items-center justify-center gap-2 text-amber-600">
-              <Clock className="h-4 w-4" />
-              <span className="font-mono font-semibold text-lg">
-                {`${Math.floor(countdown / 60000)
-                  .toString()
-                  .padStart(2, "0")}:${Math.floor((countdown % 60000) / 1000)
-                  .toString()
-                  .padStart(2, "0")}`}
-              </span>
-              <span className="text-sm">còn lại để thanh toán</span>
-            </div>
+          {payment.status === "EXPIRED" && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Mã QR đã hết hạn. Vui lòng tạo đơn hàng mới.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {payment.status === "CANCELLED" && (
+            <Alert>
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>
+                Thanh toán đã bị hủy.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {payment.status === "PENDING" && (
+            <CountdownTimer
+              key={payment.expiresAt}
+              expiresAt={payment.expiresAt}
+              onExpire={handleExpire}
+            />
           )}
 
           <Separator />
