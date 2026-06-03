@@ -89,13 +89,14 @@ describe("StockService Idempotency", () => {
     expect(result).toEqual({ success: true });
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
     expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisDel).toHaveBeenCalledWith(["product:list:abc123"]);
   });
 
   it("should invalidate cache for multiple unique productIds after deduct", async () => {
     mockRedisGet.mockResolvedValueOnce(null);
     mockTransactWrite.mockResolvedValueOnce({});
     mockRedisDel.mockResolvedValueOnce(1);
-    mockRedisScan.mockResolvedValueOnce({ cursor: 0, keys: [] });
+    mockRedisScan.mockResolvedValueOnce({ cursor: 0, keys: ["product:list:xyz"] });
 
     const result = await stockService.batchDeductStock(
       [
@@ -107,9 +108,11 @@ describe("StockService Idempotency", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockRedisDel).toHaveBeenCalledTimes(2);
+    expect(mockRedisDel).toHaveBeenCalledTimes(3);
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_2");
+    expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisDel).toHaveBeenCalledWith(["product:list:xyz"]);
   });
 
   it("should skip cache invalidation when productId is missing", async () => {
@@ -140,6 +143,7 @@ describe("StockService Idempotency", () => {
     expect(result).toEqual({ success: true });
     expect(mockRedisDel).toHaveBeenCalledWith("product:detail:prod_1");
     expect(mockRedisScan).toHaveBeenCalledWith(0, { MATCH: "product:list:*", COUNT: 100 });
+    expect(mockRedisDel).toHaveBeenCalledWith(["product:list:def456"]);
   });
 
   it("should not fail stock operation when cache invalidation throws", async () => {
