@@ -58,14 +58,14 @@ jobs:
           max_attempts: 3
           command: |
             docker buildx build \
-              --context ./${{ matrix.service.dir }} \
               --file ./${{ matrix.service.dir }}/Dockerfile \
               --push \
               --tag ${{ env.DOCKERHUB_USERNAME }}/d4c-${{ matrix.service.name }}:latest \
               --cache-from type=gha \
               --cache-to type=gha,mode=min \
               --provenance false \
-              --sbom false
+              --sbom false \
+              ./${{ matrix.service.dir }}
 
   deploy-ec2-1:
     needs: build-and-push
