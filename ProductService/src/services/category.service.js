@@ -93,12 +93,14 @@ class CategoryService {
       updatedAt: new Date().toISOString(),
     };
 
+    const result = await categoryModel.update(id, updateData);
+
     await cacheDelPattern("product:list:*");
     await cacheDelPattern("product:detail:*");
     await cacheDelPattern("product:related:*");
     await cacheDel(keys.featured());
     await cacheDelPattern("product:new-arrivals:*");
-    return await categoryModel.update(id, updateData);
+    return result;
   }
 
   async deleteCategory(id) {
