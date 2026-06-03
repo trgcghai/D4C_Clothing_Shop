@@ -12,6 +12,7 @@ export interface CartItem {
   subtotal: number;
   sku?: string;
   imageUrl?: string;
+  needsSync?: boolean;
 }
 
 export interface Cart {
@@ -20,6 +21,7 @@ export interface Cart {
   items: CartItem[];
   totalAmount: number;
   totalItems: number;
+  hasChanges?: boolean;
 }
 
 export interface AddCartItemPayload {
@@ -105,3 +107,30 @@ export const removeCartItemsBulk = async (
 
 export const clearCartAfterCheckout = () =>
   axiosInstance.post<void>("/api/cart/checkout/clear").then((res) => res.data);
+
+export interface SyncRequest {
+  variantIds?: string[];
+  forceSync?: boolean;
+}
+
+export interface SyncedItem {
+  variantId: string;
+  productName: string;
+  price: number;
+  quantity: number;
+  needsSync: boolean;
+}
+
+export interface SyncError {
+  variantId: string;
+  reason: string;
+  message: string;
+}
+
+export interface SyncResponse {
+  synced: SyncedItem[];
+  errors: SyncError[];
+}
+
+export const syncCartItems = (payload: SyncRequest) =>
+  axiosInstance.patch<SyncResponse>("/api/cart/sync", payload).then((res) => res.data);
