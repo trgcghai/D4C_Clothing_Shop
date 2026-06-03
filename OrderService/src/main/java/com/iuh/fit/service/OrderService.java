@@ -127,7 +127,7 @@ public class OrderService {
                         request.getItems().stream()
                                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
                                 .map(itemDto -> new com.iuh.fit.client.dto.BatchStockRequest(
-                                        itemDto.getVariantId(), itemDto.getQuantity()))
+                                        itemDto.getVariantId(), itemDto.getQuantity(), itemDto.getProductId()))
                                 .collect(Collectors.toList()),
                         ex.getMessage() + " | " + restoreEx.getMessage());
             }
@@ -216,7 +216,7 @@ public class OrderService {
     private void restoreStockForOrder(Order order) {
         List<BatchStockRequest> items = order.getItems().stream()
                 .filter(item -> item.getVariantId() != null && !item.getVariantId().isBlank())
-                .map(item -> new BatchStockRequest(item.getVariantId(), item.getQuantity()))
+                .map(item -> new BatchStockRequest(item.getVariantId(), item.getQuantity(), item.getProductId()))
                 .collect(Collectors.toList());
 
         if (items.isEmpty()) {
@@ -229,7 +229,7 @@ public class OrderService {
     private void restoreStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items) {
         List<BatchStockRequest> batchItems = items.stream()
                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
-                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
+                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity(), itemDto.getProductId()))
                 .collect(Collectors.toList());
 
         if (batchItems.isEmpty()) {
@@ -242,7 +242,7 @@ public class OrderService {
     private void deductStockForOrder(List<CreateOrderFromCheckoutRequest.CheckoutItemDto> items, String checkoutOrderId) {
         List<BatchStockRequest> batchItems = items.stream()
                 .filter(itemDto -> itemDto.getVariantId() != null && !itemDto.getVariantId().isBlank())
-                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity()))
+                .map(itemDto -> new BatchStockRequest(itemDto.getVariantId(), itemDto.getQuantity(), itemDto.getProductId()))
                 .collect(Collectors.toList());
 
         if (batchItems.isEmpty()) {
