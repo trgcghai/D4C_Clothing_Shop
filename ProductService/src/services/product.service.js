@@ -382,7 +382,7 @@ class ProductService {
     await cacheDelPattern("product:related:*");
     await cacheDelPattern("product:list:*");
     await cacheDelPattern("product:new-arrivals:*");
-    if (updateData.isFeatured !== undefined || existingProduct.isFeatured) {
+    if (existingProduct.isFeatured || updateData.isFeatured) {
       await cacheDel(keys.featured());
     }
     return updated;
