@@ -77,17 +77,25 @@ export default function PaymentPage() {
 
       try {
         await cancelPayment(parseInt(paymentId, 10));
+      } catch (error) {
+        // 409 = already expired/cancelled — treat as soft success
+        console.error("Cancel payment error (may be already expired):", error);
+      }
+
+      try {
         if (order) {
           await cancelOrder(order.id);
         }
-        if (reason === "expired") {
-          toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
-        }
-        if (!skipNavigate) {
-          navigate("/orders");
-        }
       } catch (error) {
-        console.error("Failed to cancel payment:", error);
+        // 400 = already cancelled — treat as soft success
+        console.error("Cancel order error (may be already cancelled):", error);
+      }
+
+      if (reason === "expired") {
+        toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
+      }
+      if (!skipNavigate) {
+        navigate("/orders");
       }
     },
     [paymentId, order, cancelPayment, cancelOrder, navigate],
