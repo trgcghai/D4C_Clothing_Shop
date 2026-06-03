@@ -17,7 +17,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findAllByIdInAndCartId(List<Long> itemIds, Long cartId);
     void deleteAllByIdInAndCartId(List<Long> itemIds, Long cartId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE CartItem ci SET ci.needsSync = true WHERE ci.productId = :productId")
     int markNeedsSyncByProductId(@Param("productId") String productId);
 
