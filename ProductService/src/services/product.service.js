@@ -177,8 +177,14 @@ class ProductService {
   }
 
   async getNewArrivals(limit = 8) {
+    const cacheKey = keys.newArrivals(limit);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const items = await productModel.findLatest(limit);
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.NEW_ARRIVALS);
+    return result;
   }
 
   async getRelatedProducts(productId) {
