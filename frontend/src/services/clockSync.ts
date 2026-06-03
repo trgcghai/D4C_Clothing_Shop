@@ -36,7 +36,7 @@ export function updateClockOffset(dateHeader: string | undefined | null): void {
 
 /**
  * Get current adjusted time: Date.now() + clockOffset.
- * Falls back to raw Date.now() if offset is 0 (no server time received yet).
+ * When clockOffset is 0 (no server time received), returns raw Date.now().
  */
 export function getAdjustedNow(): number {
   return Date.now() + clockOffset;
