@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -26,11 +27,10 @@ public class ProductUpdateListener {
         this.redisTemplate = redisTemplate;
     }
 
-    @Transactional
     @RabbitListener(queues = "${cart.rabbitmq.product-sync-queue:cart.product.sync.queue}")
-    @SuppressWarnings("unchecked")
     public void handleProductUpdate(Map<String, Object> message) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) message.get("data");
             if (data == null) {
                 log.warn("Received product update event with no data");
@@ -43,13 +43,7 @@ public class ProductUpdateListener {
                 return;
             }
 
-            int updatedCount = cartItemRepository.markNeedsSyncByProductId(productId);
-            if (updatedCount == 0) {
-                log.debug("No cart items affected by product update: {}", productId);
-                return;
-            }
-
-            log.info("Marked {} cart items as needsSync for product {}", updatedCount, productId);
+            cartItemRepository.markNeedsSyncByProductId(productId);
 
             List<Long> affectedUserIds = cartItemRepository.findDistinctUserIdsByProductId(productId);
             if (!affectedUserIds.isEmpty()) {
@@ -58,17 +52,18 @@ public class ProductUpdateListener {
             }
         } catch (Exception e) {
             log.error("Error processing product update event: {}", e.getMessage(), e);
+            throw e;
         }
     }
 
     private void evictCaches(List<Long> userIds) {
         try {
-            String[] keys = userIds.stream()
+            List<String> keys = userIds.stream()
                     .map(id -> CART_CACHE_PREFIX + id)
-                    .toArray(String[]::new);
-            redisTemplate.delete(List.of(keys));
+                    .toList();
+            redisTemplate.delete(keys);
         } catch (Exception e) {
-            log.error("Failed to evict caches: {}", e.getMessage());
+            log.warn("Failed to evict caches: {}", e.getMessage(), e);
         }
     }
 }
