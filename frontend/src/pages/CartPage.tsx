@@ -31,6 +31,7 @@ import {
 import { useCartSelection } from "@/src/hooks/useCartSelection";
 import { formatCurrency } from "@/src/lib/currencyFormatter";
 import type { ValidationError } from "@/src/services/cartApi";
+import { syncCartItems, getCart } from "@/src/services/cartApi";
 import {
   ShoppingCart,
   Trash2,
@@ -207,7 +208,7 @@ const CartPage = () => {
 
   const handleContinueCheckout = async () => {
     try {
-      const result = await syncMutation.mutateAsync({});
+      const result = await doSyncCartItems({});
       if (result.errors.length > 0) {
         const stockErrors = result.errors.filter(
           (e) => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK"
@@ -219,19 +220,18 @@ const CartPage = () => {
         }
       }
 
-      const refetched = await refetch();
-      if (refetched.data) {
-        const selectedItemsInCart = refetched.data.items.filter((item) =>
-          selectedIds.includes(item.id)
-        );
-        const newTotal = selectedItemsInCart.reduce(
-          (sum, item) => sum + item.subtotal,
-          0
-        );
-        setSyncedTotal(newTotal);
-        setShowValidationModal(false);
-        setShowConfirmationModal(true);
-      }
+      await refetch();
+      const cartData = await getCart();
+      const selectedItemsInCart = cartData.items.filter((item) =>
+        selectedIds.includes(item.id)
+      );
+      const newTotal = selectedItemsInCart.reduce(
+        (sum, item) => sum + item.subtotal,
+        0
+      );
+      setSyncedTotal(newTotal);
+      setShowValidationModal(false);
+      setShowConfirmationModal(true);
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error(error.response?.data?.message || "Không thể đồng bộ giỏ hàng");
@@ -242,12 +242,7 @@ const CartPage = () => {
   };
 
   const handleBackToCart = async () => {
-    try {
-      await syncMutation.mutateAsync({});
-      await refetch();
-    } catch {
-      await refetch();
-    }
+    await refetch();
     setShowValidationModal(false);
   };
 
@@ -494,8 +489,8 @@ const CartPage = () => {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 max-h-60 overflow-y-auto">
-          {validationErrors.map((error, idx) => (
-            <div key={idx} className="rounded-lg border p-3 text-sm">
+      {validationErrors.map((error, idx) => (
+        <div key={`${error.variantId}-${idx}`} className="rounded-lg border p-3 text-sm">
               <p className="font-medium">
                 {error.reason === "PRICE_CHANGED" && "Giá đã thay đổi"}
                 {error.reason === "NAME_CHANGED" && "Tên sản phẩm đã thay đổi"}
