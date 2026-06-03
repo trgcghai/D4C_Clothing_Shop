@@ -1,0 +1,272 @@
+<mxfile host="65bd71144e">
+    <diagram id="bDwzGq6Q1xA3_qDxAwsA" name="Page-1">
+        <mxGraphModel dx="2249" dy="1669" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" adaptiveColors="auto">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="D4C Clothing Shop - Choreography Saga Pattern (Order &amp; Payment Flow)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="220" y="-380" width="900" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" value="Event-driven saga with Outbox pattern | RabbitMQ topic exchanges | Compensation via payment expiry/cancellation" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#666666" parent="1" vertex="1">
+                    <mxGeometry x="270" y="-345" width="800" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="browser" value="Browser&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;React 19&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=9;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="-90" width="90" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="cart_svc" value="CartService&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Port 8084&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Spring Boot + Redis&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="110" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="order_svc" value="OrderService&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Port 8085&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Spring Boot + Outbox&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="325" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="product_svc" value="ProductService&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Port 8082&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Node.js + DynamoDB&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="560" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="payment_svc" value="PaymentService&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Port 8086&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Spring Boot + SePay&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="780" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sepay" value="SePay&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;QR Payment&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="1055" width="90" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="notification_svc" value="NotificationService&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Port 8083&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Spring Boot + SMTP&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=9" parent="1" vertex="1">
+                    <mxGeometry x="960" y="100" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="rabbitmq" value="RabbitMQ&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Topic Exchanges&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;payment.exchange&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;order.exchange&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;email.exchange&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#b0c4de;strokeColor=#6b8e9f;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="315" y="220" width="130" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="outbox_order" value="Outbox Table&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;(OrderService DB)&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;OutboxPublisherJob&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;every 5s, ShedLock&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#ff9800;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="220" y="-175" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="outbox_payment" value="Outbox Table&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;(PaymentService DB)&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;PaymentExpiryJob&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;always uses outbox&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#ff9800;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="890" y="-260" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="mariadb" value="MariaDB&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;order_db, payment_db&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#b0c4de;strokeColor=#6b8e9f;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="640" y="-170" width="100" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="dynamodb" value="DynamoDB&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Products, Variants&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#b0c4de;strokeColor=#6b8e9f;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="660" y="200" width="100" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="smtp" value="SMTP&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Email delivery&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="980" y="240" width="90" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="expiry_job" value="PaymentExpiryJob&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;every 60s, ShedLock&lt;/font&gt;&#xa;&lt;font style=&quot;font-size: 8px&quot;&gt;Finds expired payments&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="830" y="240" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="step1" value="Step 1: POST /api/cart/checkout&#xa;Validate cart, create order draft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="120" y="380" width="140" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="step2" value="Step 2: POST /api/orders/checkout&#xa;Create order (PENDING_PAYMENT)&#xa;REST: batchDeductStock -&gt; ProductService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="300" y="380" width="160" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="step3" value="Step 3: Save ORDER_CREATED&#xa;email event to outbox" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#ff9800;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="500" y="380" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="step4" value="Step 4: POST /api/payments&#xa;Create payment (PENDING, 5min expiry)&#xa;Return QR URL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="660" y="380" width="140" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="step5" value="Step 5: Customer scans QR &amp; pays&#xa;SePay webhook -&gt; POST /api/webhooks/sepay&#xa;HMAC-SHA256 verified" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="840" y="380" width="150" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="step6" value="Step 6: PaymentService.markAsPaid()&#xa;PENDING -&gt; PAID&#xa;Publish PAYMENT_CONFIRMED&#xa;(outbox or direct)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="1030" y="380" width="140" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="step7" value="Step 7: payment.confirmed queue&#xa;OrderService consumes&#xa;Order: PENDING_PAYMENT -&gt; PAID&#xa;Publish ORDER_PAID + email to outbox" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="120" y="480" width="160" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="step8" value="Step 8: email.order.notifications queue&#xa;NotificationService consumes&#xa;Send order paid email via SMTP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="320" y="480" width="140" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="compensation_title" value="COMPENSATION FLOWS (Payment Expired / Cancelled)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=12;fontStyle=1;fontColor=#f44336" parent="1" vertex="1">
+                    <mxGeometry x="500" y="480" width="400" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="comp_step1" value="Trigger: PaymentExpiryJob (60s)&#xa;or REST cancel payment&#xa;PENDING -&gt; EXPIRED/CANCELLED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="500" y="510" width="140" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="comp_step2" value="Publish PAYMENT_EXPIRED/CANCELLED&#xa;to payment.exchange (outbox)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="680" y="510" width="140" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="comp_step3" value="OrderService consumes&#xa;payment.expired/cancelled queue&#xa;Order: PENDING_PAYMENT -&gt; CANCELLED&#xa;Publish ORDER_CANCELLED + email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="860" y="510" width="150" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="comp_step4" value="ProductService consumes&#xa;order.cancelled queue&#xa;Redis idempotency check&#xa;batchRestoreStock() -&gt; DynamoDB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="1050" y="510" width="140" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="comp_step5" value="NotificationService consumes&#xa;email.order.notifications&#xa;Send order cancelled email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#f44336;fontSize=8" parent="1" vertex="1">
+                    <mxGeometry x="1230" y="510" width="130" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_browser_cart" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=2;fontSize=8" parent="1" source="browser" target="cart_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_cart_order" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=2;fontSize=8" parent="1" source="cart_svc" target="order_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_order_product" value="REST&#xa;batchDeductStock" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=1;fontSize=8" parent="1" source="order_svc" target="product_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_order_payment" value="REST&#xa;createPayment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=1;fontSize=8" parent="1" source="order_svc" target="payment_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="385" y="-30"/>
+                            <mxPoint x="840" y="-30"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_payment_sepay" value="QR URL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=1;fontSize=8" parent="1" source="payment_svc" target="sepay" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_sepay_payment" value="Webhook&#xa;HMAC verify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4caf50;strokeWidth=1;fontSize=8" parent="1" source="sepay" target="payment_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_payment_rabbitmq" value="payment.confirmed&#xa;(outbox/direct)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2196f3;strokeWidth=1;fontSize=8" parent="1" source="payment_svc" target="rabbitmq" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="840" y="170"/>
+                            <mxPoint x="510" y="170"/>
+                            <mxPoint x="510" y="250"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_rabbitmq_order" value="payment.confirmed queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2196f3;strokeWidth=1;fontSize=8" parent="1" source="rabbitmq" target="order_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="380" y="130"/>
+                            <mxPoint x="380" y="130"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_order_rabbitmq_email" value="email.order.paid&#xa;(outbox)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2196f3;strokeWidth=1;fontSize=8" parent="1" source="order_svc" target="rabbitmq" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="420" y="140"/>
+                            <mxPoint x="420" y="140"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_rabbitmq_notification" value="email.order.notifications queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2196f3;strokeWidth=1;fontSize=8" parent="1" source="rabbitmq" target="notification_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1130" y="320"/>
+                            <mxPoint x="1130" y="125"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_order_outbox" value="Save events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ff9800;strokeWidth=1;fontSize=8" parent="1" source="order_svc" target="outbox_order" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="-130"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_outbox_rabbitmq" value="Publish pending&#xa;every 5s" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ff9800;strokeWidth=1;fontSize=8" parent="1" source="outbox_order" target="rabbitmq" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="270" y="150"/>
+                            <mxPoint x="330" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_payment_outbox" value="Save events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ff9800;strokeWidth=1;fontSize=8" parent="1" source="payment_svc" target="outbox_payment" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="880" y="-90"/>
+                            <mxPoint x="940" y="-90"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_outbox_payment_rabbitmq" value="Publish pending&#xa;every 5s" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ff9800;strokeWidth=1;fontSize=8" parent="1" source="outbox_payment" target="rabbitmq" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="350" y="-220"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_order_mariadb" value="JDBC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b8e9f;strokeWidth=1;fontSize=8" parent="1" source="order_svc" target="mariadb" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="420" y="-50"/>
+                            <mxPoint x="560" y="-50"/>
+                            <mxPoint x="560" y="-135"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_payment_mariadb" value="JDBC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b8e9f;strokeWidth=1;fontSize=8" parent="1" source="payment_svc" target="mariadb" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="830" y="-135"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_product_dynamodb" value="AWS SDK&#xa;quantity -= qty" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b8e9f;strokeWidth=1;fontSize=8" parent="1" source="product_svc" target="dynamodb" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="680" y="25" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="600" y="235"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_notification_smtp" value="SMTP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=1;fontSize=8" parent="1" source="notification_svc" target="smtp" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge_expiry_payment" value="Finds expired" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="expiry_job" target="payment_svc" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="860" y="190"/>
+                            <mxPoint x="860" y="190"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_expiry_outbox" value="Saves to outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="expiry_job" target="outbox_payment" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="910" y="60"/>
+                            <mxPoint x="1000" y="60"/>
+                            <mxPoint x="1000" y="-220"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_comp_rabbitmq" value="payment.expired/cancelled" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="rabbitmq" target="comp_step3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="380" y="340"/>
+                            <mxPoint x="830" y="340"/>
+                            <mxPoint x="830" y="543"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_comp_order_product" value="order.cancelled queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="comp_step3" target="comp_step4" edge="1">
+                    <mxGeometry y="13" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_comp_order_notification" value="email.order.cancelled" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="comp_step3" target="comp_step5" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="935" y="640"/>
+                            <mxPoint x="1295" y="640"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_comp_product_dynamodb" value="quantity += qty" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="comp_step4" target="dynamodb" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1120" y="480"/>
+                            <mxPoint x="1220" y="480"/>
+                            <mxPoint x="1220" y="330"/>
+                            <mxPoint x="710" y="330"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge_comp_notification_smtp" value="SMTP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f44336;strokeWidth=1;fontSize=8" parent="1" source="comp_step5" target="smtp" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1300" y="265"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step_flow_label" value="HAPPY PATH (Steps 1-8)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontStyle=1;fontColor=#4caf50" parent="1" vertex="1">
+                    <mxGeometry x="300" y="350" width="180" height="25" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
