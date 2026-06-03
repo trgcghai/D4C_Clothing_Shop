@@ -98,6 +98,20 @@ export const getProduct = async (req, res) => {
   }
 };
 
+export const bulkGetProducts = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: "productIds must be a non-empty array" });
+    }
+    const products = await productService.getProductsByIds(productIds);
+    res.status(200).json({ products });
+  } catch (error) {
+    console.error("Error bulk get products:", error);
+    res.status(500).json({ message: "Loi server khi lay san pham", error: error.message });
+  }
+};
+
 /**
  * GET /api/products/:id/related
  */

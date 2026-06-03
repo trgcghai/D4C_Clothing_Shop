@@ -1,8 +1,9 @@
 import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
 import { categoryModel } from "../models/category.model.js";
-import { s3Client } from "../config/aws.config.js";
+import { s3Client, dynamoClient } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { BatchGetItemCommand } from "@aws-sdk/client-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { publishProductEvent } from "./event-publisher.service.js";
@@ -11,6 +12,7 @@ dotenv.config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME || "d4c-clothingshop-products-bucket";
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
+const TABLE_NAME = process.env.TABLE_NAME || "d4c_products";
 
 class ProductService {
   async _populateRelations(product) {
@@ -184,6 +186,31 @@ class ProductService {
   async getProductById(id) {
     const product = await productModel.findById(id);
     return await this._populateRelations(product);
+  }
+
+  async getProductsByIds(ids) {
+    if (!ids || ids.length === 0) return {};
+    const products = {};
+
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE);
+      const params = {
+        RequestItems: {
+          [TABLE_NAME]: {
+            Keys: chunk.map((id) => ({ id })),
+          },
+        },
+      };
+      const command = new BatchGetItemCommand(params);
+      const response = await dynamoClient.send(command);
+      const items = response.Responses?.[TABLE_NAME] || [];
+      for (const item of items) {
+        item.variants = await variantModel.findByProductId(item.id);
+        products[item.id] = item;
+      }
+    }
+    return products;
   }
 
   async createProduct(data, file) {
