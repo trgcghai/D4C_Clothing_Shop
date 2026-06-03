@@ -10,8 +10,10 @@ import {
   clearCartAfterCheckout,
   partialCheckout,
   removeCartItemsBulk,
+  syncCartItems,
   type AddCartItemPayload,
   type UpdateCartItemPayload,
+  type SyncRequest,
 } from "@/src/services/cartApi";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
@@ -169,6 +171,25 @@ export function useRemoveCartItemsBulk() {
         toast.error(msg);
       } else {
         toast.error("Không thể xóa sản phẩm");
+      }
+    },
+  });
+}
+
+export function useSyncCartItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SyncRequest) => syncCartItems(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const msg = error.response?.data?.message || "Khong the dong bo gio hang";
+        toast.error(msg);
+      } else {
+        toast.error("Khong the dong bo gio hang");
       }
     },
   });
