@@ -30,6 +30,10 @@ class ProductService {
   }
 
   async getProductsWithFilters(query = {}) {
+    const cacheKey = keys.list(query);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const {
       category,
       categoryId,
@@ -45,13 +49,11 @@ class ProductService {
       limit = 12,
     } = query;
 
-    // ── Performance: bulk-fetch ALL variants & categories in 2 parallel calls ──
     const [allVariants, allCategories] = await Promise.all([
       variantModel.findAll(),
       categoryModel.findAll(),
     ]);
 
-    // Build lookup maps for O(1) access
     const variantsByProductId = {};
     for (const v of allVariants) {
       if (!variantsByProductId[v.productId]) variantsByProductId[v.productId] = [];
@@ -63,7 +65,6 @@ class ProductService {
       categoryById[c.id] = c;
       categoryByName[c.name.toLowerCase()] = c;
     }
-    // ───────────────────────────────────────────────────────────────────────────
 
     const filters = {};
     let catId = categoryId;
@@ -85,7 +86,6 @@ class ProductService {
     const populatedItems = [];
     for (const item of items) {
       const variants = variantsByProductId[item.id] || [];
-
       let match = true;
       if (sizes.length > 0) {
         match = match && variants.some(v => sizes.includes(v.size) && Number(v.quantity) > 0);
@@ -93,7 +93,6 @@ class ProductService {
       if (colors.length > 0) {
         match = match && variants.some(v => colors.includes(v.color.toLowerCase()));
       }
-
       if (match) {
         item.variants = variants;
         item.category = categoryById[item.categoryId]?.name || null;
@@ -111,16 +110,9 @@ class ProductService {
       const aFeatured = a.isFeatured === true ? 1 : 0;
       const bFeatured = b.isFeatured === true ? 1 : 0;
       if (bFeatured !== aFeatured) return bFeatured - aFeatured;
-
-      if (sortKey === "name") {
-        return orderMultiplier * (a.name || "").localeCompare(b.name || "", "vi");
-      }
-      if (sortKey === "price") {
-        return orderMultiplier * (Number(a.price) - Number(b.price));
-      }
-      if (sortKey === "createdAt") {
-        return orderMultiplier * (new Date(a.createdAt) - new Date(b.createdAt));
-      }
+      if (sortKey === "name") return orderMultiplier * (a.name || "").localeCompare(b.name || "", "vi");
+      if (sortKey === "price") return orderMultiplier * (Number(a.price) - Number(b.price));
+      if (sortKey === "createdAt") return orderMultiplier * (new Date(a.createdAt) - new Date(b.createdAt));
       return 0;
     });
 
@@ -131,7 +123,9 @@ class ProductService {
     const startIdx = (pageNum - 1) * limitNum;
     const data = items.slice(startIdx, startIdx + limitNum);
 
-    return { data, total, page: pageNum, limit: limitNum, totalPages };
+    const result = { data, total, page: pageNum, limit: limitNum, totalPages };
+    await cacheSet(cacheKey, result, TTL.LIST);
+    return result;
   }
 
   async searchProducts(keyword, options = {}) {
