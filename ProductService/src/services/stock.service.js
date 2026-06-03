@@ -1,6 +1,6 @@
 import { dynamoClient } from "../config/aws.config.js";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
-import { cacheDel, cacheDelPattern, keys } from "./cache.service.js";
+import { cacheGet, cacheSet, cacheDelPattern, keys, TTL } from "./cache.service.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -44,7 +44,7 @@ class StockService {
         await redisClient.set(`idempotency:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
       }
 
-      await this.invalidateProductCache(items);
+      await this.updateProductCache(items, -1);
 
       return result;
     } catch (error) {
@@ -92,7 +92,7 @@ class StockService {
         await redisClient.set(`idempotency:restore:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
       }
 
-      await this.invalidateProductCache(items);
+      await this.updateProductCache(items, 1);
 
       return result;
     } catch (error) {
@@ -104,17 +104,37 @@ class StockService {
     }
   }
 
-  async invalidateProductCache(items) {
+  async updateProductCache(items, delta) {
     try {
       const productIds = [...new Set(items.map(item => item.productId).filter(Boolean))];
       for (const productId of productIds) {
-        await cacheDel(keys.detail(productId));
+        await this.updateDetailCache(productId, items, delta);
       }
       if (productIds.length > 0) {
         await cacheDelPattern("product:list:*");
       }
     } catch (err) {
-      console.error("[Stock] Cache invalidation error:", err.message);
+      console.error("[Stock] Cache update error:", err.message);
+    }
+  }
+
+  async updateDetailCache(productId, items, delta) {
+    const cacheKey = keys.detail(productId);
+    const cached = await cacheGet(cacheKey);
+    if (!cached || !cached.variants) return;
+
+    const itemsForProduct = items.filter(item => item.productId === productId);
+    let changed = false;
+    for (const item of itemsForProduct) {
+      const variant = cached.variants.find(v => v.id === item.variantId);
+      if (variant) {
+        variant.quantity = Number(variant.quantity) + delta * Number(item.quantity);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await cacheSet(cacheKey, cached, TTL.DETAIL);
     }
   }
 
