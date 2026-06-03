@@ -1,5 +1,4 @@
-import { cacheGet, cacheSet, TTL } from "../services/cache.service.js";
-import { keys } from "../services/cache.service.js";
+import { cacheGet, cacheSet, TTL, keys } from "../services/cache.service.js";
 
 export const getCachedRecommendations = async (req, res) => {
   try {
@@ -10,7 +9,6 @@ export const getCachedRecommendations = async (req, res) => {
     }
     res.status(200).json(cached);
   } catch (error) {
-    console.error("[Cache] GET recommendations error:", error);
     res.status(500).json({ message: "Cache error", error: error.message });
   }
 };
@@ -24,7 +22,6 @@ export const cacheRecommendations = async (req, res) => {
     await cacheSet(keys.recommendations(userId), data, TTL.RECOMMENDATIONS);
     res.status(200).json({ message: "Recommendations cached", userId });
   } catch (error) {
-    console.error("[Cache] SET recommendations error:", error);
     res.status(500).json({ message: "Cache error", error: error.message });
   }
 };
