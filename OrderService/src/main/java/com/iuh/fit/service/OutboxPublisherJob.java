@@ -5,9 +5,6 @@ import com.iuh.fit.repository.OutboxEventRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageBuilder;
-import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -15,7 +12,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -59,14 +55,7 @@ public class OutboxPublisherJob {
     @Transactional
     public void publishSingleEvent(OutboxEvent event) {
         try {
-            String typeId = resolveTypeId(event.getRoutingKey());
-            MessageProperties props = new MessageProperties();
-            props.setContentType("application/json");
-            props.setHeader("__TypeId__", typeId);
-            Message message = MessageBuilder.withBody(event.getPayload().getBytes(StandardCharsets.UTF_8))
-                    .andProperties(props)
-                    .build();
-            rabbitTemplate.send(event.getExchange(), event.getRoutingKey(), message);
+            rabbitTemplate.convertAndSend(event.getExchange(), event.getRoutingKey(), event.getPayload());
             event.setStatus("PUBLISHED");
             event.setPublishedAt(Instant.now());
             event.setRetryAfter(null);
