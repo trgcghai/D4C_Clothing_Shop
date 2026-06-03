@@ -133,34 +133,35 @@ export default function PaymentPage() {
     paymentCompletedRef.current = true;
 
     if (status === "PAID") {
+      const orderId = payment?.orderId;
       if (removeItemIds.length > 0) {
         removeItemsBulk({ itemIds: removeItemIds })
           .then(() => {
-            if (payment?.orderId) {
+            if (orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment.orderId),
+                queryKey: userOrderKeys.detail(orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment.orderId}`);
+            navigate(`/orders/${orderId}`);
           })
           .catch(() => {
-            if (payment?.orderId) {
+            if (orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment.orderId),
+                queryKey: userOrderKeys.detail(orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment.orderId}`);
+            navigate(`/orders/${orderId}`);
           });
       } else {
-        if (payment?.orderId) {
+        if (orderId) {
           queryClient.invalidateQueries({
-            queryKey: userOrderKeys.detail(payment.orderId),
+            queryKey: userOrderKeys.detail(orderId),
           });
         }
         toast.success("Thanh toán thành công!");
-        navigate(`/orders/${payment.orderId}`);
+        navigate(`/orders/${orderId}`);
       }
     } else if (status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
