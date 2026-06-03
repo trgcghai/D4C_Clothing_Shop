@@ -1,6 +1,7 @@
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import axios from "axios";
 import { useStore } from "@/src/store";
+import { updateClockOffset } from "./clockSync";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -43,7 +44,13 @@ axiosInstance.interceptors.request.use(
 
 // Response interceptor: tự động refresh khi 401
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const dateHeader = response.headers["date"] ?? response.headers["Date"];
+    if (dateHeader) {
+      updateClockOffset(dateHeader as string);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
