@@ -58,4 +58,22 @@ export function getCircuitBreakerStats() {
   return circuitBreaker.stats;
 }
 
-export { circuitBreaker };
+export async function getCachedRecommendations(userId) {
+  const url = `/api/products/cache/recommendations/${userId}`;
+  try {
+    const response = await axiosInstance.get(url, { timeout: 3000 });
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) return null;
+    return null;
+  }
+}
+
+export async function postCachedRecommendations(userId, data) {
+  const url = `/api/products/cache/recommendations`;
+  try {
+    await axiosInstance.post(url, { userId, data }, { timeout: 3000 });
+  } catch (error) {
+    console.warn("[Recs] Failed to cache recommendations:", error.message);
+  }
+}

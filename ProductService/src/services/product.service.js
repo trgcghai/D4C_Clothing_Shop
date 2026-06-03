@@ -6,6 +6,7 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { publishProductEvent } from "./event-publisher.service.js";
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern, TTL, keys } from "./cache.service.js";
 
 dotenv.config();
 
@@ -29,6 +30,10 @@ class ProductService {
   }
 
   async getProductsWithFilters(query = {}) {
+    const cacheKey = keys.list(query);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const {
       category,
       categoryId,
@@ -44,13 +49,11 @@ class ProductService {
       limit = 12,
     } = query;
 
-    // ── Performance: bulk-fetch ALL variants & categories in 2 parallel calls ──
     const [allVariants, allCategories] = await Promise.all([
       variantModel.findAll(),
       categoryModel.findAll(),
     ]);
 
-    // Build lookup maps for O(1) access
     const variantsByProductId = {};
     for (const v of allVariants) {
       if (!variantsByProductId[v.productId]) variantsByProductId[v.productId] = [];
@@ -62,7 +65,6 @@ class ProductService {
       categoryById[c.id] = c;
       categoryByName[c.name.toLowerCase()] = c;
     }
-    // ───────────────────────────────────────────────────────────────────────────
 
     const filters = {};
     let catId = categoryId;
@@ -84,7 +86,6 @@ class ProductService {
     const populatedItems = [];
     for (const item of items) {
       const variants = variantsByProductId[item.id] || [];
-
       let match = true;
       if (sizes.length > 0) {
         match = match && variants.some(v => sizes.includes(v.size) && Number(v.quantity) > 0);
@@ -92,7 +93,6 @@ class ProductService {
       if (colors.length > 0) {
         match = match && variants.some(v => colors.includes(v.color.toLowerCase()));
       }
-
       if (match) {
         item.variants = variants;
         item.category = categoryById[item.categoryId]?.name || null;
@@ -110,16 +110,9 @@ class ProductService {
       const aFeatured = a.isFeatured === true ? 1 : 0;
       const bFeatured = b.isFeatured === true ? 1 : 0;
       if (bFeatured !== aFeatured) return bFeatured - aFeatured;
-
-      if (sortKey === "name") {
-        return orderMultiplier * (a.name || "").localeCompare(b.name || "", "vi");
-      }
-      if (sortKey === "price") {
-        return orderMultiplier * (Number(a.price) - Number(b.price));
-      }
-      if (sortKey === "createdAt") {
-        return orderMultiplier * (new Date(a.createdAt) - new Date(b.createdAt));
-      }
+      if (sortKey === "name") return orderMultiplier * (a.name || "").localeCompare(b.name || "", "vi");
+      if (sortKey === "price") return orderMultiplier * (Number(a.price) - Number(b.price));
+      if (sortKey === "createdAt") return orderMultiplier * (new Date(a.createdAt) - new Date(b.createdAt));
       return 0;
     });
 
@@ -130,7 +123,9 @@ class ProductService {
     const startIdx = (pageNum - 1) * limitNum;
     const data = items.slice(startIdx, startIdx + limitNum);
 
-    return { data, total, page: pageNum, limit: limitNum, totalPages };
+    const result = { data, total, page: pageNum, limit: limitNum, totalPages };
+    await cacheSet(cacheKey, result, TTL.LIST);
+    return result;
   }
 
   async searchProducts(keyword, options = {}) {
@@ -165,25 +160,50 @@ class ProductService {
   }
 
   async getFeaturedProducts() {
+    const cacheKey = keys.featured();
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const items = await productModel.findFeatured();
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.FEATURED);
+    return result;
   }
 
   async getNewArrivals(limit = 8) {
+    const cacheKey = keys.newArrivals(limit);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const items = await productModel.findLatest(limit);
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.NEW_ARRIVALS);
+    return result;
   }
 
   async getRelatedProducts(productId) {
+    const cacheKey = keys.related(productId);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const product = await productModel.findById(productId);
     if (!product) throw new Error("Không tìm thấy sản phẩm");
     const items = await productModel.findRelated(product.categoryId, productId, 6);
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.RELATED);
+    return result;
   }
 
   async getProductById(id) {
+    const cacheKey = keys.detail(id);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const product = await productModel.findById(id);
-    return await this._populateRelations(product);
+    if (!product) return null;
+    const result = await this._populateRelations(product);
+    await cacheSet(cacheKey, result, TTL.DETAIL);
+    return result;
   }
 
   async createProduct(data, file) {
@@ -261,6 +281,12 @@ class ProductService {
       createdAt: newProduct.createdAt,
       variants: populated.variants || [],
     });
+    // Invalidate caches
+    if (newProduct.isFeatured) {
+      await cacheDel(keys.featured());
+    }
+    await cacheDelPattern("product:new-arrivals:*");
+    await cacheDelPattern("product:list:*");
     return populated;
   }
 
@@ -351,6 +377,14 @@ class ProductService {
       createdAt: updated.createdAt,
       variants: updated.variants || [],
     });
+    // Invalidate caches
+    await cacheDel(keys.detail(id));
+    await cacheDelPattern("product:related:*");
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:new-arrivals:*");
+    if (existingProduct.isFeatured || updateData.isFeatured) {
+      await cacheDel(keys.featured());
+    }
     return updated;
   }
 
@@ -372,6 +406,14 @@ class ProductService {
     await variantModel.removeByProductId(id);
     await productModel.remove(id);
     publishProductEvent("DELETE", { id });
+    // Invalidate caches
+    await cacheDel(keys.detail(id));
+    await cacheDelPattern("product:related:*");
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:new-arrivals:*");
+    if (existingProduct.isFeatured) {
+      await cacheDel(keys.featured());
+    }
     return { success: true, message: "Đã xóa sản phẩm thành công" };
   }
 

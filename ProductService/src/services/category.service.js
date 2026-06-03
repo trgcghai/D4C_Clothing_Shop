@@ -4,6 +4,7 @@ import { s3Client } from "../config/aws.config.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
+import { cacheDel, cacheDelPattern, keys } from "./cache.service.js";
 
 dotenv.config();
 
@@ -44,6 +45,11 @@ class CategoryService {
     };
 
     await categoryModel.create(newCategory);
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:detail:*");
+    await cacheDelPattern("product:related:*");
+    await cacheDel(keys.featured());
+    await cacheDelPattern("product:new-arrivals:*");
     return newCategory;
   }
 
@@ -87,7 +93,14 @@ class CategoryService {
       updatedAt: new Date().toISOString(),
     };
 
-    return await categoryModel.update(id, updateData);
+    const result = await categoryModel.update(id, updateData);
+
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:detail:*");
+    await cacheDelPattern("product:related:*");
+    await cacheDel(keys.featured());
+    await cacheDelPattern("product:new-arrivals:*");
+    return result;
   }
 
   async deleteCategory(id) {
@@ -115,6 +128,11 @@ class CategoryService {
     }
 
     await categoryModel.remove(id);
+    await cacheDelPattern("product:list:*");
+    await cacheDelPattern("product:detail:*");
+    await cacheDelPattern("product:related:*");
+    await cacheDel(keys.featured());
+    await cacheDelPattern("product:new-arrivals:*");
     return { success: true, message: "Category deleted" };
   }
 }

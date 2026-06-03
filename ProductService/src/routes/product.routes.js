@@ -16,6 +16,7 @@ import {
   restoreStock,
 } from "../controllers/product.controller.js";
 import { importZipProducts } from "../controllers/zip-import.controller.js";
+import cacheRouter from "./cache.routes.js";
 
 const router = express.Router();
 
@@ -25,6 +26,9 @@ const router = express.Router();
  *   - name: products
  *     description: Product browsing and management endpoints
  */
+
+// ─── Cache routes ────────────────────────────────────────────────────────────────
+router.use("/cache", cacheRouter);
 
 // ─── Special routes MUST be before /:id ────────────────────────────────────────
 /**
