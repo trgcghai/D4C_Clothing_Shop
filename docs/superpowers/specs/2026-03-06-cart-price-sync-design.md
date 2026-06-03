@@ -49,7 +49,17 @@ Frontend (React)
 **New Queue**: `cart.product.sync.queue`  
 **Binding**: `product.exchange` → queue, routing key: `product.updated`
 
-**Listener**: Consumes `product.updated` events, extracts productId, finds all cart items matching that productId, compares event payload (price, name, imageUrl, stock) against stored CartItem fields. If any differs, set `needsSync = true`.
+**Listener**: Consumes `product.updated` events, extracts `productId`. Executes a **single SQL UPDATE** to flag affected cart items:
+```sql
+UPDATE cart_items SET needs_sync = TRUE WHERE product_id = ?
+```
+This is a database-level operation — no cart items are loaded into memory, preventing OOM even when a product exists in 10,000+ carts.
+
+After the UPDATE, the listener queries affected users and invalidates their Redis caches:
+```sql
+SELECT DISTINCT user_id FROM cart_items WHERE product_id = ? AND needs_sync = TRUE
+```
+For each userId returned, calls `redisTemplate.delete("cart:" + userId)` using Redis pipelining to batch deletes in a single round trip.
 
 **Event payload structure** (from ProductService):
 ```json
@@ -77,12 +87,13 @@ Frontend (React)
 ```
 
 **Behavior**:
-- For each target CartItem, fetches current product data via ProductServiceClient
-- Updates CartItem fields: `price`, `productName`, `imageUrl`, `color`, `size`, `sku`
-- Validates stock: if variant stock < requested quantity, adds to error list
-- Sets `needsSync = false` on successfully synced items
-- Invalidates Redis cache
-- Returns: `{ synced: CartItem[], errors: [{ variantId, reason, message }] }`
+1. Collects unique `productId`s from target CartItems
+2. Calls `POST /api/products/bulk` with `{ productIds: [...] }` — **single network call** returns all product data at once (avoids N+1)
+3. For each CartItem, matches against bulk response and updates fields: `price`, `productName`, `imageUrl`, `color`, `size`, `sku`
+4. Validates stock: if variant stock < requested quantity, adds to error list
+5. Sets `needsSync = false` on successfully synced items
+6. Invalidates Redis cache for the user
+7. Returns: `{ synced: CartItem[], errors: [{ variantId, reason, message }] }`
 
 **Response**:
 ```json
@@ -123,6 +134,29 @@ Frontend (React)
 #### 3. `POST /api/cart/{userId}/checkout` (No change)
 
 Existing `validateCart()` runs as before. After sync, data is fresh so validation passes.
+
+#### 4. `POST /api/products/bulk` (New — ProductService)
+
+**Purpose**: Bulk fetch product data to avoid N+1 calls during cart sync.
+
+**Request body**:
+```json
+{
+  "productIds": ["uuid1", "uuid2", "uuid3"]
+}
+```
+
+**Response**:
+```json
+{
+  "products": {
+    "uuid1": { "id": "uuid1", "name": "...", "price": 100, "imageUrl": "...", "variants": [...] },
+    "uuid2": { "id": "uuid2", "name": "...", "price": 200, "imageUrl": "...", "variants": [...] }
+  }
+}
+```
+
+**Behavior**: Queries DynamoDB for all requested products in parallel, returns as a map keyed by productId.
 
 ### Frontend Flow
 
@@ -166,14 +200,21 @@ Existing `validateCart()` runs as before. After sync, data is fresh so validatio
 - **ProductService unavailable during sync**: Return error, user stays in cart, can retry
 - **RabbitMQ event lost**: Redis cache TTL (30 min) limits stale data window; validateCart() catches at checkout
 - **Race condition** (user checks out while sync is running): Optimistic locking via `updatedAt` or checkout validation re-checks
+- **Redis cache invalidation on event**: When `ProductUpdateListener` sets `needs_sync = true`, it immediately evicts Redis cache for all affected users via pipelined `DEL cart:{userId}` calls. This ensures `GET /api/cart` always returns fresh data with correct `hasChanges` flag — no 30-minute stale window.
+- **Bulk fetch fallback**: If ProductService does not yet support `POST /api/products/bulk`, CartService batches product IDs into groups of 10 and calls `GET /api/products/{id}` in parallel via `CompletableFuture` to minimize latency.
 
 ### Testing Strategy
 
 **CartService (JUnit 5)**:
-- Unit test: `ProductUpdateListener` — verifies needsSync flagging logic
-- Unit test: `CartService.syncItems()` — verifies field updates, stock validation, error reporting
-- Integration test: Full sync flow with mock ProductServiceClient
-- Integration test: RabbitMQ event consumption and cart item flagging
+- Unit test: `ProductUpdateListener` — verifies SQL UPDATE sets needsSync, Redis pipeline deletes correct keys
+- Unit test: `ProductUpdateListener` — verifies no OOM with large affected user count (mock repository)
+- Unit test: `CartService.syncItems()` — verifies bulk fetch call, field updates, stock validation, error reporting
+- Integration test: Full sync flow with mock ProductServiceClient (bulk endpoint)
+- Integration test: RabbitMQ event consumption → DB update → Redis cache eviction
+
+**ProductService (Jest)**:
+- Unit test: `POST /api/products/bulk` — returns correct product map, handles missing IDs gracefully
+- Integration test: Bulk fetch against DynamoDB
 
 **Frontend**:
 - Manual testing of checkout modal flow (Yes/No paths)
@@ -192,12 +233,19 @@ Existing `validateCart()` runs as before. After sync, data is fresh so validatio
 |---|---|
 | `CartService/src/.../domain/entity/CartItem.java` | Add `needsSync` field |
 | `CartService/src/.../config/RabbitMQConfig.java` | Add product.sync queue + binding |
-| `CartService/src/.../listener/ProductUpdateListener.java` | New file — consumes product.updated |
-| `CartService/src/.../service/CartService.java` | Add `syncItems()` method, enhance `getCart()` to set `hasChanges` |
+| `CartService/src/.../listener/ProductUpdateListener.java` | New file — consumes product.updated, SQL UPDATE + Redis pipeline delete |
+| `CartService/src/.../service/CartService.java` | Add `syncItems()` with bulk fetch, enhance `getCart()` to set `hasChanges` |
+| `CartService/src/.../client/ProductServiceClient.java` | Add `bulkGetProducts(@RequestBody BulkProductRequest)` method |
 | `CartService/src/.../domain/dto/SyncRequest.java` | New DTO |
 | `CartService/src/.../domain/dto/SyncResponse.java` | New DTO |
+| `CartService/src/.../domain/dto/BulkProductRequest.java` | New DTO — `{ productIds: string[] }` |
+| `CartService/src/.../domain/dto/BulkProductResponse.java` | New DTO — `Map<productId, ProductDto>` |
+| `CartService/src/.../repository/CartItemRepository.java` | Add `@Modifying @Query` for bulk UPDATE needs_sync, `findDistinctUserIdsByProductId` |
 | `CartService/src/.../controller/CartController.java` | Add `PATCH /{userId}/sync` endpoint |
 | `CartService/src/main/resources/application.properties` | Enable listener |
+| `ProductService/src/controllers/product.controller.js` | Add `POST /api/products/bulk` endpoint |
+| `ProductService/src/services/product.service.js` | Add bulk fetch logic |
+| `ProductService/src/routes/product.route.js` | Register bulk route |
 | `frontend/src/pages/CartPage.tsx` | Add banner, badge, modal, confirmation popup |
 | `frontend/src/services/cartService.ts` | Add sync API call |
 | `frontend/src/components/` | New modal/confirmation components |
