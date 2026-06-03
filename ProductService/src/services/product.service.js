@@ -182,15 +182,28 @@ class ProductService {
   }
 
   async getRelatedProducts(productId) {
+    const cacheKey = keys.related(productId);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const product = await productModel.findById(productId);
     if (!product) throw new Error("Không tìm thấy sản phẩm");
     const items = await productModel.findRelated(product.categoryId, productId, 6);
-    return Promise.all(items.map(p => this._populateRelations(p)));
+    const result = await Promise.all(items.map(p => this._populateRelations(p)));
+    await cacheSet(cacheKey, result, TTL.RELATED);
+    return result;
   }
 
   async getProductById(id) {
+    const cacheKey = keys.detail(id);
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
     const product = await productModel.findById(id);
-    return await this._populateRelations(product);
+    if (!product) return null;
+    const result = await this._populateRelations(product);
+    await cacheSet(cacheKey, result, TTL.DETAIL);
+    return result;
   }
 
   async createProduct(data, file) {
