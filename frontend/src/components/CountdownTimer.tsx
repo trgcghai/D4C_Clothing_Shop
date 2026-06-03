@@ -1,6 +1,6 @@
 // frontend/src/components/CountdownTimer.tsx
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCountdownTimer } from "use-countdown-timer";
 import { Clock } from "lucide-react";
 import { getAdjustedNow } from "@/src/services/clockSync";
@@ -14,17 +14,30 @@ export default function CountdownTimer({
   expiresAt,
   onExpire,
 }: CountdownTimerProps) {
-  const timerMs = Math.max(0, new Date(expiresAt).getTime() - getAdjustedNow());
+  const mountedRef = useRef(true);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
+
+  const expiresMs = new Date(expiresAt).getTime();
+  if (isNaN(expiresMs)) return null;
+
+  const timerMs = Math.max(0, expiresMs - getAdjustedNow());
 
   const { countdown, start } = useCountdownTimer({
     timer: timerMs,
     autostart: false,
-    onExpire,
+    onExpire: () => {
+      if (mountedRef.current) {
+        onExpireRef.current();
+      }
+    },
   });
 
-  // Start timer on mount — expiresAt is guaranteed by parent
   useEffect(() => {
     start();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [start]);
 
   if (countdown <= 0) return null;
@@ -37,7 +50,12 @@ export default function CountdownTimer({
     .padStart(2, "0");
 
   return (
-    <div className="flex items-center justify-center gap-2 text-amber-600">
+    <div
+      className="flex items-center justify-center gap-2 text-amber-600"
+      role="timer"
+      aria-live="polite"
+      aria-label={`${minutes}:${seconds} còn lại để thanh toán`}
+    >
       <Clock className="h-4 w-4" />
       <span className="font-mono font-semibold text-lg">
         {minutes}:{seconds}
