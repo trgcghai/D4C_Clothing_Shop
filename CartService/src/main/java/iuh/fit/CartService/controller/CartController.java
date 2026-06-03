@@ -96,4 +96,12 @@ public class CartController {
             @Valid @RequestBody CheckoutRequest request) {
         return ResponseEntity.ok(cartService.removeItemsBulk(userId, request.getItemIds()));
     }
+
+    @PatchMapping("/{userId}/sync")
+    @Operation(summary = "Sync cart items with latest product data", description = "Updates cart items with current product prices, names, and stock. Returns synced items and any errors (out of stock, etc).")
+    public ResponseEntity<SyncResponse> syncCartItems(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody SyncRequest request) {
+        return ResponseEntity.ok(cartService.syncItems(userId, request));
+    }
 }
