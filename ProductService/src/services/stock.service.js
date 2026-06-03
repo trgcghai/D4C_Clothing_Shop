@@ -1,5 +1,6 @@
 import { dynamoClient } from "../config/aws.config.js";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { cacheDel, cacheDelPattern, keys } from "./cache.service.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -42,6 +43,8 @@ class StockService {
         const { redisClient } = await import("../config/redis.config.js");
         await redisClient.set(`idempotency:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
       }
+
+      await this.invalidateProductCache(items);
 
       return result;
     } catch (error) {
@@ -89,6 +92,8 @@ class StockService {
         await redisClient.set(`idempotency:restore:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
       }
 
+      await this.invalidateProductCache(items);
+
       return result;
     } catch (error) {
       if (error.name === "TransactionCanceledException") {
@@ -96,6 +101,20 @@ class StockService {
         return { success: false, failedItems };
       }
       throw error;
+    }
+  }
+
+  async invalidateProductCache(items) {
+    try {
+      const productIds = [...new Set(items.map(item => item.productId).filter(Boolean))];
+      for (const productId of productIds) {
+        await cacheDel(keys.detail(productId));
+      }
+      if (productIds.length > 0) {
+        await cacheDelPattern("product:list:*");
+      }
+    } catch (err) {
+      console.error("[Stock] Cache invalidation error:", err.message);
     }
   }
 

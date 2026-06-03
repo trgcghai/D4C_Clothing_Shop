@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -89,5 +91,29 @@ class OrderServiceCheckoutTest {
                 .isInstanceOf(RuntimeException.class);
 
         verify(orderEventPublisher).publishStockRestoreFailed(anyList(), anyString());
+    }
+
+    @Test
+    void shouldPassProductIdInBatchStockRequest() {
+        CreateOrderFromCheckoutRequest request = createRequest();
+        when(orderRepository.findByUserIdAndCheckoutOrderId(anyLong(), anyString()))
+                .thenReturn(Optional.empty());
+        when(productClient.batchDeductStock(anyList(), anyString()))
+                .thenReturn(new BatchStockResponse(true, null));
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(invocation -> {
+                    Order order = invocation.getArgument(0);
+                    order.setId(1L);
+                    return order;
+                });
+
+        orderService.createOrderFromCheckout(1L, "test@email.com", request);
+
+        verify(productClient).batchDeductStock(argThat(items -> {
+            BatchStockRequest first = items.get(0);
+            return "var_1".equals(first.variantId())
+                    && first.quantity() == 2
+                    && "prod_1".equals(first.productId());
+        }), anyString());
     }
 }

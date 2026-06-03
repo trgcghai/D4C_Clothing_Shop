@@ -20,7 +20,11 @@ export const keys = {
       .sort()
       .map((k) => `${k}=${filters[k]}`)
       .join("&");
-    const hash = crypto.createHash("sha256").update(sorted).digest("hex").slice(0, 16);
+    const hash = crypto
+      .createHash("sha256")
+      .update(sorted)
+      .digest("hex")
+      .slice(0, 16);
     return `product:list:${hash}`;
   },
   recommendations: (userId) => `product:recommendations:${userId}`,
@@ -55,15 +59,22 @@ export async function cacheDel(key) {
 
 export async function cacheDelPattern(pattern) {
   try {
-    const keys = [];
-    let cursor = 0;
+    const foundKeys = [];
+    let cursor = "0";
     do {
-      const result = await redisClient.scan(cursor, { MATCH: pattern, COUNT: 100 });
-      cursor = result.cursor;
-      keys.push(...result.keys);
-    } while (cursor !== 0);
-    if (keys.length > 0) {
-      await redisClient.del(keys);
+      const result = await redisClient.sendCommand([
+        "SCAN",
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        "100",
+      ]);
+      cursor = result[0];
+      foundKeys.push(...result[1]);
+    } while (cursor !== "0");
+    if (foundKeys.length > 0) {
+      await redisClient.del(foundKeys);
     }
   } catch (err) {
     console.error("[Cache] DEL pattern error:", err.message);
