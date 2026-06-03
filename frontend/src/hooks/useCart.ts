@@ -13,7 +13,6 @@ import {
   syncCartItems,
   type AddCartItemPayload,
   type UpdateCartItemPayload,
-  type SyncRequest,
 } from "@/src/services/cartApi";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";

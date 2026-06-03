@@ -208,13 +208,13 @@ const CartPage = () => {
 
   const handleContinueCheckout = async () => {
     try {
-      const result = await doSyncCartItems({});
+      const result = await syncCartItems({});
       if (result.errors.length > 0) {
         const stockErrors = result.errors.filter(
-          (e) => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK"
+          (e: { reason: string }) => e.reason === "OUT_OF_STOCK" || e.reason === "INSUFFICIENT_STOCK"
         );
         if (stockErrors.length > 0) {
-          stockErrors.forEach((e) => toast.error(e.message));
+          stockErrors.forEach((e: { message: string }) => toast.error(e.message));
           setShowValidationModal(false);
           return;
         }

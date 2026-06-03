@@ -229,9 +229,6 @@ class ProductService {
 
     return products;
   }
-    }
-    return products;
-  }
 
   async createProduct(data, file) {
     if (data.categoryId) {
