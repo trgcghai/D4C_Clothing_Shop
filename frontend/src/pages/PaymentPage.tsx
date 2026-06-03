@@ -58,16 +58,17 @@ export default function PaymentPage() {
     isError: paymentError,
   } = usePaymentById(id);
   const { data: paymentStatus } = usePaymentStatus(id, !!id);
-  const cancelPaymentMutation = useCancelPayment();
-  const cancelOrderMutation = useCancelOrder();
-  const removeItemsBulkMutation = useRemoveCartItemsBulk();
+  const { mutateAsync: cancelPayment, isPending: isCancelingPayment } =
+    useCancelPayment();
+  const { mutateAsync: cancelOrder } = useCancelOrder();
+  const { mutateAsync: removeItemsBulk, isPending: isRemovingItems } =
+    useRemoveCartItemsBulk();
   const { data: order } = useUserOrderDetail(payment?.orderId ?? null);
 
   const [copied, setCopied] = useState(false);
   const paymentCompletedRef = useRef(false);
 
-  const isProcessing =
-    cancelPaymentMutation.isPending || removeItemsBulkMutation.isPending;
+  const isProcessing = isCancelingPayment || isRemovingItems;
 
   const handleCancelPayment = useCallback(
     async (reason: "user" | "expired", skipNavigate = false) => {
@@ -75,9 +76,9 @@ export default function PaymentPage() {
       paymentCompletedRef.current = true;
 
       try {
-        await cancelPaymentMutation.mutateAsync(parseInt(paymentId, 10));
+        await cancelPayment(parseInt(paymentId, 10));
         if (order) {
-          await cancelOrderMutation.mutateAsync(order.id);
+          await cancelOrder(order.id);
         }
         if (reason === "expired") {
           toast.info("Hết thời gian thanh toán, đơn hàng đã bị hủy");
@@ -86,11 +87,10 @@ export default function PaymentPage() {
           navigate("/orders");
         }
       } catch (error) {
-        paymentCompletedRef.current = false;
         console.error("Failed to cancel payment:", error);
       }
     },
-    [paymentId, order, cancelPaymentMutation, cancelOrderMutation, navigate],
+    [paymentId, order, cancelPayment, cancelOrder, navigate],
   );
 
   const blocker = useBlocker(
@@ -126,40 +126,46 @@ export default function PaymentPage() {
 
     if (status === "PAID") {
       if (removeItemIds.length > 0) {
-        removeItemsBulkMutation
-          .mutateAsync({ itemIds: removeItemIds })
+        removeItemsBulk({ itemIds: removeItemIds })
           .then(() => {
             if (payment?.orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment?.orderId),
+                queryKey: userOrderKeys.detail(payment.orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment?.orderId}`);
+            navigate(`/orders/${payment.orderId}`);
           })
           .catch(() => {
             if (payment?.orderId) {
               queryClient.invalidateQueries({
-                queryKey: userOrderKeys.detail(payment?.orderId),
+                queryKey: userOrderKeys.detail(payment.orderId),
               });
             }
             toast.success("Thanh toán thành công!");
-            navigate(`/orders/${payment?.orderId}`);
+            navigate(`/orders/${payment.orderId}`);
           });
       } else {
         if (payment?.orderId) {
           queryClient.invalidateQueries({
-            queryKey: userOrderKeys.detail(payment?.orderId),
+            queryKey: userOrderKeys.detail(payment.orderId),
           });
         }
         toast.success("Thanh toán thành công!");
-        navigate(`/orders/${payment?.orderId}`);
+        navigate(`/orders/${payment.orderId}`);
       }
     } else if (status === "CANCELLED") {
       toast.info("Thanh toán đã bị hủy");
       navigate("/orders");
     }
-  }, [paymentStatus?.status, removeItemIds, payment?.orderId, navigate]);
+  }, [
+    paymentStatus?.status,
+    removeItemIds,
+    payment?.orderId,
+    navigate,
+    removeItemsBulk,
+    queryClient,
+  ]);
 
   // Only cancel on actual tab/window close — NOT on component unmount
   // The previous cleanup effect caused immediate cancellation on React StrictMode double-mount
