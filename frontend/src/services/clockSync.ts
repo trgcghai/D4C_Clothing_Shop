@@ -20,7 +20,7 @@ export function updateClockOffset(dateHeader: string | undefined | null): void {
 
   try {
     const serverTime = new Date(dateHeader).getTime();
-    if (isNaN(serverTime)) return;
+    if (Number.isNaN(serverTime)) return;
 
     const clientTime = Date.now();
     let offset = serverTime - clientTime;

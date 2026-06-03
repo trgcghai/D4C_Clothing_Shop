@@ -50,7 +50,7 @@ export default function PaymentPage() {
       .filter((n) => !isNaN(n) && n > 0);
   }, [removeItemIdsParam]);
 
-  const id = paymentId ? parseInt(paymentId, 10) : null;
+  const id = paymentId ? Number.parseInt(paymentId, 10) : null;
 
   const {
     data: payment,
@@ -76,7 +76,7 @@ export default function PaymentPage() {
       paymentCompletedRef.current = true;
 
       try {
-        await cancelPayment(parseInt(paymentId, 10));
+        await cancelPayment(Number.parseInt(paymentId, 10));
       } catch (error) {
         // 409 = already expired/cancelled — treat as soft success
         console.error("Cancel payment error (may be already expired):", error);
@@ -180,7 +180,7 @@ export default function PaymentPage() {
   useEffect(() => {
     const handler = () => {
       if (!paymentCompletedRef.current && paymentId) {
-        const url = buildCancelPaymentUrl(parseInt(paymentId, 10));
+        const url = buildCancelPaymentUrl(Number.parseInt(paymentId, 10));
         navigator.sendBeacon(url);
       }
     };

@@ -6,8 +6,8 @@ import { Clock } from "lucide-react";
 import { getAdjustedNow } from "@/src/services/clockSync";
 
 interface CountdownTimerProps {
-  expiresAt: string;
-  onExpire: () => void;
+  readonly expiresAt: string;
+  readonly onExpire: () => void;
 }
 
 export default function CountdownTimer({
@@ -19,9 +19,9 @@ export default function CountdownTimer({
   onExpireRef.current = onExpire;
 
   const expiresMs = new Date(expiresAt).getTime();
-  if (isNaN(expiresMs)) return null;
-
-  const timerMs = Math.max(0, expiresMs - getAdjustedNow());
+  const timerMs = Number.isNaN(expiresMs)
+    ? 0
+    : Math.max(0, expiresMs - getAdjustedNow());
 
   const { countdown } = useCountdownTimer({
     timer: timerMs,
